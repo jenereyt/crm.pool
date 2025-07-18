@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRM</title>
+    <link rel="stylesheet" href="./css/sidebar.css">
+    <link rel="stylesheet" href="./css/main.css">
+    <link rel="stylesheet" href="./css/clients.css">
+    <link rel="stylesheet" href="./css/clientsModal.css">
+    <link rel="stylesheet" href="./css/subscriptions.css">
+    <link rel="stylesheet" href="./css/subscriptionsModal.css">
+    <link rel="stylesheet" href="./css/schedule.css">
+</head>
+
+<body>
+    <div class="container">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-toggle">
+                <img src="./images/icon-menu.svg" alt="Menu" class="toggle-icon">
+            </div>
+            <nav class="sidebar-nav" id="sidebar-nav"></nav>
+        </aside>
+        <main class="main-content" id="main-content"></main>
+    </div>
+    <script src="./js/sidebar.js"></script>
+    <script type="module" src="./js/main.js"></script>
+    <script type="module" src="./js/clients.js"></script>
+    <script type="module" src="./js/subscriptions.js"></script>
+    <script type="module" src="./js/schedule.js"></script>
+    <script type="module">
+        import { loadHome } from './js/main.js';
+        document.addEventListener('DOMContentLoaded', () => loadHome());
+    </script>
+</body>
+
+</html>

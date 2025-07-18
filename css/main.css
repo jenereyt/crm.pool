@@ -1,0 +1,131 @@
+.main-content {
+    flex: 1;
+    min-height: 100vh;
+    transition: margin-left 0.3s ease;
+    overflow: hidden;
+}
+
+.main-content.sidebar-closed {
+    margin-left: 40px;
+}
+
+.main-content.sidebar-open {
+    margin-left: 250px;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 0;
+    padding: 0;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.header h1 {
+    font-size: 24px;
+    color: #333;
+    padding: 15px;
+}
+
+.user-actions {
+    display: flex;
+    gap: 10px;
+    padding: 15px;
+    align-items: center;
+}
+
+.user-actions span {
+    color: #333;
+}
+
+.user-actions button {
+    padding: 5px 10px;
+    border: none;
+    border-radius: 3px;
+    background-color: #fff;
+    cursor: pointer;
+}
+
+.filter-bar {
+    display: flex;
+    gap: 10px;
+    margin: 20px;
+}
+
+.filter-input,
+.filter-select {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+.content-blocks {
+    display: grid;
+    grid-template-areas:
+        "block1 block2 block3"
+        "large large large";
+    gap: 20px;
+    padding: 20px;
+}
+
+.content-block {
+    background-color: #6a9ab0;
+    min-height: 150px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 16px;
+    transition: opacity 0.3s ease;
+}
+
+.content-block#block1 {
+    grid-area: block1;
+}
+
+.content-block#block2 {
+    grid-area: block2;
+}
+
+.content-block#block3 {
+    grid-area: block3;
+}
+
+.content-block.hidden {
+    opacity: 0;
+    height: 0;
+    margin: 0;
+}
+
+.large-block {
+    grid-area: large;
+    background-color: #8b6f47;
+    min-height: 300px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 16px;
+}
+
+@media (max-width: 768px) {
+    .main-content.sidebar-closed {
+        margin-left: 40px;
+    }
+
+    .main-content.sidebar-open {
+        margin-left: 250px;
+    }
+
+    .content-blocks {
+        grid-template-areas:
+            "block1"
+            "block2"
+            "block3"
+            "large";
+    }
+}
