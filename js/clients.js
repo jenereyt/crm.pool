@@ -1,4 +1,44 @@
-export function loadClients() {
+let clients = [
+  {
+    id: 'client1',
+    photo: './images/default-icon.svg',
+    name: 'Иван Сергеев',
+    parentName: 'Сергей Иванов',
+    phone: '+7 (900) 123-45-67',
+    parentPhone: '+7 (900) 765-43-21',
+    diagnosis: 'Нет',
+    features: 'Аллергия на хлор',
+    blacklisted: false
+  },
+  {
+    id: 'client2',
+    photo: './images/default-icon.svg',
+    name: 'Марина Ковалёва',
+    parentName: '',
+    phone: '+7 (900) 234-56-78',
+    parentPhone: '',
+    diagnosis: 'Астма',
+    features: 'Требуется сопровождение',
+    blacklisted: false
+  },
+  {
+    id: 'client3',
+    photo: './images/default-icon.svg',
+    name: 'Алексей Попов',
+    parentName: 'Ольга Попова',
+    phone: '+7 (900) 345-67-89',
+    parentPhone: '+7 (900) 987-65-43',
+    diagnosis: 'Нет',
+    features: 'Новичок в плавании',
+    blacklisted: false
+  }
+];
+
+export async function getClients() {
+  return clients;
+}
+
+export async function loadClients() {
   const mainContent = document.getElementById('main-content');
   mainContent.innerHTML = '';
 
@@ -16,112 +56,127 @@ export function loadClients() {
   const filterBar = document.createElement('div');
   filterBar.className = 'filter-bar';
   filterBar.innerHTML = `
-    <input type="text" placeholder="Поиск клиентов" class="filter-input" id="clients-filter-input">
-    <select class="filter-select" id="clients-filter-select">
-      <option value="">Все клиенты</option>
-      <option value="active">Действующие клиенты</option>
-      <option value="hall1">Зал 1</option>
-      <option value="hall2">Зал 2</option>
-      <option value="hall3">Зал 3</option>
-    </select>
+    <input type="text" id="client-filter" class="filter-input" placeholder="Поиск по ФИО">
+    <button class="client-add-btn" id="client-add-btn">Добавить клиента</button>
   `;
   mainContent.appendChild(filterBar);
 
-  const clients = [
-    { id: 1, fullName: 'Иванов Иван', parentName: 'Петров Пётр', phones: ['+998-90-123-45-67', '+998-91-234-56-78'], diagnosis: 'Здоров', status: 'active' },
-    { id: 2, fullName: 'Сидоров Сергей', parentName: 'Иванов Игорь', phones: ['+998-93-345-67-89', '+998-94-456-78-90'], diagnosis: 'Аллергія', status: 'inactive' },
-  ];
+  const clientList = document.createElement('div');
+  clientList.className = 'client-list';
+  mainContent.appendChild(clientList);
 
-  const table = document.createElement('table');
-  table.className = 'clients-table';
-  table.innerHTML = `
-    <thead>
-      <tr>
-        <th>ФИО</th>
-        <th>ФИО родителей</th>
-        <th>Телефоны</th>
-        <th>Диагноз</th>
-        <th>Действия</th>
-      </tr>
-    </thead>
-    <tbody id="clients-table-body"></tbody>
-  `;
-  mainContent.appendChild(table);
+  function renderClients() {
+    const filter = document.getElementById('client-filter').value.toLowerCase();
+    clientList.innerHTML = clients
+      .filter(client => client.name.toLowerCase().includes(filter))
+      .map(client => `
+        <div class="client-container" data-id="${client.id}">
+          <img src="${client.photo || './images/default-icon.svg'}" alt="${client.name}" class="client-photo" onerror="this.src='./images/default-icon.svg'">
+          <h3>${client.name}</h3>
+          <p>ФИО родителя: ${client.parentName || 'Не указано'}</p>
+          <p>Телефон: ${client.phone}</p>
+          <p>Телефон родителя: ${client.parentPhone || 'Не указано'}</p>
+          <p>Диагноз: ${client.diagnosis || 'Нет'}</p>
+          <p>Особенности: ${client.features || 'Нет'}</p>
+          <p>Чёрный список: ${client.blacklisted ? 'Да' : 'Нет'}</p>
+          <div class="client-actions">
+            <button class="client-edit-btn" data-id="${client.id}">Редактировать</button>
+            <button class="client-blacklist-btn" data-id="${client.id}">${client.blacklisted ? 'Убрать из чёрного списка' : 'Добавить в чёрный список'}</button>
+            <button class="client-delete-btn" data-id="${client.id}">Удалить</button>
+          </div>
+        </div>
+      `).join('');
+  }
 
-  const tbody = document.getElementById('clients-table-body');
-  clients.forEach(client => {
-    const row = document.createElement('tr');
-    row.setAttribute('data-id', client.id);
-    row.innerHTML = `
-      <td>${client.fullName}</td>
-      <td>${client.parentName}</td>
-      <td>${client.phones.join(', ')}</td>
-      <td>${client.diagnosis}</td>
-      <td>
-        <img src="./images/icon-edit.svg" alt="Edit" class="action-icon" data-id="${client.id}">
-        <img src="./images/icon-delete.svg" alt="Delete" class="action-icon" data-id="${client.id}">
-      </td>
-    `;
-    let hoverTimeout;
+  renderClients();
 
-    row.addEventListener('mouseout', () => {
-      clearTimeout(hoverTimeout);
+  document.getElementById('client-filter').addEventListener('input', renderClients);
+  document.getElementById('client-add-btn').addEventListener('click', () => {
+    showClientForm('Добавить клиента', {}, (data) => {
+      clients.push({ id: `client${Date.now()}`, ...data, blacklisted: false });
+      renderClients();
     });
-    row.addEventListener('click', (e) => {
-      if (!e.target.classList.contains('action-icon')) {
-        console.log('Клик по клиенту с ID:', client.id);
-        import('./clientsModal.js')
-          .then(module => {
-            console.log('Модуль clientsModal.js загружен:', Object.keys(module));
-            if (typeof module.openModal === 'function') {
-              module.openModal(client.id);
-            } else {
-              console.error('Функция openModal не найдена в модуле. Экспортированные ключи:', Object.keys(module));
-            }
-          })
-          .catch(err => {
-            console.error('Ошибка при импорте clientsModal.js:', err);
-          });
+  });
+
+  clientList.addEventListener('click', (e) => {
+    if (e.target.classList.contains('client-delete-btn')) {
+      const clientId = e.target.getAttribute('data-id');
+      if (confirm('Удалить клиента?')) {
+        clients = clients.filter(client => client.id !== clientId);
+        renderClients();
+      }
+    } else if (e.target.classList.contains('client-edit-btn')) {
+      const clientId = e.target.getAttribute('data-id');
+      const client = clients.find(c => c.id === clientId);
+      showClientForm('Редактировать клиента', client, (data) => {
+        Object.assign(client, data);
+        renderClients();
+      });
+    } else if (e.target.classList.contains('client-blacklist-btn')) {
+      const clientId = e.target.getAttribute('data-id');
+      const client = clients.find(c => c.id === clientId);
+      client.blacklisted = !client.blacklisted;
+      renderClients();
+    }
+  });
+
+  function showClientForm(title, client, callback) {
+    const modal = document.createElement('div');
+    modal.className = 'client-modal';
+    modal.innerHTML = `
+      <div class="client-modal-content">
+        <h2>${title}</h2>
+        <input type="file" id="client-photo-upload" accept="image/*">
+        <img id="client-photo-preview" src="${client.photo || './images/default-icon.svg'}" alt="Preview" class="client-photo-preview">
+        <input type="text" id="client-name" placeholder="ФИО" value="${client.name || ''}" required>
+        <input type="text" id="client-parent-name" placeholder="ФИО родителя" value="${client.parentName || ''}">
+        <input type="text" id="client-phone" placeholder="Номер телефона" value="${client.phone || ''}" required>
+        <input type="text" id="client-parent-phone" placeholder="Номер телефона родителя" value="${client.parentPhone || ''}">
+        <input type="text" id="client-diagnosis" placeholder="Диагноз" value="${client.diagnosis || ''}">
+        <input type="text" id="client-features" placeholder="Особенности" value="${client.features || ''}">
+        <div class="client-modal-actions">
+          <button id="client-save-btn">Сохранить</button>
+          <button id="client-cancel-btn">Отмена</button>
+        </div>
+      </div>
+    `;
+    mainContent.appendChild(modal);
+
+    const photoUpload = document.getElementById('client-photo-upload');
+    const photoPreview = document.getElementById('client-photo-preview');
+
+    photoUpload.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          photoPreview.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+      } else {
+        photoPreview.src = './images/default-icon.svg';
       }
     });
-    tbody.appendChild(row);
-  });
 
-  const addClientBtn = document.createElement('button');
-  addClientBtn.className = 'add-client-btn';
-  addClientBtn.textContent = 'Добавить клиента';
-  addClientBtn.addEventListener('click', () => {
-    console.log('Клик по добавлению клиента');
-    import('./clientsModal.js')
-      .then(module => {
-        console.log('Модуль clientsModal.js загружен:', Object.keys(module));
-        if (typeof module.openModal === 'function') {
-          module.openModal(null);
-        } else {
-          console.error('Функция openModal не найдена в модуле. Экспортированные ключи:', Object.keys(module));
-        }
-      })
-      .catch(err => {
-        console.error('Ошибка при импорте clientsModal.js:', err);
-      });
-  });
-  mainContent.appendChild(addClientBtn);
+    document.getElementById('client-save-btn').addEventListener('click', () => {
+      const name = document.getElementById('client-name').value.trim();
+      const parentName = document.getElementById('client-parent-name').value.trim();
+      const phone = document.getElementById('client-phone').value.trim();
+      const parentPhone = document.getElementById('client-parent-phone').value.trim();
+      const diagnosis = document.getElementById('client-diagnosis').value.trim();
+      const features = document.getElementById('client-features').value.trim();
+      const photo = photoPreview.src !== './images/default-icon.svg' ? photoPreview.src : './images/default-icon.svg';
 
-  const filterInput = document.getElementById('clients-filter-input');
-  const filterSelect = document.getElementById('clients-filter-select');
-  filterInput.addEventListener('input', filterTable);
-  filterSelect.addEventListener('change', filterTable);
+      if (name && phone) {
+        callback({ photo, name, parentName, phone, parentPhone, diagnosis, features });
+        modal.remove();
+      } else {
+        alert('Заполните обязательные поля (ФИО, телефон)!');
+      }
+    });
 
-  function filterTable() {
-    const searchTerm = filterInput.value.toLowerCase();
-    const filter = filterSelect.value;
-    const rows = tbody.querySelectorAll('tr');
-    rows.forEach(row => {
-      const text = row.textContent.toLowerCase();
-      const client = clients.find(c => c.id === parseInt(row.getAttribute('data-id')));
-      const matchesSearch = !searchTerm || text.includes(searchTerm);
-      const matchesFilter = !filter || (filter === 'active' ? client.status === 'active' : text.includes(filter));
-      row.style.display = matchesSearch && matchesFilter ? '' : 'none';
+    document.getElementById('client-cancel-btn').addEventListener('click', () => {
+      modal.remove();
     });
   }
 }

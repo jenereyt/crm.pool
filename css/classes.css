@@ -1,12 +1,12 @@
-/* Стили для страницы Клиенты */
-.client-list {
+/* Стили для страницы Занятия */
+.class-list {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     gap: 20px;
     padding: 20px;
 }
 
-.client-container {
+.class-container {
     background-color: #ffffff;
     border: 1px solid #e0e0e0;
     border-radius: 8px;
@@ -15,49 +15,49 @@
     transition: transform 0.2s;
 }
 
-.client-container:hover {
+.class-container:hover {
     transform: translateY(-2px);
 }
 
-.client-photo {
-    width: 100px;
-    height: 100px;
-    border-radius: 50%;
-    object-fit: cover;
-    margin-bottom: 10px;
-}
-
-.client-photo-preview {
-    width: 100px;
-    height: 100px;
-    border-radius: 50%;
-    object-fit: cover;
-    margin-bottom: 10px;
-    display: block;
-}
-
-.client-container h3 {
+.class-container h3 {
     margin: 0 0 10px;
     font-size: 1.2em;
     color: #333;
 }
 
-.client-container p {
+.class-container p {
     margin: 5px 0;
     color: #666;
     font-size: 0.9em;
 }
 
-.client-actions {
-    display: flex;
-    gap: 10px;
+.class-attendance {
     margin-top: 10px;
 }
 
-.client-add-btn,
-.client-edit-btn,
-.client-blacklist-btn,
-.client-delete-btn {
+.class-attendance h4 {
+    margin: 0 0 5px;
+    font-size: 1em;
+    color: #333;
+}
+
+.attendance-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.attendance-select {
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+.class-add-btn,
+.class-edit-btn,
+.class-delete-btn {
     background-color: #007bff;
     color: white;
     border: none;
@@ -65,23 +65,29 @@
     border-radius: 4px;
     cursor: pointer;
     font-size: 0.9em;
+    margin: 5px 5px 0 0;
 }
 
-.client-add-btn:hover,
-.client-edit-btn:hover,
-.client-blacklist-btn:hover {
+.class-add-btn:hover,
+.class-edit-btn:hover {
     background-color: #0056b3;
 }
 
-.client-delete-btn {
+.class-delete-btn {
     background-color: #dc3545;
 }
 
-.client-delete-btn:hover {
+.class-delete-btn:hover {
     background-color: #b02a37;
 }
 
-.client-modal {
+.class-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.class-modal {
     position: fixed;
     top: 0;
     left: 0;
@@ -94,7 +100,7 @@
     z-index: 1000;
 }
 
-.client-modal-content {
+.class-modal-content {
     background-color: white;
     padding: 20px;
     border-radius: 8px;
@@ -103,14 +109,14 @@
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
-.client-modal-content h2 {
+.class-modal-content h2 {
     margin: 0 0 15px;
     font-size: 1.5em;
     color: #333;
 }
 
-.client-modal-content input[type="text"],
-.client-modal-content input[type="file"] {
+.class-modal-content input,
+.class-modal-content select {
     width: 100%;
     padding: 8px;
     margin-bottom: 10px;
@@ -119,13 +125,17 @@
     font-size: 0.9em;
 }
 
-.client-modal-actions {
+.class-modal-content select[multiple] {
+    height: 100px;
+}
+
+.class-modal-actions {
     display: flex;
     justify-content: flex-end;
     gap: 10px;
 }
 
-.client-modal-actions button {
+.class-modal-actions button {
     padding: 8px 12px;
     border: none;
     border-radius: 4px;
@@ -133,27 +143,37 @@
     font-size: 0.9em;
 }
 
-.client-modal-actions button[id="client-save-btn"] {
+.class-modal-actions button[id="class-save-btn"] {
     background-color: #007bff;
     color: white;
 }
 
-.client-modal-actions button[id="client-save-btn"]:hover {
+.class-modal-actions button[id="class-save-btn"]:hover {
     background-color: #0056b3;
 }
 
-.client-modal-actions button[id="client-cancel-btn"] {
+.class-modal-actions button[id="class-cancel-btn"] {
     background-color: #6c757d;
     color: white;
 }
 
-.client-modal-actions button[id="client-cancel-btn"]:hover {
+.class-modal-actions button[id="class-cancel-btn"]:hover {
     background-color: #5a6268;
 }
 
 /* Адаптивность */
 @media (max-width: 768px) {
-    .client-list {
+    .class-list {
         grid-template-columns: 1fr;
+    }
+
+    .attendance-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+    }
+
+    .attendance-select {
+        width: 100%;
     }
 }

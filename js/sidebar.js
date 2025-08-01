@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     { id: 'schedule', icon: './images/icon-schedule.svg', label: 'Расписание' },
     { id: 'rooms', icon: './images/icon-rooms.svg', label: 'Залы' },
     { id: 'employees', icon: './images/icon-employees.svg', label: 'Сотрудники' },
+    { id: 'groups', icon: './images/icon-group.svg', label: 'Группы' },
     { id: 'classes', icon: './images/icon-classes.svg', label: 'Занятия' },
   ];
 
@@ -21,17 +22,17 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   sidebarNav.innerHTML = `
-        <ul>
-            ${menuItems.map(item => `
-                <li>
-                    <a href="#${item.id}" class="sidebar-link" data-section="${item.id}">
-                        <img src="${item.icon}" alt="${item.label}" class="sidebar-icon">
-                        <span>${item.label}</span>
-                    </a>
-                </li>
-            `).join('')}
-        </ul>
-    `;
+    <ul>
+      ${menuItems.map(item => `
+        <li>
+          <a href="#${item.id}" class="sidebar-link" data-section="${item.id}">
+            <img src="${item.icon}" alt="${item.label}" class="sidebar-icon">
+            <span>${item.label}</span>
+          </a>
+        </li>
+      `).join('')}
+    </ul>
+  `;
 
   sidebarNav.addEventListener('click', (e) => {
     const link = e.target.closest('.sidebar-link');
@@ -39,6 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const section = link.getAttribute('data-section');
       const mainContent = document.getElementById('main-content');
       mainContent.innerHTML = '';
+
       if (section === 'home') {
         import('./main.js').then(({ loadHome }) => loadHome());
       } else if (section === 'clients') {
@@ -50,9 +52,11 @@ document.addEventListener('DOMContentLoaded', () => {
       } else if (section === 'rooms') {
         import('./rooms.js').then(({ loadRooms }) => loadRooms());
       } else if (section === 'employees') {
-        mainContent.innerHTML = '<h1>Сотрудники (в разработке)</h1>';
+        import('./employees.js').then(({ loadEmployees }) => loadEmployees());
+      } else if (section === 'groups') {
+        import('./groups.js').then(({ loadGroups }) => loadGroups());
       } else if (section === 'classes') {
-        mainContent.innerHTML = '<h1>Занятия (в разработке)</h1>';
+        import('./classes.js').then(({ loadClasses }) => loadClasses());
       } else if (section === 'reports' && userRole === 'manager') {
         mainContent.innerHTML = '<h1>Отчеты (в разработке)</h1>';
       }

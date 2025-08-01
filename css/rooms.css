@@ -19,31 +19,16 @@
     transform: translateY(-2px);
 }
 
-.room-large {
-    grid-column: span 2;
-    /* Большой блок занимает 2 колонки */
-    background-color: #ffffff;
-    border: 1px solid #e0e0e0;
-    padding: 15px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.room-large:hover {
-    transform: translateY(-2px);
-}
-
-.room-container h3,
-.room-large h3 {
+.room-container h3 {
     margin: 0 0 10px;
     font-size: 1.2em;
     color: #333;
 }
 
-.room-container p,
-.room-large p {
-    margin: 5px 0;
-    color: #666;
-    font-size: 0.9em;
+.room-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
 }
 
 .room-add-btn,
@@ -56,7 +41,6 @@
     border-radius: 4px;
     cursor: pointer;
     font-size: 0.9em;
-    margin: 5px 5px 0 0;
 }
 
 .room-add-btn:hover,
@@ -70,12 +54,6 @@
 
 .room-delete-btn:hover {
     background-color: #b02a37;
-}
-
-.room-actions {
-    display: flex;
-    gap: 10px;
-    margin-top: 10px;
 }
 
 .room-modal {
@@ -106,14 +84,13 @@
     color: #333;
 }
 
-.room-modal-content input,
-.room-modal-content select {
+.room-modal-content input {
     width: 100%;
     padding: 8px;
     margin-bottom: 10px;
     border: 1px solid #ccc;
     border-radius: 4px;
-    font-size: 1em;
+    font-size: 0.9em;
 }
 
 .room-modal-actions {
@@ -130,35 +107,27 @@
     font-size: 0.9em;
 }
 
-.room-modal-actions button:first-child {
+.room-modal-actions button[id="room-save-btn"] {
     background-color: #007bff;
     color: white;
 }
 
-.room-modal-actions button:first-child:hover {
+.room-modal-actions button[id="room-save-btn"]:hover {
     background-color: #0056b3;
 }
 
-.room-modal-actions button:last-child {
+.room-modal-actions button[id="room-cancel-btn"] {
     background-color: #6c757d;
     color: white;
 }
 
-.room-modal-actions button:last-child:hover {
+.room-modal-actions button[id="room-cancel-btn"]:hover {
     background-color: #5a6268;
-}
-
-.room-hidden {
-    display: none;
 }
 
 /* Адаптивность */
 @media (max-width: 768px) {
     .room-list {
         grid-template-columns: 1fr;
-    }
-
-    .room-large {
-        grid-column: span 1;
     }
 }
