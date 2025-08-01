@@ -1,0 +1,164 @@
+/* Стили для страницы Залы */
+.room-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    padding: 20px;
+}
+
+.room-container {
+    background-color: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s;
+}
+
+.room-container:hover {
+    transform: translateY(-2px);
+}
+
+.room-large {
+    grid-column: span 2;
+    /* Большой блок занимает 2 колонки */
+    background-color: #ffffff;
+    border: 1px solid #e0e0e0;
+    padding: 15px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.room-large:hover {
+    transform: translateY(-2px);
+}
+
+.room-container h3,
+.room-large h3 {
+    margin: 0 0 10px;
+    font-size: 1.2em;
+    color: #333;
+}
+
+.room-container p,
+.room-large p {
+    margin: 5px 0;
+    color: #666;
+    font-size: 0.9em;
+}
+
+.room-add-btn,
+.room-edit-btn,
+.room-delete-btn {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+    margin: 5px 5px 0 0;
+}
+
+.room-add-btn:hover,
+.room-edit-btn:hover {
+    background-color: #0056b3;
+}
+
+.room-delete-btn {
+    background-color: #dc3545;
+}
+
+.room-delete-btn:hover {
+    background-color: #b02a37;
+}
+
+.room-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.room-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.room-modal-content {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.room-modal-content h2 {
+    margin: 0 0 15px;
+    font-size: 1.5em;
+    color: #333;
+}
+
+.room-modal-content input,
+.room-modal-content select {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1em;
+}
+
+.room-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.room-modal-actions button {
+    padding: 8px 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+}
+
+.room-modal-actions button:first-child {
+    background-color: #007bff;
+    color: white;
+}
+
+.room-modal-actions button:first-child:hover {
+    background-color: #0056b3;
+}
+
+.room-modal-actions button:last-child {
+    background-color: #6c757d;
+    color: white;
+}
+
+.room-modal-actions button:last-child:hover {
+    background-color: #5a6268;
+}
+
+.room-hidden {
+    display: none;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .room-list {
+        grid-template-columns: 1fr;
+    }
+
+    .room-large {
+        grid-column: span 1;
+    }
+}

@@ -38,7 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (link) {
       const section = link.getAttribute('data-section');
       const mainContent = document.getElementById('main-content');
-      mainContent.innerHTML = ''; // Очищаем содержимое перед загрузкой нового раздела
+      mainContent.innerHTML = '';
       if (section === 'home') {
         import('./main.js').then(({ loadHome }) => loadHome());
       } else if (section === 'clients') {
@@ -48,7 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } else if (section === 'schedule') {
         import('./schedule.js').then(({ loadSchedule }) => loadSchedule());
       } else if (section === 'rooms') {
-        mainContent.innerHTML = '<h1>Залы (в разработке)</h1>';
+        import('./rooms.js').then(({ loadRooms }) => loadRooms());
       } else if (section === 'employees') {
         mainContent.innerHTML = '<h1>Сотрудники (в разработке)</h1>';
       } else if (section === 'classes') {
