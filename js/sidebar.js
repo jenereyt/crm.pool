@@ -69,7 +69,6 @@ document.addEventListener('DOMContentLoaded', () => {
     mainContent.classList.toggle('sidebar-open');
   });
 
-  // Устанавливаем начальное состояние
   if (sidebar.classList.contains('closed')) {
     mainContent.classList.add('sidebar-closed');
     mainContent.classList.remove('sidebar-open');

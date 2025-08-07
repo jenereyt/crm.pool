@@ -32,8 +32,9 @@
     height: 100px;
     border-radius: 50%;
     object-fit: cover;
-    margin-bottom: 10px;
+    margin: 0 auto 10px;
     display: block;
+    border: 2px solid #e0e0e0;
 }
 
 .client-container h3 {
@@ -50,6 +51,7 @@
 
 .client-actions {
     display: flex;
+    flex-wrap: wrap;
     gap: 10px;
     margin-top: 10px;
 }
@@ -57,6 +59,8 @@
 .client-add-btn,
 .client-edit-btn,
 .client-blacklist-btn,
+.client-subscription-btn,
+.client-group-btn,
 .client-delete-btn {
     background-color: #007bff;
     color: white;
@@ -69,7 +73,9 @@
 
 .client-add-btn:hover,
 .client-edit-btn:hover,
-.client-blacklist-btn:hover {
+.client-blacklist-btn:hover,
+.client-subscription-btn:hover,
+.client-group-btn:hover {
     background-color: #0056b3;
 }
 
@@ -81,7 +87,8 @@
     background-color: #b02a37;
 }
 
-.client-modal {
+.client-modal,
+.group-management-modal {
     position: fixed;
     top: 0;
     left: 0;
@@ -94,23 +101,40 @@
     z-index: 1000;
 }
 
-.client-modal-content {
+.client-modal-content,
+.group-management-modal-content {
     background-color: white;
     padding: 20px;
-    border-radius: 8px;
+    border-radius: 12px;
     width: 90%;
     max-width: 400px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+    text-align: center;
 }
 
-.client-modal-content h2 {
-    margin: 0 0 15px;
+.client-modal-content h2,
+.group-management-modal-content h2 {
+    margin: 10px 0 15px;
     font-size: 1.5em;
     color: #333;
 }
 
+.client-photo-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.client-photo-container input[type="file"] {
+    margin-top: 10px;
+    font-size: 0.9em;
+}
+
 .client-modal-content input[type="text"],
-.client-modal-content input[type="file"] {
+.client-modal-content input[type="file"],
+.client-modal-content textarea,
+.group-management-modal-content select {
     width: 100%;
     padding: 8px;
     margin-bottom: 10px;
@@ -119,41 +143,92 @@
     font-size: 0.9em;
 }
 
-.client-modal-actions {
-    display: flex;
-    justify-content: flex-end;
+.client-modal-content select[multiple],
+.group-management-modal-content select[multiple] {
+    height: 100px;
+}
+
+.client-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: 10px;
 }
 
-.client-modal-actions button {
+.client-form-field {
+    display: flex;
+    flex-direction: column;
+}
+
+.client-form-field-full {
+    grid-column: 1 / -1;
+}
+
+.client-form-field label {
+    font-size: 14px;
+    margin-bottom: 5px;
+    color: #333;
+}
+
+.client-form-field input,
+.client-form-field textarea {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+.client-form-field textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.client-modal-actions,
+.group-management-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.client-modal-actions button,
+.group-management-modal-actions button {
     padding: 8px 12px;
     border: none;
     border-radius: 4px;
     cursor: pointer;
     font-size: 0.9em;
+    transition: background 0.2s;
 }
 
-.client-modal-actions button[id="client-save-btn"] {
+.client-modal-actions button[id="client-save-btn"],
+.group-management-modal-actions button[id="client-save-btn"] {
     background-color: #007bff;
     color: white;
 }
 
-.client-modal-actions button[id="client-save-btn"]:hover {
+.client-modal-actions button[id="client-save-btn"]:hover,
+.group-management-modal-actions button[id="client-save-btn"]:hover {
     background-color: #0056b3;
 }
 
-.client-modal-actions button[id="client-cancel-btn"] {
+.client-modal-actions button[id="client-cancel-btn"],
+.group-management-modal-actions button[id="client-cancel-btn"] {
     background-color: #6c757d;
     color: white;
 }
 
-.client-modal-actions button[id="client-cancel-btn"]:hover {
+.client-modal-actions button[id="client-cancel-btn"]:hover,
+.group-management-modal-actions button[id="client-cancel-btn"]:hover {
     background-color: #5a6268;
 }
 
 /* Адаптивность */
 @media (max-width: 768px) {
     .client-list {
+        grid-template-columns: 1fr;
+    }
+
+    .client-form-grid {
         grid-template-columns: 1fr;
     }
 }

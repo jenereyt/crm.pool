@@ -39,7 +39,6 @@
     position: relative;
     padding: 2px;
     min-height: 40px;
-    /* Фиксированная высота для каждой строки */
     display: grid;
     align-content: start;
     border-right: 1px solid #e0e0e0;
@@ -60,7 +59,6 @@
     overflow: hidden;
     text-align: center;
     min-height: calc(40px - 4px);
-    /* Учитываем margin */
 }
 
 .schedule-class small {
@@ -102,7 +100,13 @@
     background-color: #0056b3;
 }
 
-.schedule-date-input {
+.schedule-view-btn.active {
+    background-color: #0056b3;
+    font-weight: bold;
+}
+
+.schedule-date-input,
+.filter-select {
     padding: 8px;
     border: 1px solid #ccc;
     border-radius: 4px;
@@ -110,7 +114,8 @@
     margin-right: 10px;
 }
 
-.schedule-modal {
+.schedule-modal,
+.attendance-modal {
     position: fixed;
     top: 0;
     left: 0;
@@ -123,29 +128,35 @@
     z-index: 1000;
 }
 
-.schedule-modal-content {
+.schedule-modal-content,
+.attendance-modal-content {
     background-color: white;
     padding: 20px;
-    border-radius: 8px;
+    border-radius: 12px;
     width: 90%;
     max-width: 400px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+    text-align: center;
 }
 
-.schedule-modal-content h2 {
-    margin: 0 0 15px;
+.schedule-modal-content h2,
+.attendance-modal-content h2 {
+    margin: 10px 0 15px;
     font-size: 1.5em;
     color: #333;
 }
 
-.schedule-modal-content p {
+.schedule-modal-content p,
+.attendance-modal-content p {
     margin: 5px 0;
     font-size: 0.9em;
     color: #666;
 }
 
 .schedule-modal-content input,
-.schedule-modal-content select {
+.schedule-modal-content select,
+.attendance-modal-content input,
+.attendance-modal-content select {
     width: 100%;
     padding: 8px;
     margin-bottom: 10px;
@@ -154,29 +165,71 @@
     font-size: 0.9em;
 }
 
-.schedule-modal-actions {
+.schedule-modal-content select[multiple] {
+    height: 80px;
+}
+
+.attendance-modal-content .attendance-list {
+    max-height: 300px;
+    overflow-y: auto;
+    margin-bottom: 10px;
+}
+
+.attendance-modal-content .attendance-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+    padding: 5px;
+    border-radius: 4px;
+    background-color: #f8f9fa;
+}
+
+.attendance-modal-content .attendance-item span {
+    font-size: 0.9em;
+    color: #333;
+}
+
+.attendance-modal-content .attendance-select {
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 0.9em;
+    background-color: #fff;
+    cursor: pointer;
+}
+
+.attendance-modal-content .attendance-select:disabled {
+    background-color: #e9ecef;
+    cursor: not-allowed;
+}
+
+.schedule-modal-actions,
+.attendance-modal-actions {
     display: flex;
     justify-content: flex-end;
     gap: 10px;
     margin-top: 15px;
 }
 
-.schedule-modal-actions button {
+.schedule-modal-actions button,
+.attendance-modal-actions button {
     padding: 8px 12px;
     border: none;
     border-radius: 4px;
     cursor: pointer;
     font-size: 0.9em;
+    transition: background 0.2s;
 }
 
-.schedule-modal-actions button[id="schedule-edit-btn"],
-.schedule-modal-actions button[id="schedule-save-btn"] {
+.schedule-modal-actions button[id="schedule-save-btn"],
+.attendance-modal-actions button[id="attendance-save-btn"] {
     background-color: #007bff;
     color: white;
 }
 
-.schedule-modal-actions button[id="schedule-edit-btn"]:hover,
-.schedule-modal-actions button[id="schedule-save-btn"]:hover {
+.schedule-modal-actions button[id="schedule-save-btn"]:hover,
+.attendance-modal-actions button[id="attendance-save-btn"]:hover {
     background-color: #0056b3;
 }
 
@@ -187,21 +240,62 @@
 
 .schedule-modal-actions button[id="schedule-delete-btn"]:hover {
     background-color: #b02a37;
-    color: white;
 }
 
 .schedule-modal-actions button[id="schedule-cancel-btn"],
-.schedule-modal-actions button[id="schedule-close-btn"] {
+.schedule-modal-actions button[id="schedule-close-btn"],
+.attendance-modal-actions button[id="attendance-cancel-btn"] {
     background-color: #6c757d;
     color: white;
 }
 
 .schedule-modal-actions button[id="schedule-cancel-btn"]:hover,
-.schedule-modal-actions button[id="schedule-close-btn"]:hover {
+.schedule-modal-actions button[id="schedule-close-btn"]:hover,
+.attendance-modal-actions button[id="attendance-cancel-btn"]:hover {
     background-color: #5a6268;
 }
 
-/* Адаптивность */
+.days-of-week {
+    margin-bottom: 15px;
+}
+
+.days-of-week label {
+    font-size: 0.9em;
+    margin-bottom: 5px;
+    display: block;
+    color: #333;
+}
+
+.days-of-week-buttons {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+.day-button {
+    padding: 6px 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: #f9f9f9;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+    font-size: 0.85em;
+}
+
+.day-button.selected {
+    background: #007bff;
+    color: #fff;
+    border-color: #007bff;
+}
+
+.day-button:hover {
+    background: #e0e0e0;
+}
+
+.day-button.selected:hover {
+    background: #0056b3;
+}
+
 @media (max-width: 768px) {
     .schedule-table {
         grid-template-columns: 60px repeat(auto-fit, minmax(100px, 1fr));
@@ -215,7 +309,6 @@
     .schedule-cell {
         min-width: 100px;
         min-height: 30px;
-        /* Уменьшено для мобильных */
     }
 
     .schedule-class {
@@ -225,5 +318,11 @@
 
     .schedule-class small {
         font-size: 0.65em;
+    }
+
+    .filter-select,
+    .schedule-date-input {
+        width: 100%;
+        margin-bottom: 10px;
     }
 }

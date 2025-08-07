@@ -33,6 +33,7 @@
 
 .group-add-btn,
 .group-edit-btn,
+.group-clients-btn,
 .group-delete-btn {
     background-color: #007bff;
     color: white;
@@ -45,7 +46,8 @@
 }
 
 .group-add-btn:hover,
-.group-edit-btn:hover {
+.group-edit-btn:hover,
+.group-clients-btn:hover {
     background-color: #0056b3;
 }
 
@@ -59,6 +61,7 @@
 
 .group-actions {
     display: flex;
+    flex-wrap: wrap;
     gap: 10px;
     margin-top: 10px;
 }
@@ -99,6 +102,10 @@
     border: 1px solid #ccc;
     border-radius: 4px;
     font-size: 0.9em;
+}
+
+.group-modal-content select[multiple] {
+    height: 100px;
 }
 
 .group-modal-actions {

@@ -33,6 +33,8 @@
 
 .class-attendance {
     margin-top: 10px;
+    border-top: 1px solid #e0e0e0;
+    padding-top: 10px;
 }
 
 .class-attendance h4 {
@@ -46,6 +48,14 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 5px;
+    padding: 5px;
+    border-radius: 4px;
+    background-color: #f8f9fa;
+}
+
+.attendance-item span {
+    font-size: 0.9em;
+    color: #333;
 }
 
 .attendance-select {
@@ -53,10 +63,18 @@
     border: 1px solid #ccc;
     border-radius: 4px;
     font-size: 0.9em;
+    background-color: #fff;
+    cursor: pointer;
+}
+
+.attendance-select:disabled {
+    background-color: #e9ecef;
+    cursor: not-allowed;
 }
 
 .class-add-btn,
 .class-edit-btn,
+.class-attendance-btn,
 .class-delete-btn {
     background-color: #007bff;
     color: white;
@@ -69,7 +87,8 @@
 }
 
 .class-add-btn:hover,
-.class-edit-btn:hover {
+.class-edit-btn:hover,
+.class-attendance-btn:hover {
     background-color: #0056b3;
 }
 
@@ -83,11 +102,13 @@
 
 .class-actions {
     display: flex;
+    flex-wrap: wrap;
     gap: 10px;
     margin-top: 10px;
 }
 
-.class-modal {
+.class-modal,
+.attendance-modal {
     position: fixed;
     top: 0;
     left: 0;
@@ -100,23 +121,28 @@
     z-index: 1000;
 }
 
-.class-modal-content {
+.class-modal-content,
+.attendance-modal-content {
     background-color: white;
     padding: 20px;
-    border-radius: 8px;
+    border-radius: 12px;
     width: 90%;
     max-width: 400px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+    text-align: center;
 }
 
-.class-modal-content h2 {
-    margin: 0 0 15px;
+.class-modal-content h2,
+.attendance-modal-content h2 {
+    margin: 10px 0 15px;
     font-size: 1.5em;
     color: #333;
 }
 
 .class-modal-content input,
-.class-modal-content select {
+.class-modal-content select,
+.attendance-modal-content input,
+.attendance-modal-content select {
     width: 100%;
     padding: 8px;
     margin-bottom: 10px;
@@ -126,42 +152,96 @@
 }
 
 .class-modal-content select[multiple] {
-    height: 100px;
+    height: 80px;
 }
 
-.class-modal-actions {
+.attendance-modal-content .attendance-list {
+    max-height: 300px;
+    overflow-y: auto;
+    margin-bottom: 10px;
+}
+
+.class-modal-actions,
+.attendance-modal-actions {
     display: flex;
     justify-content: flex-end;
     gap: 10px;
+    margin-top: 15px;
 }
 
-.class-modal-actions button {
+.class-modal-actions button,
+.attendance-modal-actions button {
     padding: 8px 12px;
     border: none;
     border-radius: 4px;
     cursor: pointer;
     font-size: 0.9em;
+    transition: background 0.2s;
 }
 
-.class-modal-actions button[id="class-save-btn"] {
+.class-modal-actions button[id="class-save-btn"],
+.attendance-modal-actions button[id="attendance-save-btn"] {
     background-color: #007bff;
     color: white;
 }
 
-.class-modal-actions button[id="class-save-btn"]:hover {
+.class-modal-actions button[id="class-save-btn"]:hover,
+.attendance-modal-actions button[id="attendance-save-btn"]:hover {
     background-color: #0056b3;
 }
 
-.class-modal-actions button[id="class-cancel-btn"] {
+.class-modal-actions button[id="class-cancel-btn"],
+.attendance-modal-actions button[id="attendance-cancel-btn"] {
     background-color: #6c757d;
     color: white;
 }
 
-.class-modal-actions button[id="class-cancel-btn"]:hover {
+.class-modal-actions button[id="class-cancel-btn"]:hover,
+.attendance-modal-actions button[id="attendance-cancel-btn"]:hover {
     background-color: #5a6268;
 }
 
-/* Адаптивность */
+.days-of-week {
+    margin-bottom: 15px;
+}
+
+.days-of-week label {
+    font-size: 0.9em;
+    margin-bottom: 5px;
+    display: block;
+    color: #333;
+}
+
+.days-of-week-buttons {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+.day-button {
+    padding: 6px 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: #f9f9f9;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+    font-size: 0.85em;
+}
+
+.day-button.selected {
+    background: #007bff;
+    color: #fff;
+    border-color: #007bff;
+}
+
+.day-button:hover {
+    background: #e0e0e0;
+}
+
+.day-button.selected:hover {
+    background: #0056b3;
+}
+
 @media (max-width: 768px) {
     .class-list {
         grid-template-columns: 1fr;
