@@ -1,3 +1,4 @@
+// group.js
 import { getTrainers } from './employees.js';
 import { getClients } from './clients.js';
 
@@ -111,6 +112,8 @@ export function loadGroups() {
     }
   });
 
+  /* ---- модалки с улучшенным выбором клиентов (поиск + чекбоксы + выбранные чипы) ---- */
+
   function showGroupModal(title, group, trainers, selectedClients, callback) {
     const clients = getClients();
     const modal = document.createElement('div');
@@ -123,9 +126,26 @@ export function loadGroups() {
           <option value="">Выберите тренера</option>
           ${trainers.map(trainer => `<option value="${trainer}" ${group.trainer === trainer ? 'selected' : ''}>${trainer}</option>`).join('')}
         </select>
-        <select id="group-clients" multiple>
-          ${clients.map(client => `<option value="${client.name}" ${selectedClients.includes(client.name) ? 'selected' : ''}>${client.name}${client.blacklisted ? ' (В чёрном списке)' : ''}</option>`).join('')}
-        </select>
+
+        <div class="client-selector">
+          <label>Клиенты</label>
+          <input type="text" id="client-selector-search" placeholder="Поиск клиента...">
+          <div class="client-selector-list">
+            ${clients.map(client => `
+              <label class="client-checkbox-item">
+                <input type="checkbox" value="${client.name}" ${selectedClients.includes(client.name) ? 'checked' : ''}>
+                ${client.name}${client.blacklisted ? ' (В чёрном списке)' : ''}
+              </label>
+            `).join('')}
+          </div>
+          <div class="client-selector-selected">
+            <label>Выбранные:</label>
+            <div class="selected-chips">
+              ${selectedClients.map(c => `<span class="chip" data-name="${c}">${c} <button class="chip-remove" data-name="${c}">×</button></span>`).join('')}
+            </div>
+          </div>
+        </div>
+
         <div class="group-modal-actions">
           <button id="group-save-btn">Сохранить</button>
           <button id="group-cancel-btn">Отмена</button>
@@ -134,13 +154,50 @@ export function loadGroups() {
     `;
     mainContent.appendChild(modal);
 
+    const searchInput = modal.querySelector('#client-selector-search');
+    const listContainer = modal.querySelector('.client-selector-list');
+    const selectedChips = modal.querySelector('.selected-chips');
+
+    function refreshSelectedChips() {
+      const checked = Array.from(listContainer.querySelectorAll('input[type="checkbox"]:checked')).map(i => i.value);
+      selectedChips.innerHTML = checked.map(c => `<span class="chip" data-name="${c}">${c} <button class="chip-remove" data-name="${c}">×</button></span>`).join('');
+    }
+
+    refreshSelectedChips();
+
+    // Поиск в списке клиентов
+    searchInput.addEventListener('input', () => {
+      const q = searchInput.value.toLowerCase();
+      Array.from(listContainer.querySelectorAll('label.client-checkbox-item')).forEach(label => {
+        label.style.display = label.textContent.toLowerCase().includes(q) ? '' : 'none';
+      });
+    });
+
+    // Клики по чекбоксам
+    listContainer.addEventListener('change', (ev) => {
+      if (ev.target && ev.target.matches('input[type="checkbox"]')) {
+        refreshSelectedChips();
+      }
+    });
+
+    // Удаление через чип
+    selectedChips.addEventListener('click', (ev) => {
+      if (ev.target.classList.contains('chip-remove')) {
+        const name = ev.target.getAttribute('data-name');
+        const checkbox = listContainer.querySelector(`input[type="checkbox"][value="${name}"]`);
+        if (checkbox) {
+          checkbox.checked = false;
+          refreshSelectedChips();
+        }
+      }
+    });
+
     document.getElementById('group-save-btn').addEventListener('click', () => {
       const name = document.getElementById('group-name').value.trim();
       const trainer = document.getElementById('group-trainer').value;
-      const clientOptions = document.getElementById('group-clients').selectedOptions;
-      const clients = Array.from(clientOptions).map(opt => opt.value);
+      const clientsSelected = Array.from(listContainer.querySelectorAll('input[type="checkbox"]:checked')).map(i => i.value);
       if (name && trainer) {
-        callback({ name, trainer, clients });
+        callback({ name, trainer, clients: clientsSelected });
         modal.remove();
       } else {
         alert('Заполните все поля корректно!');
@@ -159,9 +216,10 @@ export function loadGroups() {
       <div class="group-modal-content">
         <h2>${title}</h2>
         <p>Группа: ${group.name}</p>
-        <select id="group-clients" multiple>
-          ${clients.map(client => `<option value="${client.name}" ${group.clients.includes(client.name) ? 'selected' : ''}>${client.name}${client.blacklisted ? ' (В чёрном списке)' : ''}</option>`).join('')}
-        </select>
+        <input type="text" id="group-client-search" placeholder="Поиск клиента...">
+        <div class="client-selector-list">
+          ${clients.map(client => `<label class="client-checkbox-item"><input type="checkbox" value="${client.name}" ${group.clients.includes(client.name) ? 'checked' : ''}>${client.name}${client.blacklisted ? ' (В чёрном списке)' : ''}</label>`).join('')}
+        </div>
         <div class="group-modal-actions">
           <button id="group-save-btn">Сохранить</button>
           <button id="group-cancel-btn">Отмена</button>
@@ -170,9 +228,18 @@ export function loadGroups() {
     `;
     mainContent.appendChild(modal);
 
+    const searchInput = modal.querySelector('#group-client-search');
+    const listContainer = modal.querySelector('.client-selector-list');
+
+    searchInput.addEventListener('input', () => {
+      const q = searchInput.value.toLowerCase();
+      Array.from(listContainer.querySelectorAll('label.client-checkbox-item')).forEach(label => {
+        label.style.display = label.textContent.toLowerCase().includes(q) ? '' : 'none';
+      });
+    });
+
     document.getElementById('group-save-btn').addEventListener('click', () => {
-      const clientOptions = document.getElementById('group-clients').selectedOptions;
-      const selectedClients = Array.from(clientOptions).map(opt => opt.value);
+      const selectedClients = Array.from(listContainer.querySelectorAll('input[type="checkbox"]:checked')).map(i => i.value);
       callback(selectedClients);
       modal.remove();
     });

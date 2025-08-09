@@ -1,4 +1,5 @@
-import { getActiveSubscriptions, getSubscriptionTemplates } from './subscriptions.js';
+// clients.js
+import { getSubscriptionTemplates } from './subscriptions.js';
 import { getGroups } from './groups.js';
 
 let clientsData = [
@@ -19,7 +20,8 @@ let clientsData = [
       classesPerWeek: 2,
       daysOfWeek: ['Пн', 'Ср'],
       classTime: '10:00',
-      group: 'Йога для начинающих'
+      group: 'Йога для начинающих',
+      remainingClasses: 8 // per-client remaining classes
     },
     photo: 'client1.jpg'
   },
@@ -40,7 +42,8 @@ let clientsData = [
       classesPerWeek: 0,
       daysOfWeek: [],
       classTime: '09:00',
-      group: ''
+      group: '',
+      remainingClasses: Infinity
     },
     photo: ''
   }
@@ -49,6 +52,28 @@ let clientsData = [
 export function getClients() {
   return clientsData;
 }
+
+export function getClientById(id) {
+  return clientsData.find(c => c.id === id) || null;
+}
+
+export function addClient(client) {
+  const newClient = { id: `client${Date.now()}`, ...client };
+  clientsData.push(newClient);
+  return newClient;
+}
+
+export function updateClient(id, data) {
+  const client = clientsData.find(c => c.id === id);
+  if (client) Object.assign(client, data);
+  return client;
+}
+
+export function removeClient(id) {
+  clientsData = clientsData.filter(c => c.id !== id);
+}
+
+/* ---- UI: loadClients and forms (kept inline for simplicity) ---- */
 
 export function loadClients() {
   const mainContent = document.getElementById('main-content');
@@ -85,7 +110,7 @@ export function loadClients() {
     clientList.innerHTML = clientsData
       .filter(client => client.name.toLowerCase().includes(search) || client.phone.toLowerCase().includes(search))
       .map(client => {
-        const subscription = client.subscription ? getSubscriptionTemplates().find(t => t.id === client.subscription.templateId) : null;
+        const subscriptionTemplate = client.subscription ? getSubscriptionTemplates().find(t => t.id === client.subscription.templateId) : null;
         return `
           <div class="client-container" data-id="${client.id}">
             ${client.photo ? `<img src="${client.photo}" class="client-photo" alt="${client.name}">` : `<img src="images/default-icon.svg" class="client-photo" alt="Нет фото">`}
@@ -96,7 +121,7 @@ export function loadClients() {
             ${client.diagnosis ? `<p>Диагноз: ${client.diagnosis}</p>` : ''}
             ${client.features ? `<p>Особенности: ${client.features}</p>` : ''}
             <p>Группы: ${client.groups.length ? client.groups.join(', ') : 'Нет'}</p>
-            <p>Абонемент: ${subscription ? subscription.type : 'Нет'}</p>
+            <p>Абонемент: ${subscriptionTemplate ? subscriptionTemplate.type : (client.subscription ? 'Данные абонемента' : 'Нет')}</p>
             <div class="client-actions">
               <button class="client-edit-btn" data-id="${client.id}">Редактировать</button>
               <button class="client-blacklist-btn" data-id="${client.id}">${client.blacklisted ? 'Убрать из чёрного списка' : 'В чёрный список'}</button>
@@ -115,7 +140,7 @@ export function loadClients() {
 
   document.getElementById('client-add-btn').addEventListener('click', () => {
     showClientForm('Добавить клиента', {}, (data) => {
-      clientsData.push({ id: `client${Date.now()}`, ...data, groups: [], blacklisted: false });
+      addClient({ ...data, groups: [], blacklisted: false, subscription: null });
       renderClients();
     });
   });
@@ -127,14 +152,14 @@ export function loadClients() {
 
     if (e.target.classList.contains('client-edit-btn')) {
       showClientForm('Редактировать клиента', client, (data) => {
-        Object.assign(client, data);
+        updateClient(clientId, data);
         renderClients();
       });
     } else if (e.target.classList.contains('client-blacklist-btn')) {
       client.blacklisted = !client.blacklisted;
       renderClients();
     } else if (e.target.classList.contains('client-subscription-btn')) {
-      const sub = getActiveSubscriptions().find(s => s.clientId === clientId) || {
+      const sub = client.subscription ? { ...client.subscription, clientId } : {
         clientId,
         templateId: '',
         startDate: '',
@@ -142,9 +167,12 @@ export function loadClients() {
         classesPerWeek: 0,
         daysOfWeek: [],
         classTime: '09:00',
-        group: ''
+        group: '',
+        remainingClasses: 0
       };
       showSubscriptionForm('Абонемент клиента', sub, clientsData, getGroups(), (data) => {
+        const template = getSubscriptionTemplates().find(t => t.id === data.templateId);
+        const remaining = template ? template.remainingClasses : (data.remainingClasses || 0);
         client.subscription = {
           templateId: data.templateId,
           startDate: data.startDate,
@@ -152,7 +180,8 @@ export function loadClients() {
           classesPerWeek: data.classesPerWeek,
           daysOfWeek: data.daysOfWeek,
           classTime: data.classTime,
-          group: data.group
+          group: data.group,
+          remainingClasses: remaining
         };
         renderClients();
       });
@@ -163,11 +192,13 @@ export function loadClients() {
       });
     } else if (e.target.classList.contains('client-delete-btn')) {
       if (confirm('Удалить клиента?')) {
-        clientsData = clientsData.filter(c => c.id !== clientId);
+        removeClient(clientId);
         renderClients();
       }
     }
   });
+
+  /* ---- модалки ---- */
 
   function showClientForm(title, client, callback) {
     const modal = document.createElement('div');
@@ -219,8 +250,8 @@ export function loadClients() {
       const file = e.target.files[0];
       if (file) {
         const reader = new FileReader();
-        reader.onload = (e) => {
-          photoPreview.src = e.target.result;
+        reader.onload = (ev) => {
+          photoPreview.src = ev.target.result;
         };
         reader.readAsDataURL(file);
       } else {
@@ -305,7 +336,7 @@ export function loadClients() {
       const classTime = document.getElementById('subscription-class-time').value;
       const group = document.getElementById('subscription-group').value;
 
-      if (clientId && templateId && classesPerWeek && startDate && endDate && classTime) {
+      if (clientId && templateId && !isNaN(classesPerWeek) && startDate && endDate && classTime) {
         const start = new Date(startDate);
         const end = new Date(endDate);
         if (end > start) {
@@ -331,9 +362,7 @@ export function loadClients() {
       <div class="group-management-modal-content">
         <h2>${title}</h2>
         <select id="client-groups" multiple>
-          ${groups.map(group => `
-            <option value="${group}" ${client.groups.includes(group) ? 'selected' : ''}>${group}</option>
-          `).join('')}
+          ${groups.map(group => `<option value="${group}" ${client.groups.includes(group) ? 'selected' : ''}>${group}</option>`).join('')}
         </select>
         <div class="group-management-modal-actions">
           <button id="client-save-btn">Сохранить</button>

@@ -1,6 +1,7 @@
+// subscriptions.js
 import { getClients } from './clients.js';
 import { scheduleData } from './schedule.js';
-import { getGroups } from './groups.js';
+import { getGroups as getGroupNames } from './groups.js';
 
 let subscriptionTemplates = [
   { id: 'template1', type: '8 занятий', remainingClasses: 8 },
@@ -24,7 +25,8 @@ export function getActiveSubscriptions() {
       classesPerWeek: client.subscription.classesPerWeek || 0,
       daysOfWeek: client.subscription.daysOfWeek || [],
       classTime: client.subscription.classTime || '09:00',
-      group: client.subscription.group || ''
+      group: client.subscription.group || '',
+      remainingClasses: client.subscription.remainingClasses !== undefined ? client.subscription.remainingClasses : Infinity
     }));
 }
 
@@ -74,7 +76,7 @@ export function loadSubscriptions() {
   mainContent.appendChild(subscriptionSection);
 
   const clients = getClients();
-  const groups = getGroups();
+  const groups = getGroupNames();
 
   function renderTemplates() {
     templateList.innerHTML = subscriptionTemplates
@@ -106,7 +108,7 @@ export function loadSubscriptions() {
             <p>Тип: ${template ? template.type : 'Неизвестный шаблон'}</p>
             <p>Дата начала: ${sub.startDate}</p>
             <p>Дата окончания: ${sub.endDate}</p>
-            <p>Осталось занятий: ${template ? (template.remainingClasses === Infinity ? 'Безлимит' : template.remainingClasses) : 'Неизвестно'}</p>
+            <p>Осталось занятий: ${sub.remainingClasses === Infinity ? 'Безлимит' : sub.remainingClasses}</p>
             <p>Занятий в неделю: ${sub.classesPerWeek || 'Не указано'}</p>
             <p>Дни недели: ${sub.daysOfWeek?.length ? sub.daysOfWeek.join(', ') : 'Разовое'}</p>
             <p>Время: ${sub.classTime || 'Не указано'}</p>
@@ -166,6 +168,7 @@ export function loadSubscriptions() {
       showSubscriptionForm('Редактировать абонемент', sub, clients, groups, (data) => {
         const client = clients.find(c => c.id === data.clientId);
         if (client) {
+          const template = subscriptionTemplates.find(t => t.id === data.templateId);
           client.subscription = {
             templateId: data.templateId,
             startDate: data.startDate,
@@ -173,7 +176,8 @@ export function loadSubscriptions() {
             classesPerWeek: data.classesPerWeek,
             daysOfWeek: data.daysOfWeek,
             classTime: data.classTime,
-            group: data.group
+            group: data.group,
+            remainingClasses: template ? template.remainingClasses : Infinity
           };
           renderActiveSubscriptions();
         }
@@ -270,63 +274,90 @@ export function loadSubscriptions() {
       const classTime = document.getElementById('subscription-class-time').value;
       const group = document.getElementById('subscription-group').value;
 
-      if (clientId && templateId && classesPerWeek && startDate && endDate && classTime) {
+      if (clientId && templateId && !isNaN(classesPerWeek) && startDate && endDate && classTime) {
         const start = new Date(startDate);
         const end = new Date(endDate);
         if (end > start) {
-          const template = subscriptionTemplates.find(t => t.id === templateId);
+          // Создаём/обновляем подписку у клиента с установкой remainingClasses по шаблону
           const client = clients.find(c => c.id === clientId);
-          const classesToAdd = [];
-          let totalClasses = template.remainingClasses === Infinity ? Infinity : template.remainingClasses;
-          const weeks = Math.ceil((end - start) / (1000 * 60 * 60 * 24 * 7));
-          totalClasses = Math.min(totalClasses, classesPerWeek * weeks);
+          const template = subscriptionTemplates.find(t => t.id === templateId);
+          if (client) {
+            client.subscription = {
+              templateId,
+              startDate,
+              endDate,
+              classesPerWeek,
+              daysOfWeek,
+              classTime,
+              group,
+              remainingClasses: template ? template.remainingClasses : Infinity
+            };
 
-          const startHour = classTime.split(':')[0];
-          const endHour = (parseInt(startHour) + 1).toString().padStart(2, '0');
-          const endTime = `${endHour}:00`;
-
-          if (daysOfWeek.length > 0) {
-            const startDateObj = new Date(startDate);
-            const endDateObj = new Date(endDate);
-            for (let d = new Date(startDateObj); d <= endDateObj; d.setDate(d.getDate() + 1)) {
-              const dayName = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'][d.getDay()];
-              if (daysOfWeek.includes(dayName) && (totalClasses === Infinity || totalClasses > 0)) {
-                classesToAdd.push({
-                  id: `class${Date.now() + classesToAdd.length}`,
-                  name: template.type,
-                  roomId: 'room1', // Можно заменить на выбор зала
-                  type: group ? 'group' : 'individual',
-                  trainer: groups.find(g => g === group)?.trainer || 'Не указан',
-                  group: group || '',
-                  clients: group ? groups.find(g => g === group)?.clients || [client.name] : [client.name],
-                  date: formatDate(d),
-                  startTime: classTime,
-                  endTime: endTime,
-                  attendance: group ? groups.find(g => g === group)?.clients.reduce((acc, client) => ({ ...acc, [client]: 'Пришёл' }), {}) : { [client.name]: 'Пришёл' },
-                  daysOfWeek: daysOfWeek
-                });
-                if (totalClasses !== Infinity) totalClasses--;
-              }
+            // Автоматически сгенерировать занятия по подписке (ограничено remainingClasses клиента)
+            const classesToAdd = [];
+            let totalClasses = client.subscription.remainingClasses === Infinity ? Infinity : client.subscription.remainingClasses;
+            const weeks = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24 * 7));
+            // Ограничение: classesPerWeek * weeks
+            if (totalClasses !== Infinity) {
+              totalClasses = Math.min(totalClasses, classesPerWeek * weeks);
+            } else {
+              totalClasses = classesPerWeek * weeks;
             }
-          } else {
-            classesToAdd.push({
-              id: `class${Date.now()}`,
-              name: template.type,
-              roomId: 'room1', // Можно заменить на выбор зала
-              type: group ? 'group' : 'individual',
-              trainer: groups.find(g => g === group)?.trainer || 'Не указан',
-              group: group || '',
-              clients: group ? groups.find(g => g === group)?.clients || [client.name] : [client.name],
-              date: startDate,
-              startTime: classTime,
-              endTime: endTime,
-              attendance: group ? groups.find(g => g === group)?.clients.reduce((acc, client) => ({ ...acc, [client]: 'Пришёл' }), {}) : { [client.name]: 'Пришёл' },
-              daysOfWeek: []
-            });
+
+            const startHour = classTime.split(':')[0];
+            const endHour = (parseInt(startHour) + 1).toString().padStart(2, '0');
+            const endTime = `${endHour}:00`;
+
+            if (daysOfWeek.length > 0) {
+              const startObj = new Date(startDate);
+              const endObj = new Date(endDate);
+              for (let d = new Date(startObj); d <= endObj; d.setDate(d.getDate() + 1)) {
+                const dayName = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'][d.getDay()];
+                if (daysOfWeek.includes(dayName) && (totalClasses === Infinity || totalClasses > 0)) {
+                  // clients of group or individual client
+                  const clientsList = group ? getClients().filter(c => c.groups.includes(group)).map(c => c.name) : [client.name];
+                  classesToAdd.push({
+                    id: `class${Date.now() + classesToAdd.length}`,
+                    name: template ? template.type : 'Занятие по абонементу',
+                    roomId: 'room1',
+                    type: group ? 'group' : 'individual',
+                    trainer: 'Не указан',
+                    group: group || '',
+                    clients: clientsList,
+                    date: formatDate(d),
+                    startTime: classTime,
+                    endTime,
+                    attendance: clientsList.reduce((acc, cl) => ({ ...acc, [cl]: 'Пришёл' }), {}),
+                    daysOfWeek
+                  });
+                  if (totalClasses !== Infinity) totalClasses--;
+                }
+              }
+            } else {
+              // Single date fallback
+              const clientsList = group ? getClients().filter(c => c.groups.includes(group)).map(c => c.name) : [client.name];
+              classesToAdd.push({
+                id: `class${Date.now()}`,
+                name: template ? template.type : 'Занятие по абонементу',
+                roomId: 'room1',
+                type: group ? 'group' : 'individual',
+                trainer: 'Не указан',
+                group: group || '',
+                clients: clientsList,
+                date: startDate,
+                startTime: classTime,
+                endTime,
+                attendance: clientsList.reduce((acc, cl) => ({ ...acc, [cl]: 'Пришёл' }), {}),
+                daysOfWeek: []
+              });
+            }
+
+            classesToAdd.forEach(cls => scheduleData.push(cls));
           }
 
-          classesToAdd.forEach(cls => scheduleData.push(cls));
-          callback({ clientId, templateId, startDate, endDate, classesPerWeek, daysOfWeek, classTime, group });
+          callback({
+            clientId, templateId, startDate, endDate, classesPerWeek, daysOfWeek, classTime, group
+          });
           modal.remove();
         } else {
           alert('Дата окончания должна быть позже даты начала!');
