@@ -96,11 +96,10 @@ export function loadSchedule() {
   mainContent.appendChild(scheduleContainer);
 
   const rooms = getRooms();
-  console.log('Rooms loaded:', rooms);
   const groups = getGroups();
   const clients = getClients();
   const groupSelect = document.getElementById('schedule-group-filter');
-  groupSelect.innerHTML += groups.map(group => `<option value="${group}">${group}</option>`).join('');
+  groupSelect.innerHTML += groups.map(group => `<option value="${escapeHtml(group)}">${escapeHtml(group)}</option>`).join('');
 
   let viewMode = 'day';
   let selectedDate = new Date('2025-08-01');
@@ -129,7 +128,7 @@ export function loadSchedule() {
       html += '<div class="schedule-cell">Ошибка: Залы не загружены</div>';
     } else {
       rooms.forEach(room => {
-        html += `<div class="schedule-cell">${room.name}</div>`;
+        html += `<div class="schedule-cell">${escapeHtml(room.name)}</div>`;
       });
     }
     html += '</div>';
@@ -147,8 +146,8 @@ export function loadSchedule() {
             if (startHourIndex === hourIndex) {
               const slotKey = `${room.id}-${startHourIndex}`;
               if (!occupiedSlots.has(slotKey)) {
-                const groupText = cls.type === 'group' && cls.group ? `<br><small>${cls.group}</small>` : '';
-                html += `<div class="schedule-class schedule-${cls.type}" data-id="${cls.id}" style="grid-row: span ${duration}">${cls.name}${groupText}<br><small>${cls.clients.length ? cls.clients.join(', ') : 'Нет клиентов'}</small></div>`;
+                const groupText = cls.type === 'group' && cls.group ? `<br><small>${escapeHtml(cls.group)}</small>` : '';
+                html += `<div class="schedule-class schedule-${cls.type}" data-id="${cls.id}" style="grid-row: span ${duration}">${escapeHtml(cls.name)}${groupText}<br><small>${cls.clients.length ? cls.clients.map(c => escapeHtml(c)).join(', ') : 'Нет клиентов'}</small></div>`;
                 occupiedSlots.set(slotKey, true);
               }
             }
@@ -185,8 +184,8 @@ export function loadSchedule() {
           const startHourIndex = hours.indexOf(cls.startTime);
           if (startHourIndex === hourIndex) {
             const room = Array.isArray(rooms) ? rooms.find(r => r.id === cls.roomId) : null;
-            const groupText = cls.type === 'group' && cls.group ? `<br><small>${cls.group}</small>` : '';
-            html += `<div class="schedule-class schedule-${cls.type}" data-id="${cls.id}" style="grid-row: span ${duration}">${cls.name}${groupText}<br><small>${cls.clients.length ? cls.clients.join(', ') : 'Нет клиентов'}</small> (${room ? room.name : 'Неизвестный зал'})</div>`;
+            const groupText = cls.type === 'group' && cls.group ? `<br><small>${escapeHtml(cls.group)}</small>` : '';
+            html += `<div class="schedule-class schedule-${cls.type}" data-id="${cls.id}" style="grid-row: span ${duration}">${escapeHtml(cls.name)}${groupText}<br><small>${cls.clients.length ? cls.clients.map(c => escapeHtml(c)).join(', ') : 'Нет клиентов'}</small> (${room ? escapeHtml(room.name) : 'Неизвестный зал'})</div>`;
           }
         });
         html += `</div>`;
@@ -210,14 +209,15 @@ export function loadSchedule() {
     const [endHour, endMin] = endTime.split(':').map(Number);
     const start = startHour * 60 + startMin;
     const end = endHour * 60 + endMin;
-    const duration = Math.ceil((end - start) / 60);
+    const duration = Math.round((end - start) / 60);
     return duration > 0 ? duration : 1;
   }
 
   function getWeekDays(date) {
     const startOfWeek = new Date(date);
     startOfWeek.setDate(date.getDate() - date.getDay() + (date.getDay() === 0 ? -6 : 1));
-    return Array.from({ length: 7 }, (_, i) => {
+    const maxDays = window.innerWidth <= 768 ? 5 : 7;
+    return Array.from({ length: maxDays }, (_, i) => {
       const d = new Date(startOfWeek);
       d.setDate(startOfWeek.getDate() + i);
       return d;
@@ -233,16 +233,21 @@ export function loadSchedule() {
     return `${days[date.getDay()]} ${date.getDate()}.${date.getMonth() + 1}`;
   }
 
+  function escapeHtml(s) {
+    if (!s) return '';
+    return String(s).replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+  }
+
   function showClassForm(title, cls, trainers, groups, rooms, clients, callback) {
     const modal = document.createElement('div');
     modal.className = 'schedule-modal';
     modal.innerHTML = `
       <div class="schedule-modal-content">
         <h2>${title}</h2>
-        <input type="text" id="schedule-class-name" placeholder="Название занятия" value="${cls.name || ''}" required>
+        <input type="text" id="schedule-class-name" placeholder="Название занятия" value="${escapeHtml(cls.name || '')}" required>
         <select id="schedule-class-room" required>
           <option value="">Выберите зал</option>
-          ${Array.isArray(rooms) ? rooms.map(room => `<option value="${room.id}" ${cls.roomId === room.id ? 'selected' : ''}>${room.name}</option>`).join('') : ''}
+          ${Array.isArray(rooms) ? rooms.map(room => `<option value="${room.id}" ${cls.roomId === room.id ? 'selected' : ''}>${escapeHtml(room.name)}</option>`).join('') : ''}
         </select>
         <select id="schedule-class-type" required>
           <option value="">Выберите тип</option>
@@ -252,15 +257,23 @@ export function loadSchedule() {
         </select>
         <select id="schedule-class-trainer" required>
           <option value="">Выберите тренера</option>
-          ${trainers.map(trainer => `<option value="${trainer}" ${cls.trainer === trainer ? 'selected' : ''}>${trainer}</option>`).join('')}
+          ${trainers.map(trainer => `<option value="${escapeHtml(trainer)}" ${cls.trainer === trainer ? 'selected' : ''}>${escapeHtml(trainer)}</option>`).join('')}
         </select>
         <select id="schedule-class-group">
           <option value="">Выберите группу (опционально)</option>
-          ${groups.map(group => `<option value="${group}" ${cls.group === group ? 'selected' : ''}>${group}</option>`).join('')}
+          ${groups.map(group => `<option value="${escapeHtml(group)}" ${cls.group === group ? 'selected' : ''}>${escapeHtml(group)}</option>`).join('')}
         </select>
-        <select id="schedule-class-clients" multiple>
-          ${clients.map(client => `<option value="${client.name}" ${cls.clients?.includes(client.name) ? 'selected' : ''}>${client.name}${client.blacklisted ? ' (В чёрном списке)' : ''}</option>`).join('')}
-        </select>
+        <div class="client-picker">
+          <label>Клиенты:</label>
+          <div class="client-search-container">
+            <input type="text" id="schedule-client-search" placeholder="Поиск клиента (имя или телефон)">
+            <div id="schedule-client-results" class="client-results"></div>
+          </div>
+          <div id="schedule-client-selected" class="client-selected">
+            <label>Выбранные:</label>
+            <div class="selected-chips"></div>
+          </div>
+        </div>
         <div class="days-of-week">
           <label>Дни недели:</label>
           <div class="days-of-week-buttons">
@@ -281,30 +294,106 @@ export function loadSchedule() {
     `;
     mainContent.appendChild(modal);
 
-    document.querySelectorAll('.day-button').forEach(button => {
+    let selectedClients = Array.isArray(cls.clients) ? cls.clients.slice() : [];
+
+    const resultsEl = modal.querySelector('#schedule-client-results');
+    const selectedEl = modal.querySelector('.selected-chips');
+    const searchEl = modal.querySelector('#schedule-client-search');
+
+    function renderResults() {
+      const q = searchEl.value.trim().toLowerCase();
+      if (!q) {
+        resultsEl.classList.remove('visible');
+        resultsEl.innerHTML = '';
+        return;
+      }
+      const matches = clients
+        .filter(c => {
+          const name = (c.name || '').toLowerCase();
+          const phone = (c.phone || '').toLowerCase();
+          return name.includes(q) || phone.includes(q);
+        })
+        .slice(0, 10);
+      resultsEl.innerHTML = matches.map(c => `
+        <label class="client-checkbox-item" data-name="${escapeHtml(c.name)}">
+          <input type="checkbox" value="${escapeHtml(c.name)}" ${selectedClients.includes(c.name) ? 'checked' : ''} ${c.blacklisted ? 'disabled' : ''}>
+          <span>${escapeHtml(c.name)}${c.blacklisted ? ' (В чёрном списке)' : ''}</span>
+          <div class="client-phone">${escapeHtml(c.phone || '')}</div>
+        </label>
+      `).join('');
+      resultsEl.classList.add('visible');
+    }
+
+    function renderSelected() {
+      selectedEl.innerHTML = selectedClients.map(name => `
+        <span class="client-chip" data-name="${escapeHtml(name)}">
+          ${escapeHtml(name)} <button class="client-remove-btn" data-name="${escapeHtml(name)}">×</button>
+        </span>
+      `).join('');
+    }
+
+    renderResults();
+    renderSelected();
+
+    searchEl.addEventListener('input', renderResults);
+
+    resultsEl.addEventListener('change', (e) => {
+      if (e.target.matches('input[type="checkbox"]')) {
+        const name = e.target.value;
+        if (e.target.checked) {
+          if (!selectedClients.includes(name)) selectedClients.push(name);
+        } else {
+          selectedClients = selectedClients.filter(n => n !== name);
+        }
+        renderSelected();
+        resultsEl.classList.remove('visible');
+        searchEl.value = '';
+        renderResults();
+      }
+    });
+
+    resultsEl.addEventListener('click', (e) => {
+      const item = e.target.closest('.client-checkbox-item');
+      if (!item) return;
+      const checkbox = item.querySelector('input[type="checkbox"]');
+      if (checkbox && !checkbox.disabled) {
+        checkbox.checked = !checkbox.checked;
+        const ev = new Event('change', { bubbles: true });
+        checkbox.dispatchEvent(ev);
+      }
+    });
+
+    selectedEl.addEventListener('click', (e) => {
+      if (e.target.classList.contains('client-remove-btn')) {
+        const name = e.target.getAttribute('data-name');
+        selectedClients = selectedClients.filter(n => n !== name);
+        renderSelected();
+        renderResults();
+      }
+    });
+
+    modal.querySelectorAll('.day-button').forEach(button => {
       button.addEventListener('click', () => {
         button.classList.toggle('selected');
       });
     });
 
-    document.getElementById('schedule-save-btn').addEventListener('click', () => {
-      const name = document.getElementById('schedule-class-name').value.trim();
-      const roomId = document.getElementById('schedule-class-room').value;
-      const type = document.getElementById('schedule-class-type').value;
-      const trainer = document.getElementById('schedule-class-trainer').value;
-      const group = document.getElementById('schedule-class-group').value;
-      const clientOptions = document.getElementById('schedule-class-clients').selectedOptions;
-      const clients = Array.from(clientOptions).map(opt => opt.value);
-      const daysOfWeek = Array.from(document.querySelectorAll('.day-button.selected')).map(button => button.getAttribute('data-day'));
-      const date = document.getElementById('schedule-class-date').value;
-      const startTime = document.getElementById('schedule-class-start').value;
-      const endTime = document.getElementById('schedule-class-end').value;
+    modal.querySelector('#schedule-save-btn').addEventListener('click', () => {
+      const name = modal.querySelector('#schedule-class-name').value.trim();
+      const roomId = modal.querySelector('#schedule-class-room').value;
+      const type = modal.querySelector('#schedule-class-type').value;
+      const trainer = modal.querySelector('#schedule-class-trainer').value;
+      const group = modal.querySelector('#schedule-class-group').value;
+      const daysOfWeek = Array.from(modal.querySelectorAll('.day-button.selected')).map(b => b.getAttribute('data-day'));
+      const date = modal.querySelector('#schedule-class-date').value;
+      const startTime = modal.querySelector('#schedule-class-start').value;
+      const endTime = modal.querySelector('#schedule-class-end').value;
 
       if (name && roomId && type && trainer && date && startTime && endTime) {
         const start = new Date(`1970-01-01T${startTime}:00`);
         const end = new Date(`1970-01-01T${endTime}:00`);
         if (end > start) {
-          callback({ name, roomId, type, trainer, group, clients, date, startTime, endTime, daysOfWeek });
+          callback({ name, roomId, type, trainer, group, clients: selectedClients, date, startTime, endTime, daysOfWeek });
           modal.remove();
         } else {
           alert('Время окончания должно быть позже времени начала!');
@@ -315,7 +404,7 @@ export function loadSchedule() {
     });
 
     if (cls.id) {
-      document.getElementById('schedule-delete-btn').addEventListener('click', () => {
+      modal.querySelector('#schedule-delete-btn').addEventListener('click', () => {
         const classId = cls.id;
         if (confirm('Удалить занятие?')) {
           scheduleData.splice(scheduleData.findIndex(c => c.id === classId), 1);
@@ -325,7 +414,7 @@ export function loadSchedule() {
       });
     }
 
-    document.getElementById('schedule-cancel-btn').addEventListener('click', () => {
+    modal.querySelector('#schedule-cancel-btn').addEventListener('click', () => {
       modal.remove();
     });
   }
@@ -338,16 +427,16 @@ export function loadSchedule() {
     modal.className = 'schedule-modal';
     modal.innerHTML = `
       <div class="schedule-modal-content">
-        <h2>${cls.name}</h2>
+        <h2>${escapeHtml(cls.name)}</h2>
         <p><strong>Зал:</strong> ${Array.isArray(rooms) && rooms.find(r => r.id === cls.roomId)?.name || 'Не указан'}</p>
         <p><strong>Тип:</strong> ${cls.type === 'group' ? 'Групповой' : cls.type === 'individual' ? 'Индивидуальный' : 'Специальный'}</p>
-        <p><strong>Тренер:</strong> ${cls.trainer}</p>
-        <p><strong>Группа:</strong> ${cls.group || 'Нет группы'}</p>
-        <p><strong>Дни недели:</strong> ${cls.daysOfWeek?.length ? cls.daysOfWeek.join(', ') : 'Разовое'}</p>
-        <p><strong>Дата:</strong> ${cls.date}</p>
-        <p><strong>Время:</strong> ${cls.startTime}–${cls.endTime}</p>
-        <p><strong>Клиенты:</strong> ${cls.clients.length ? cls.clients.join(', ') : 'Нет клиентов'}</p>
-        <p><strong>Посещаемость:</strong> ${cls.clients.length ? cls.clients.map(client => `${client}: ${cls.attendance[client] || 'Не указано'}`).join(', ') : 'Нет данных'}</p>
+        <p><strong>Тренер:</strong> ${escapeHtml(cls.trainer)}</p>
+        <p><strong>Группа:</strong> ${escapeHtml(cls.group || 'Нет группы')}</p>
+        <p><strong>Дни недели:</strong> ${cls.daysOfWeek?.length ? cls.daysOfWeek.map(d => escapeHtml(d)).join(', ') : 'Разовое'}</p>
+        <p><strong>Дата:</strong> ${escapeHtml(cls.date)}</p>
+        <p><strong>Время:</strong> ${escapeHtml(cls.startTime)}–${escapeHtml(cls.endTime)}</p>
+        <p><strong>Клиенты:</strong> ${cls.clients.length ? cls.clients.map(c => escapeHtml(c)).join(', ') : 'Нет клиентов'}</p>
+        <p><strong>Посещаемость:</strong> ${cls.clients.length ? cls.clients.map(client => `${escapeHtml(client)}: ${escapeHtml(cls.attendance[client] || 'Не указано')}`).join(', ') : 'Нет данных'}</p>
         <div class="schedule-modal-actions">
           <button id="schedule-edit-btn">Редактировать</button>
           <button id="schedule-attendance-btn">Отметить посещаемость</button>
@@ -391,7 +480,7 @@ export function loadSchedule() {
     document.getElementById('schedule-attendance-btn').addEventListener('click', () => {
       const clientsList = getClients();
       modal.remove();
-      showAttendanceForm('Отметить посещаемость', cls, clientsList, (attendance) => {
+      showJournalModal(cls, clientsList, (attendance) => {
         cls.attendance = attendance;
         renderSchedule();
       });
@@ -399,9 +488,11 @@ export function loadSchedule() {
 
     document.getElementById('schedule-delete-btn').addEventListener('click', () => {
       const classId = cls.id;
-      scheduleData.splice(scheduleData.findIndex(c => c.id === classId), 1);
-      modal.remove();
-      renderSchedule();
+      if (confirm('Удалить занятие?')) {
+        scheduleData.splice(scheduleData.findIndex(c => c.id === classId), 1);
+        modal.remove();
+        renderSchedule();
+      }
     });
 
     document.getElementById('schedule-close-btn').addEventListener('click', () => {
@@ -409,49 +500,172 @@ export function loadSchedule() {
     });
   }
 
-  function showAttendanceForm(title, cls, clients, callback) {
+  function showJournalModal(cls, clientsList, callback) {
     const modal = document.createElement('div');
-    modal.className = 'attendance-modal';
+    modal.className = 'journal-modal';
     modal.innerHTML = `
-      <div class="attendance-modal-content">
-        <h2>${title}</h2>
-        <p>Занятие: ${cls.name} (${cls.date}, ${cls.startTime}–${cls.endTime})</p>
-        <p>Группа: ${cls.group || 'Нет группы'}</p>
-        <div class="attendance-list">
-          ${cls.clients.length ? cls.clients.map(client => {
-      const clientData = clients.find(c => c.name === client);
-      return `
-              <div class="attendance-item">
-                <span>${client}${clientData?.blacklisted ? ' (В чёрном списке)' : ''}</span>
-                <select class="attendance-select" data-client="${client}" ${clientData?.blacklisted ? 'disabled' : ''}>
-                  <option value="Пришёл" ${cls.attendance[client] === 'Пришёл' ? 'selected' : ''}>Пришёл</option>
-                  <option value="Не пришёл" ${cls.attendance[client] === 'Не пришёл' ? 'selected' : ''}>Не пришёл</option>
-                  <option value="Опоздал" ${cls.attendance[client] === 'Опоздал' ? 'selected' : ''}>Опоздал</option>
-                  <option value="Отменено" ${cls.attendance[client] === 'Отменено' ? 'selected' : ''}>Отменено</option>
-                </select>
-              </div>
-            `;
-    }).join('') : '<p>Нет клиентов</p>'}
+      <div class="journal-modal-content">
+        <div class="journal-header">
+          <h2>Журнал — ${escapeHtml(cls.name || cls.group || 'Занятие')}</h2>
+          <button id="journal-back-btn">← Назад</button>
         </div>
-        <div class="attendance-modal-actions">
-          <button id="attendance-save-btn">Сохранить</button>
-          <button id="attendance-cancel-btn">Отмена</button>
+        <p><strong>Дата:</strong> ${escapeHtml(cls.date || '—')} ${cls.startTime ? `, ${escapeHtml(cls.startTime)}–${escapeHtml(cls.endTime)}` : ''}</p>
+        <div class="journal-controls">
+          <div class="client-search-container">
+            <input type="text" id="journal-search" placeholder="Поиск клиента">
+            <div id="journal-client-results" class="client-results"></div>
+          </div>
+          <button id="journal-add-client-btn">Добавить клиента</button>
+        </div>
+        <div>
+          <table class="journal-table">
+            <thead>
+              <tr>
+                <th>Клиент</th>
+                <th>Статус</th>
+              </tr>
+            </thead>
+            <tbody id="journal-tbody"></tbody>
+          </table>
+        </div>
+        <div class="journal-actions">
+          <button id="journal-save-btn">Сохранить</button>
+          <button id="journal-close-btn">Закрыть</button>
         </div>
       </div>
     `;
-    mainContent.appendChild(modal);
+    document.body.appendChild(modal);
 
-    document.getElementById('attendance-save-btn').addEventListener('click', () => {
+    let journalClients = [];
+    if (Array.isArray(cls.clients) && cls.clients.length) {
+      journalClients = clientsList.filter(c => cls.clients.includes(c.name));
+    } else if (cls.group) {
+      journalClients = clientsList.filter(c => Array.isArray(c.groups) && c.groups.includes(cls.group));
+    }
+    if (!journalClients.length) {
+      journalClients = clientsList.slice(0, 10);
+    }
+
+    cls.attendance = cls.attendance || {};
+
+    function renderJournal(filter = '') {
+      const q = filter.trim().toLowerCase();
+      const rows = journalClients
+        .filter(c => !q || c.name.toLowerCase().includes(q) || (c.phone || '').toLowerCase().includes(q))
+        .map(c => {
+          const status = cls.attendance[c.name] || 'Не пришёл';
+          const disabled = c.blacklisted ? 'disabled' : '';
+          const blackTag = c.blacklisted ? ' <small>(В чёрном списке)</small>' : '';
+          return `<tr data-name="${escapeHtml(c.name)}">
+                    <td>${escapeHtml(c.name)}${blackTag}</td>
+                    <td>
+                      <select class="journal-status" data-name="${escapeHtml(c.name)}" ${disabled}>
+                        <option value="Пришёл" ${status === 'Пришёл' ? 'selected' : ''}>Пришёл</option>
+                        <option value="Не пришёл" ${status === 'Не пришёл' ? 'selected' : ''}>Не пришёл</option>
+                        <option value="Опоздал" ${status === 'Опоздал' ? 'selected' : ''}>Опоздал</option>
+                        <option value="Отменено" ${status === 'Отменено' ? 'selected' : ''}>Отменено</option>
+                      </select>
+                    </td>
+                  </tr>`;
+        }).join('');
+      modal.querySelector('#journal-tbody').innerHTML = rows || '<tr><td colspan="2">Нет клиентов</td></tr>';
+    }
+
+    renderJournal();
+
+    const searchEl = modal.querySelector('#journal-search');
+    const resultsEl = modal.querySelector('#journal-client-results');
+
+    function renderSearchResults() {
+      const q = searchEl.value.trim().toLowerCase();
+      if (!q) {
+        resultsEl.classList.remove('visible');
+        resultsEl.innerHTML = '';
+        return;
+      }
+      const matches = clientsList
+        .filter(c => c.name.toLowerCase().includes(q) || (c.phone || '').toLowerCase().includes(q))
+        .slice(0, 10);
+      resultsEl.innerHTML = matches.map(c => `
+        <label class="client-checkbox-item" data-name="${escapeHtml(c.name)}">
+          <input type="checkbox" value="${escapeHtml(c.name)}" ${journalClients.find(j => j.name === c.name) ? 'checked' : ''} ${c.blacklisted ? 'disabled' : ''}>
+          <span>${escapeHtml(c.name)}${c.blacklisted ? ' (В чёрном списке)' : ''}</span>
+          <div class="client-phone">${escapeHtml(c.phone || '')}</div>
+        </label>
+      `).join('');
+      resultsEl.classList.add('visible');
+    }
+
+    searchEl.addEventListener('input', renderSearchResults);
+
+    resultsEl.addEventListener('change', (e) => {
+      if (e.target.matches('input[type="checkbox"]')) {
+        const name = e.target.value;
+        const clientObj = clientsList.find(c => c.name === name);
+        if (e.target.checked) {
+          if (!journalClients.find(j => j.name === name)) {
+            journalClients.push(clientObj);
+            if (!cls.clients) cls.clients = [];
+            if (!cls.clients.includes(name)) cls.clients.push(name);
+            cls.attendance[name] = cls.attendance[name] || 'Пришёл';
+          }
+        } else {
+          journalClients = journalClients.filter(c => c.name !== name);
+          cls.clients = cls.clients.filter(c => c !== name);
+          delete cls.attendance[name];
+        }
+        renderJournal(searchEl.value);
+        resultsEl.classList.remove('visible');
+        searchEl.value = '';
+        renderSearchResults();
+      }
+    });
+
+    resultsEl.addEventListener('click', (e) => {
+      const item = e.target.closest('.client-checkbox-item');
+      if (!item) return;
+      const checkbox = item.querySelector('input[type="checkbox"]');
+      if (checkbox && !checkbox.disabled) {
+        checkbox.checked = !checkbox.checked;
+        const ev = new Event('change', { bubbles: true });
+        checkbox.dispatchEvent(ev);
+      }
+    });
+
+    modal.querySelector('#journal-add-client-btn').addEventListener('click', () => {
+      showInlineClientPicker(modal, clientsList, (selectedNames) => {
+        selectedNames.forEach(name => {
+          const clientObj = clientsList.find(c => c.name === name);
+          if (clientObj && !journalClients.find(j => j.name === name)) {
+            journalClients.push(clientObj);
+            if (!cls.clients) cls.clients = [];
+            if (!cls.clients.includes(name)) cls.clients.push(name);
+            cls.attendance[name] = cls.attendance[name] || 'Пришёл';
+          }
+        });
+        renderJournal(modal.querySelector('#journal-search').value);
+      });
+    });
+
+    modal.querySelector('#journal-save-btn').addEventListener('click', async () => {
+      const rows = modal.querySelectorAll('#journal-tbody tr[data-name]');
       const attendance = {};
-      cls.clients.forEach(client => {
-        const select = document.querySelector(`.attendance-select[data-client="${client}"]`);
-        attendance[client] = select ? select.value : cls.attendance[client] || 'Пришёл';
-        if (attendance[client] === 'Пришёл') {
-          const clientData = clients.find(c => c.name === client);
+      rows.forEach(row => {
+        const name = row.getAttribute('data-name');
+        const statusEl = row.querySelector('.journal-status');
+        attendance[name] = statusEl ? statusEl.value : 'Не пришёл';
+      });
+
+      const subs = await getActiveSubscriptions();
+      const templates = await getSubscriptionTemplates();
+      for (const row of rows) {
+        const name = row.getAttribute('data-name');
+        const statusEl = row.querySelector('.journal-status');
+        if (statusEl && statusEl.value === 'Пришёл') {
+          const clientData = clientsList.find(c => c.name === name);
           if (clientData) {
-            const sub = getActiveSubscriptions().find(s => s.clientId === clientData.id && s.templateId !== 'template3');
+            const sub = subs.find(s => s.clientId === clientData.id && s.templateId !== 'template3');
             if (sub) {
-              const templates = getSubscriptionTemplates();
               const template = templates.find(t => t.id === sub.templateId);
               if (template && template.remainingClasses !== Infinity && template.remainingClasses > 0) {
                 template.remainingClasses -= 1;
@@ -459,13 +673,117 @@ export function loadSchedule() {
             }
           }
         }
-      });
+      }
+
       callback(attendance);
       modal.remove();
     });
 
-    document.getElementById('attendance-cancel-btn').addEventListener('click', () => {
-      modal.remove();
+    modal.querySelector('#journal-close-btn').addEventListener('click', () => modal.remove());
+    modal.querySelector('#journal-back-btn').addEventListener('click', () => modal.remove());
+  }
+
+  function showInlineClientPicker(parentModal, allClients, callback) {
+    const picker = document.createElement('div');
+    picker.className = 'inline-client-picker';
+    picker.innerHTML = `
+      <div class="client-search-container">
+        <input type="text" id="picker-search" placeholder="Поиск по имени или телефону">
+        <div id="picker-results" class="picker-results"></div>
+      </div>
+      <div id="picker-selected" class="picker-selected">
+        <label>Выбранные:</label>
+        <div class="selected-chips"></div>
+      </div>
+      <div>
+        <button id="picker-add-btn">Добавить выбранных</button>
+        <button id="picker-cancel-btn">Отмена</button>
+      </div>
+    `;
+    parentModal.querySelector('.journal-modal-content').insertBefore(picker, parentModal.querySelector('#journal-tbody'));
+
+    const pickerResults = picker.querySelector('#picker-results');
+    const pickerSelected = picker.querySelector('.selected-chips');
+    const pickerSearch = picker.querySelector('#picker-search');
+
+    let selected = [];
+
+    function renderPickerResults() {
+      const q = pickerSearch.value.trim().toLowerCase();
+      if (!q) {
+        pickerResults.classList.remove('visible');
+        pickerResults.innerHTML = '';
+        return;
+      }
+      const items = allClients
+        .filter(c => c.name.toLowerCase().includes(q) || (c.phone || '').toLowerCase().includes(q))
+        .slice(0, 10)
+        .map(c => `
+          <label class="client-checkbox-item" data-name="${escapeHtml(c.name)}">
+            <input type="checkbox" value="${escapeHtml(c.name)}" ${selected.includes(c.name) ? 'checked' : ''} ${c.blacklisted ? 'disabled' : ''}>
+            <span>${escapeHtml(c.name)}${c.blacklisted ? ' (В чёрном списке)' : ''}</span>
+            <div class="client-phone">${escapeHtml(c.phone || '')}</div>
+          </label>
+        `).join('');
+      pickerResults.innerHTML = items;
+      pickerResults.classList.add('visible');
+    }
+
+    function renderSelectedChips() {
+      pickerSelected.innerHTML = selected.map(n => `
+        <span class="client-chip" data-name="${escapeHtml(n)}">
+          ${escapeHtml(n)} <button class="picker-remove" data-name="${escapeHtml(n)}">×</button>
+        </span>
+      `).join('');
+    }
+
+    renderPickerResults();
+    renderSelectedChips();
+
+    pickerSearch.addEventListener('input', renderPickerResults);
+
+    pickerResults.addEventListener('change', (e) => {
+      if (e.target.matches('input[type="checkbox"]')) {
+        const name = e.target.value;
+        if (e.target.checked) {
+          if (!selected.includes(name)) selected.push(name);
+        } else {
+          selected = selected.filter(n => n !== name);
+        }
+        renderSelectedChips();
+        pickerResults.classList.remove('visible');
+        pickerSearch.value = '';
+        renderPickerResults();
+      }
+    });
+
+    pickerResults.addEventListener('click', (e) => {
+      const item = e.target.closest('.client-checkbox-item');
+      if (!item) return;
+      const checkbox = item.querySelector('input[type="checkbox"]');
+      if (checkbox && !checkbox.disabled) {
+        checkbox.checked = !checkbox.checked;
+        const ev = new Event('change', { bubbles: true });
+        checkbox.dispatchEvent(ev);
+      }
+    });
+
+    pickerSelected.addEventListener('click', (e) => {
+      if (e.target.classList.contains('picker-remove')) {
+        const name = e.target.getAttribute('data-name');
+        selected = selected.filter(n => n !== name);
+        renderSelectedChips();
+        renderPickerResults();
+      }
+    });
+
+    picker.querySelector('#picker-add-btn').addEventListener('click', () => {
+      callback(selected);
+      picker.remove();
+    });
+
+    picker.querySelector('#picker-cancel-btn').addEventListener('click', () => {
+      picker.remove();
     });
   }
 
@@ -487,6 +805,8 @@ export function loadSchedule() {
     selectedDate = new Date(e.target.value);
     renderSchedule();
   });
+
+  document.getElementById('schedule-group-filter').addEventListener('change', renderSchedule);
 
   document.getElementById('schedule-add-btn').addEventListener('click', () => {
     const trainers = getTrainers();

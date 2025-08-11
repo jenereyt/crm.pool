@@ -144,9 +144,131 @@
     display: none;
 }
 
+/* Стили для клиент-пикера */
+.client-selector {
+    margin-bottom: 15px;
+}
+
+.client-selector label {
+    font-size: 0.9em;
+    color: #333;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.client-search-container {
+    position: relative;
+}
+
+.client-selector input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+.client-selector-list {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 300px;
+    max-height: 150px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    border-radius: 4px;
+    z-index: 10;
+}
+
+.client-selector-list.visible {
+    display: block;
+}
+
+.client-checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+}
+
+.client-checkbox-item:last-child {
+    border-bottom: none;
+}
+
+.client-checkbox-item:hover {
+    background-color: #f8f9fa;
+}
+
+.client-checkbox-item input[type="checkbox"] {
+    cursor: pointer;
+}
+
+.client-checkbox-item input[type="checkbox"]:disabled {
+    cursor: not-allowed;
+}
+
+.client-checkbox-item .client-phone {
+    font-size: 0.8em;
+    color: #666;
+}
+
+.client-selector-selected {
+    margin-top: 10px;
+}
+
+.client-selector-selected label {
+    font-size: 0.9em;
+    color: #333;
+}
+
+.selected-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-height: 34px;
+}
+
+.chip {
+    padding: 4px 8px;
+    border-radius: 12px;
+    background: #e7f0ff;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85em;
+}
+
+.chip-remove {
+    background: none;
+    border: none;
+    color: #dc3545;
+    cursor: pointer;
+    font-size: 1em;
+    line-height: 1;
+}
+
+.chip-remove:hover {
+    color: #b02a37;
+}
+
 /* Адаптивность */
 @media (max-width: 768px) {
     .group-list {
         grid-template-columns: 1fr;
+    }
+
+    .group-modal-content {
+        width: 95%;
+        padding: 15px;
+    }
+
+    .client-selector-list {
+        width: 100%;
+        max-width: 300px;
     }
 }

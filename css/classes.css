@@ -242,6 +242,279 @@
     background: #0056b3;
 }
 
+/* Новые стили для журнала */
+.journal-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.journal-modal-content {
+    background-color: white;
+    padding: 20px;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 800px;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+    text-align: left;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.journal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.journal-header h2 {
+    margin: 0;
+    font-size: 1.5em;
+    color: #333;
+}
+
+#journal-back-btn {
+    background: none;
+    border: none;
+    font-size: 1.2em;
+    color: #007bff;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+#journal-back-btn:hover {
+    color: #0056b3;
+}
+
+.journal-controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.journal-controls input {
+    flex: 1;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+.journal-controls button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+}
+
+.journal-controls button:hover {
+    background-color: #0056b3;
+}
+
+.journal-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.journal-table th,
+.journal-table td {
+    padding: 8px;
+    border-bottom: 1px solid #eee;
+    font-size: 0.9em;
+}
+
+.journal-table th {
+    color: #333;
+    font-weight: 600;
+    text-align: left;
+}
+
+.journal-table td {
+    color: #666;
+}
+
+.journal-table select {
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 0.9em;
+    background-color: #fff;
+    cursor: pointer;
+}
+
+.journal-table select:disabled {
+    background-color: #e9ecef;
+    cursor: not-allowed;
+}
+
+.journal-modal-content .journal-actions {
+    margin-top: 15px;
+    text-align: right;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+#journal-save-btn,
+#journal-close-btn {
+    padding: 8px 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+}
+
+#journal-save-btn {
+    background-color: #007bff;
+    color: white;
+}
+
+#journal-save-btn:hover {
+    background-color: #0056b3;
+}
+
+#journal-close-btn {
+    background-color: #6c757d;
+    color: white;
+}
+
+#journal-close-btn:hover {
+    background-color: #5a6268;
+}
+
+/* Стили для клиент-пикера */
+.client-picker,
+.inline-client-picker {
+    margin-bottom: 15px;
+}
+
+.client-picker label,
+.inline-client-picker label {
+    font-size: 0.9em;
+    color: #333;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.client-search-container {
+    position: relative;
+}
+
+.client-picker input,
+.inline-client-picker input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+.client-results,
+.picker-results {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 300px;
+    max-height: 150px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    border-radius: 4px;
+    z-index: 10;
+}
+
+.client-results.visible,
+.picker-results.visible {
+    display: block;
+}
+
+.client-checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+}
+
+.client-checkbox-item:last-child {
+    border-bottom: none;
+}
+
+.client-checkbox-item:hover {
+    background-color: #f8f9fa;
+}
+
+.client-checkbox-item input[type="checkbox"] {
+    cursor: pointer;
+}
+
+.client-checkbox-item input[type="checkbox"]:disabled {
+    cursor: not-allowed;
+}
+
+.client-checkbox-item .client-phone {
+    font-size: 0.8em;
+    color: #666;
+}
+
+.client-selected,
+.picker-selected {
+    margin-top: 10px;
+}
+
+.client-selected label,
+.picker-selected label {
+    font-size: 0.9em;
+    color: #333;
+}
+
+.selected-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-height: 34px;
+}
+
+.client-chip {
+    padding: 4px 8px;
+    border-radius: 12px;
+    background: #e7f0ff;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85em;
+}
+
+.client-remove-btn,
+.picker-remove {
+    background: none;
+    border: none;
+    color: #dc3545;
+    cursor: pointer;
+    font-size: 1em;
+    line-height: 1;
+}
+
+.client-remove-btn:hover,
+.picker-remove:hover {
+    color: #b02a37;
+}
+
 @media (max-width: 768px) {
     .class-list {
         grid-template-columns: 1fr;
@@ -255,5 +528,31 @@
 
     .attendance-select {
         width: 100%;
+    }
+
+    .journal-modal-content {
+        width: 95%;
+        padding: 15px;
+    }
+
+    .journal-table th,
+    .journal-table td {
+        font-size: 0.85em;
+        padding: 6px;
+    }
+
+    .journal-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .journal-controls button {
+        width: 100%;
+    }
+
+    .client-results,
+    .picker-results {
+        width: 100%;
+        max-width: 300px;
     }
 }

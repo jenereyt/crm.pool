@@ -73,7 +73,7 @@ export function removeClient(id) {
   clientsData = clientsData.filter(c => c.id !== id);
 }
 
-/* ---- UI: loadClients and forms (kept inline for simplicity) ---- */
+/* ---- UI: loadClients and forms ---- */
 
 export function loadClients() {
   const mainContent = document.getElementById('main-content');
@@ -110,24 +110,22 @@ export function loadClients() {
     clientList.innerHTML = clientsData
       .filter(client => client.name.toLowerCase().includes(search) || client.phone.toLowerCase().includes(search))
       .map(client => {
-        const subscriptionTemplate = client.subscription ? getSubscriptionTemplates().find(t => t.id === client.subscription.templateId) : null;
+        const hasDiagnosis = client.diagnosis && client.diagnosis !== 'Нет';
         return `
           <div class="client-container" data-id="${client.id}">
-            ${client.photo ? `<img src="${client.photo}" class="client-photo" alt="${client.name}">` : `<img src="images/default-icon.svg" class="client-photo" alt="Нет фото">`}
-            <h3>${client.name}${client.blacklisted ? ' (В чёрном списке)' : ''}</h3>
-            <p>Телефон: ${client.phone}</p>
-            ${client.phoneSecondary ? `<p>Доп. телефон: ${client.phoneSecondary}</p>` : ''}
-            ${client.parentName ? `<p>Родитель: ${client.parentName}</p>` : ''}
-            ${client.diagnosis ? `<p>Диагноз: ${client.diagnosis}</p>` : ''}
-            ${client.features ? `<p>Особенности: ${client.features}</p>` : ''}
-            <p>Группы: ${client.groups.length ? client.groups.join(', ') : 'Нет'}</p>
-            <p>Абонемент: ${subscriptionTemplate ? subscriptionTemplate.type : (client.subscription ? 'Данные абонемента' : 'Нет')}</p>
+            <div class="client-info">
+              ${client.photo ? `<img src="${client.photo}" class="client-photo" alt="${client.name}">` : `<img src="images/default-icon.svg" class="client-photo" alt="Нет фото">`}
+              <div class="client-name-phone">
+                <h3>${client.name}${client.blacklisted ? ' (В чёрном списке)' : ''}${hasDiagnosis ? ' <span class="client-diagnosis-icon">⚕️</span>' : ''}</h3>
+                <p>${client.phone}</p>
+              </div>
+            </div>
             <div class="client-actions">
-              <button class="client-edit-btn" data-id="${client.id}">Редактировать</button>
-              <button class="client-blacklist-btn" data-id="${client.id}">${client.blacklisted ? 'Убрать из чёрного списка' : 'В чёрный список'}</button>
-              <button class="client-subscription-btn" data-id="${client.id}">Абонемент</button>
-              <button class="client-group-btn" data-id="${client.id}">Группы</button>
-              <button class="client-delete-btn" data-id="${client.id}">Удалить</button>
+              <button class="client-action-icon edit" data-id="${client.id}" title="Редактировать">✏️</button>
+              <button class="client-action-icon blacklist ${client.blacklisted ? 'blacklisted' : ''}" data-id="${client.id}" title="${client.blacklisted ? 'Убрать из чёрного списка' : 'В чёрный список'}">🚫</button>
+              <button class="client-action-icon subscription" data-id="${client.id}" title="Абонемент">🎟️</button>
+              <button class="client-action-icon group" data-id="${client.id}" title="Группы">👥</button>
+              <button class="client-action-icon delete" data-id="${client.id}" title="Удалить">🗑️</button>
             </div>
           </div>
         `;
@@ -146,70 +144,102 @@ export function loadClients() {
   });
 
   clientList.addEventListener('click', (e) => {
-    const clientId = e.target.getAttribute('data-id');
+    const target = e.target;
+    const clientId = target.closest('.client-container')?.getAttribute('data-id') || target.getAttribute('data-id');
     const client = clientsData.find(c => c.id === clientId);
     if (!client) return;
 
-    if (e.target.classList.contains('client-edit-btn')) {
-      showClientForm('Редактировать клиента', client, (data) => {
-        updateClient(clientId, data);
+    if (target.classList.contains('client-action-icon')) {
+      if (target.classList.contains('edit')) {
+        showClientForm('Редактировать клиента', client, (data) => {
+          updateClient(clientId, data);
+          renderClients();
+        });
+      } else if (target.classList.contains('blacklist')) {
+        client.blacklisted = !client.blacklisted;
         renderClients();
-      });
-    } else if (e.target.classList.contains('client-blacklist-btn')) {
-      client.blacklisted = !client.blacklisted;
-      renderClients();
-    } else if (e.target.classList.contains('client-subscription-btn')) {
-      const sub = client.subscription ? { ...client.subscription, clientId } : {
-        clientId,
-        templateId: '',
-        startDate: '',
-        endDate: '',
-        classesPerWeek: 0,
-        daysOfWeek: [],
-        classTime: '09:00',
-        group: '',
-        remainingClasses: 0
-      };
-      showSubscriptionForm('Абонемент клиента', sub, clientsData, getGroups(), (data) => {
-        const template = getSubscriptionTemplates().find(t => t.id === data.templateId);
-        const remaining = template ? template.remainingClasses : (data.remainingClasses || 0);
-        client.subscription = {
-          templateId: data.templateId,
-          startDate: data.startDate,
-          endDate: data.endDate,
-          classesPerWeek: data.classesPerWeek,
-          daysOfWeek: data.daysOfWeek,
-          classTime: data.classTime,
-          group: data.group,
-          remainingClasses: remaining
+      } else if (target.classList.contains('subscription')) {
+        const sub = client.subscription ? { ...client.subscription, clientId } : {
+          clientId,
+          templateId: '',
+          startDate: '',
+          endDate: '',
+          classesPerWeek: 0,
+          daysOfWeek: [],
+          classTime: '09:00',
+          group: '',
+          remainingClasses: 0
         };
-        renderClients();
-      });
-    } else if (e.target.classList.contains('client-group-btn')) {
-      showGroupForm('Управление группами', client, getGroups(), (groups) => {
-        client.groups = groups;
-        renderClients();
-      });
-    } else if (e.target.classList.contains('client-delete-btn')) {
-      if (confirm('Удалить клиента?')) {
-        removeClient(clientId);
-        renderClients();
+        showSubscriptionForm('Абонемент клиента', sub, clientsData, getGroups(), (data) => {
+          const template = getSubscriptionTemplates().find(t => t.id === data.templateId);
+          const remaining = template ? template.remainingClasses : (data.remainingClasses || 0);
+          client.subscription = {
+            templateId: data.templateId,
+            startDate: data.startDate,
+            endDate: data.endDate,
+            classesPerWeek: data.classesPerWeek,
+            daysOfWeek: data.daysOfWeek,
+            classTime: data.classTime,
+            group: data.group,
+            remainingClasses: remaining
+          };
+          renderClients();
+        });
+      } else if (target.classList.contains('group')) {
+        showGroupForm('Управление группами', client, getGroups(), (groups) => {
+          client.groups = groups;
+          renderClients();
+        });
+      } else if (target.classList.contains('delete')) {
+        if (confirm('Удалить клиента?')) {
+          removeClient(clientId);
+          renderClients();
+        }
       }
+    } else if (target.closest('.client-info')) {
+      showClientDetails(client);
     }
   });
 
-  /* ---- модалки ---- */
+  /* ---- Модалки ---- */
+
+  function showClientDetails(client) {
+    const subscriptionTemplate = client.subscription ? getSubscriptionTemplates().find(t => t.id === client.subscription.templateId) : null;
+    const modal = document.createElement('div');
+    modal.className = 'client-details-modal';
+    modal.innerHTML = `
+      <div class="client-details-content">
+        <h2>${client.name}${client.blacklisted ? ' (В чёрном списке)' : ''}</h2>
+        ${client.photo ? `<img src="${client.photo}" class="client-photo-preview" alt="${client.name}">` : `<img src="images/default-icon.svg" class="client-photo-preview" alt="Нет фото">`}
+        <p>Телефон: ${client.phone}</p>
+        ${client.phoneSecondary ? `<p>Доп. телефон: ${client.phoneSecondary}</p>` : ''}
+        ${client.parentName ? `<p>Родитель: ${client.parentName}</p>` : ''}
+        ${client.diagnosis ? `<p>Диагноз: ${client.diagnosis}</p>` : ''}
+        ${client.features ? `<p>Особенности: ${client.features}</p>` : ''}
+        <p>Группы: ${client.groups.length ? client.groups.join(', ') : 'Нет'}</p>
+        <p>Абонемент: ${subscriptionTemplate ? subscriptionTemplate.type : (client.subscription ? 'Данные абонемента' : 'Нет')}</p>
+        <div class="client-details-actions">
+          <button id="client-close-btn">Закрыть</button>
+        </div>
+      </div>
+    `;
+    mainContent.appendChild(modal);
+
+    document.getElementById('client-close-btn').addEventListener('click', () => {
+      modal.remove();
+    });
+  }
 
   function showClientForm(title, client, callback) {
     const modal = document.createElement('div');
     modal.className = 'client-modal';
     modal.innerHTML = `
       <div class="client-modal-content">
+        <h2>${title}</h2>
         <div class="client-photo-container">
-          <img src="${client.photo || 'images/default-icon.svg'}" class="client-photo-preview" alt="${client.name || 'Клиент'}">
+          <img src="${client.photo || 'images/default-icon.svg'}" class="client-photo-preview" id="client-photo-preview" alt="${client.name || 'Клиент'}">
           <input type="file" id="client-photo" accept="image/*">
         </div>
-        <h2>${title}</h2>
         <div class="client-form-grid">
           <div class="client-form-field">
             <label for="client-name">Имя</label>
@@ -245,7 +275,7 @@ export function loadClients() {
     mainContent.appendChild(modal);
 
     const photoInput = document.getElementById('client-photo');
-    const photoPreview = modal.querySelector('.client-photo-preview');
+    const photoPreview = document.getElementById('client-photo-preview');
     photoInput.addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (file) {
@@ -287,15 +317,24 @@ export function loadClients() {
     modal.innerHTML = `
       <div class="subscription-modal-content">
         <h2>${title}</h2>
-        <select id="subscription-client" required>
-          <option value="">Выберите клиента</option>
-          ${clients.map(client => `<option value="${client.id}" ${sub.clientId === client.id ? 'selected' : ''}>${client.name}${client.blacklisted ? ' (В чёрном списке)' : ''}</option>`).join('')}
-        </select>
-        <select id="subscription-template" required>
-          <option value="">Выберите шаблон</option>
-          ${getSubscriptionTemplates().map(template => `<option value="${template.id}" ${sub.templateId === template.id ? 'selected' : ''}>${template.type}</option>`).join('')}
-        </select>
-        <input type="number" id="subscription-classes-per-week" placeholder="Занятий в неделю" value="${sub.classesPerWeek || ''}" required>
+        <div class="client-form-field">
+          <label for="subscription-client">Клиент</label>
+          <select id="subscription-client" required>
+            <option value="">Выберите клиента</option>
+            ${clients.map(c => `<option value="${c.id}" ${sub.clientId === c.id ? 'selected' : ''}>${c.name}${c.blacklisted ? ' (В чёрном списке)' : ''}</option>`).join('')}
+          </select>
+        </div>
+        <div class="client-form-field">
+          <label for="subscription-template">Шаблон абонемента</label>
+          <select id="subscription-template" required>
+            <option value="">Выберите шаблон</option>
+            ${getSubscriptionTemplates().map(template => `<option value="${template.id}" ${sub.templateId === template.id ? 'selected' : ''}>${template.type}</option>`).join('')}
+          </select>
+        </div>
+        <div class="client-form-field">
+          <label for="subscription-classes-per-week">Занятий в неделю</label>
+          <input type="number" id="subscription-classes-per-week" value="${sub.classesPerWeek || ''}" required>
+        </div>
         <div class="days-of-week">
           <label>Дни недели:</label>
           <div class="days-of-week-buttons">
@@ -304,13 +343,25 @@ export function loadClients() {
             `).join('')}
           </div>
         </div>
-        <input type="date" id="subscription-start-date" value="${sub.startDate || ''}" required>
-        <input type="date" id="subscription-end-date" value="${sub.endDate || ''}" required>
-        <input type="time" id="subscription-class-time" value="${sub.classTime || '09:00'}" required>
-        <select id="subscription-group">
-          <option value="">Выберите группу (опционально)</option>
-          ${groups.map(group => `<option value="${group}" ${sub.group === group ? 'selected' : ''}>${group}</option>`).join('')}
-        </select>
+        <div class="client-form-field">
+          <label for="subscription-start-date">Дата начала</label>
+          <input type="date" id="subscription-start-date" value="${sub.startDate || ''}" required>
+        </div>
+        <div class="client-form-field">
+          <label for="subscription-end-date">Дата окончания</label>
+          <input type="date" id="subscription-end-date" value="${sub.endDate || ''}" required>
+        </div>
+        <div class="client-form-field">
+          <label for="subscription-class-time">Время занятия</label>
+          <input type="time" id="subscription-class-time" value="${sub.classTime || '09:00'}" required>
+        </div>
+        <div class="client-form-field">
+          <label for="subscription-group">Группа (опционально)</label>
+          <select id="subscription-group">
+            <option value="">Выберите группу</option>
+            ${groups.map(group => `<option value="${group}" ${sub.group === group ? 'selected' : ''}>${group}</option>`).join('')}
+          </select>
+        </div>
         <div class="subscription-modal-actions">
           <button id="subscription-save-btn">Сохранить</button>
           <button id="subscription-cancel-btn">Отмена</button>
@@ -319,7 +370,7 @@ export function loadClients() {
     `;
     mainContent.appendChild(modal);
 
-    const dayButtons = document.querySelectorAll('.day-button');
+    const dayButtons = modal.querySelectorAll('.day-button');
     dayButtons.forEach(button => {
       button.addEventListener('click', () => {
         button.classList.toggle('selected');
@@ -330,7 +381,7 @@ export function loadClients() {
       const clientId = document.getElementById('subscription-client').value;
       const templateId = document.getElementById('subscription-template').value;
       const classesPerWeek = parseInt(document.getElementById('subscription-classes-per-week').value);
-      const daysOfWeek = Array.from(document.querySelectorAll('.day-button.selected')).map(button => button.getAttribute('data-day'));
+      const daysOfWeek = Array.from(modal.querySelectorAll('.day-button.selected')).map(button => button.getAttribute('data-day'));
       const startDate = document.getElementById('subscription-start-date').value;
       const endDate = document.getElementById('subscription-end-date').value;
       const classTime = document.getElementById('subscription-class-time').value;
@@ -355,30 +406,67 @@ export function loadClients() {
     });
   }
 
-  function showGroupForm(title, client, groups, callback) {
+  function showGroupForm(title, client, allGroups, callback) {
     const modal = document.createElement('div');
     modal.className = 'group-management-modal';
+    let selectedGroups = [...client.groups];
+
+    function renderSelectedGroups() {
+      const container = modal.querySelector('.selected-groups');
+      container.innerHTML = selectedGroups.map(group => `
+        <div class="selected-group-tag">
+          ${group}
+          <button data-group="${group}">×</button>
+        </div>
+      `).join('');
+      container.querySelectorAll('button').forEach(btn => {
+        btn.addEventListener('click', () => {
+          selectedGroups = selectedGroups.filter(g => g !== btn.getAttribute('data-group'));
+          renderSelectedGroups();
+        });
+      });
+    }
+
     modal.innerHTML = `
       <div class="group-management-modal-content">
         <h2>${title}</h2>
-        <select id="client-groups" multiple>
-          ${groups.map(group => `<option value="${group}" ${client.groups.includes(group) ? 'selected' : ''}>${group}</option>`).join('')}
-        </select>
+        <div class="group-search-container">
+          <input type="text" id="group-search" placeholder="Поиск или добавление группы">
+          <button id="add-group-btn">Добавить</button>
+        </div>
+        <div class="selected-groups"></div>
         <div class="group-management-modal-actions">
-          <button id="client-save-btn">Сохранить</button>
-          <button id="client-cancel-btn">Отмена</button>
+          <button id="group-save-btn">Сохранить</button>
+          <button id="group-cancel-btn">Отмена</button>
         </div>
       </div>
     `;
     mainContent.appendChild(modal);
 
-    document.getElementById('client-save-btn').addEventListener('click', () => {
-      const selectedGroups = Array.from(document.getElementById('client-groups').selectedOptions).map(option => option.value);
+    renderSelectedGroups();
+
+    const searchInput = document.getElementById('group-search');
+    const addBtn = document.getElementById('add-group-btn');
+
+    addBtn.addEventListener('click', () => {
+      const groupName = searchInput.value.trim();
+      if (groupName && !selectedGroups.includes(groupName)) {
+        selectedGroups.push(groupName);
+        renderSelectedGroups();
+        searchInput.value = '';
+      }
+    });
+
+    searchInput.addEventListener('input', () => {
+      // Можно добавить автокомплит, но для простоты оставим как поиск/добавление
+    });
+
+    document.getElementById('group-save-btn').addEventListener('click', () => {
       callback(selectedGroups);
       modal.remove();
     });
 
-    document.getElementById('client-cancel-btn').addEventListener('click', () => {
+    document.getElementById('group-cancel-btn').addEventListener('click', () => {
       modal.remove();
     });
   }

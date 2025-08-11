@@ -1,4 +1,3 @@
-// group.js
 import { getTrainers } from './employees.js';
 import { getClients } from './clients.js';
 
@@ -39,19 +38,24 @@ export function loadGroups() {
   groupList.className = 'group-list';
   mainContent.appendChild(groupList);
 
+  function escapeHtml(s) {
+    if (!s) return '';
+    return String(s).replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+  }
+
   function renderGroups() {
     const searchTerm = document.getElementById('group-filter-input').value.toLowerCase();
     groupList.innerHTML = groups
       .filter(group => !searchTerm || group.name.toLowerCase().includes(searchTerm))
       .map(group => `
-        <div class="group-container" id="${group.id}">
-          <h3>${group.name}</h3>
-          <p>Тренер: ${group.trainer}</p>
-          <p>Клиенты: ${group.clients.length ? group.clients.join(', ') : 'Нет клиентов'}</p>
+        <div class="group-container" id="${escapeHtml(group.id)}">
+          <h3>${escapeHtml(group.name)}</h3>
+          <p>Тренер: ${escapeHtml(group.trainer)}</p>
+          <p>Клиенты: ${group.clients.length ? group.clients.map(c => escapeHtml(c)).join(', ') : 'Нет клиентов'}</p>
           <div class="group-actions">
-            <button class="group-edit-btn" data-id="${group.id}">Редактировать</button>
-            <button class="group-clients-btn" data-id="${group.id}">Управление клиентами</button>
-            <button class="group-delete-btn" data-id="${group.id}">Удалить</button>
+            <button class="group-edit-btn" data-id="${escapeHtml(group.id)}">Редактировать</button>
+            <button class="group-clients-btn" data-id="${escapeHtml(group.id)}">Управление клиентами</button>
+            <button class="group-delete-btn" data-id="${escapeHtml(group.id)}">Удалить</button>
           </div>
         </div>
       `).join('');
@@ -112,40 +116,31 @@ export function loadGroups() {
     }
   });
 
-  /* ---- модалки с улучшенным выбором клиентов (поиск + чекбоксы + выбранные чипы) ---- */
-
   function showGroupModal(title, group, trainers, selectedClients, callback) {
     const clients = getClients();
     const modal = document.createElement('div');
     modal.className = 'group-modal';
     modal.innerHTML = `
       <div class="group-modal-content">
-        <h2>${title}</h2>
-        <input type="text" id="group-name" placeholder="Название группы" value="${group.name || ''}" required>
+        <h2>${escapeHtml(title)}</h2>
+        <input type="text" id="group-name" placeholder="Название группы" value="${escapeHtml(group.name || '')}" required>
         <select id="group-trainer" required>
           <option value="">Выберите тренера</option>
-          ${trainers.map(trainer => `<option value="${trainer}" ${group.trainer === trainer ? 'selected' : ''}>${trainer}</option>`).join('')}
+          ${trainers.map(trainer => `<option value="${escapeHtml(trainer)}" ${group.trainer === trainer ? 'selected' : ''}>${escapeHtml(trainer)}</option>`).join('')}
         </select>
-
         <div class="client-selector">
-          <label>Клиенты</label>
-          <input type="text" id="client-selector-search" placeholder="Поиск клиента...">
-          <div class="client-selector-list">
-            ${clients.map(client => `
-              <label class="client-checkbox-item">
-                <input type="checkbox" value="${client.name}" ${selectedClients.includes(client.name) ? 'checked' : ''}>
-                ${client.name}${client.blacklisted ? ' (В чёрном списке)' : ''}
-              </label>
-            `).join('')}
+          <label>Клиенты:</label>
+          <div class="client-search-container">
+            <input type="text" id="client-selector-search" placeholder="Поиск клиента (имя или телефон)">
+            <div class="client-selector-list"></div>
           </div>
           <div class="client-selector-selected">
             <label>Выбранные:</label>
             <div class="selected-chips">
-              ${selectedClients.map(c => `<span class="chip" data-name="${c}">${c} <button class="chip-remove" data-name="${c}">×</button></span>`).join('')}
+              ${selectedClients.map(c => `<span class="chip" data-name="${escapeHtml(c)}">${escapeHtml(c)} <button class="chip-remove" data-name="${escapeHtml(c)}">×</button></span>`).join('')}
             </div>
           </div>
         </div>
-
         <div class="group-modal-actions">
           <button id="group-save-btn">Сохранить</button>
           <button id="group-cancel-btn">Отмена</button>
@@ -158,53 +153,83 @@ export function loadGroups() {
     const listContainer = modal.querySelector('.client-selector-list');
     const selectedChips = modal.querySelector('.selected-chips');
 
-    function refreshSelectedChips() {
-      const checked = Array.from(listContainer.querySelectorAll('input[type="checkbox"]:checked')).map(i => i.value);
-      selectedChips.innerHTML = checked.map(c => `<span class="chip" data-name="${c}">${c} <button class="chip-remove" data-name="${c}">×</button></span>`).join('');
+    let currentClients = selectedClients.slice();
+
+    function renderClientResults() {
+      const q = searchInput.value.trim().toLowerCase();
+      if (!q) {
+        listContainer.classList.remove('visible');
+        listContainer.innerHTML = '';
+        return;
+      }
+      const matches = clients
+        .filter(c => c.name.toLowerCase().includes(q) || (c.phone || '').toLowerCase().includes(q))
+        .slice(0, 10);
+      listContainer.innerHTML = matches.map(client => `
+        <label class="client-checkbox-item" data-name="${escapeHtml(client.name)}">
+          <input type="checkbox" value="${escapeHtml(client.name)}" ${currentClients.includes(client.name) ? 'checked' : ''} ${client.blacklisted ? 'disabled' : ''}>
+          <span>${escapeHtml(client.name)}${client.blacklisted ? ' (В чёрном списке)' : ''}</span>
+          <div class="client-phone">${escapeHtml(client.phone || '')}</div>
+        </label>
+      `).join('');
+      listContainer.classList.add('visible');
     }
 
-    refreshSelectedChips();
+    function refreshSelectedChips() {
+      selectedChips.innerHTML = currentClients.map(c => `
+        <span class="chip" data-name="${escapeHtml(c)}">${escapeHtml(c)} <button class="chip-remove" data-name="${escapeHtml(c)}">×</button></span>
+      `).join('');
+    }
 
-    // Поиск в списке клиентов
-    searchInput.addEventListener('input', () => {
-      const q = searchInput.value.toLowerCase();
-      Array.from(listContainer.querySelectorAll('label.client-checkbox-item')).forEach(label => {
-        label.style.display = label.textContent.toLowerCase().includes(q) ? '' : 'none';
-      });
-    });
+    searchInput.addEventListener('input', renderClientResults);
 
-    // Клики по чекбоксам
     listContainer.addEventListener('change', (ev) => {
-      if (ev.target && ev.target.matches('input[type="checkbox"]')) {
+      if (ev.target.matches('input[type="checkbox"]')) {
+        const name = ev.target.value;
+        if (ev.target.checked) {
+          if (!currentClients.includes(name)) currentClients.push(name);
+        } else {
+          currentClients = currentClients.filter(c => c !== name);
+        }
         refreshSelectedChips();
+        listContainer.classList.remove('visible');
+        searchInput.value = '';
+        renderClientResults();
       }
     });
 
-    // Удаление через чип
+    listContainer.addEventListener('click', (ev) => {
+      const item = ev.target.closest('.client-checkbox-item');
+      if (!item) return;
+      const checkbox = item.querySelector('input[type="checkbox"]');
+      if (checkbox && !checkbox.disabled) {
+        checkbox.checked = !checkbox.checked;
+        const ev = new Event('change', { bubbles: true });
+        checkbox.dispatchEvent(ev);
+      }
+    });
+
     selectedChips.addEventListener('click', (ev) => {
       if (ev.target.classList.contains('chip-remove')) {
         const name = ev.target.getAttribute('data-name');
-        const checkbox = listContainer.querySelector(`input[type="checkbox"][value="${name}"]`);
-        if (checkbox) {
-          checkbox.checked = false;
-          refreshSelectedChips();
-        }
+        currentClients = currentClients.filter(c => c !== name);
+        refreshSelectedChips();
+        renderClientResults();
       }
     });
 
-    document.getElementById('group-save-btn').addEventListener('click', () => {
-      const name = document.getElementById('group-name').value.trim();
-      const trainer = document.getElementById('group-trainer').value;
-      const clientsSelected = Array.from(listContainer.querySelectorAll('input[type="checkbox"]:checked')).map(i => i.value);
+    modal.querySelector('#group-save-btn').addEventListener('click', () => {
+      const name = modal.querySelector('#group-name').value.trim();
+      const trainer = modal.querySelector('#group-trainer').value;
       if (name && trainer) {
-        callback({ name, trainer, clients: clientsSelected });
+        callback({ name, trainer, clients: currentClients });
         modal.remove();
       } else {
         alert('Заполните все поля корректно!');
       }
     });
 
-    document.getElementById('group-cancel-btn').addEventListener('click', () => {
+    modal.querySelector('#group-cancel-btn').addEventListener('click', () => {
       modal.remove();
     });
   }
@@ -214,11 +239,19 @@ export function loadGroups() {
     modal.className = 'group-modal';
     modal.innerHTML = `
       <div class="group-modal-content">
-        <h2>${title}</h2>
-        <p>Группа: ${group.name}</p>
-        <input type="text" id="group-client-search" placeholder="Поиск клиента...">
-        <div class="client-selector-list">
-          ${clients.map(client => `<label class="client-checkbox-item"><input type="checkbox" value="${client.name}" ${group.clients.includes(client.name) ? 'checked' : ''}>${client.name}${client.blacklisted ? ' (В чёрном списке)' : ''}</label>`).join('')}
+        <h2>${escapeHtml(title)}</h2>
+        <p>Группа: ${escapeHtml(group.name)}</p>
+        <div class="client-selector">
+          <div class="client-search-container">
+            <input type="text" id="group-client-search" placeholder="Поиск клиента (имя или телефон)">
+            <div class="client-selector-list"></div>
+          </div>
+          <div class="client-selector-selected">
+            <label>Выбранные:</label>
+            <div class="selected-chips">
+              ${group.clients.map(c => `<span class="chip" data-name="${escapeHtml(c)}">${escapeHtml(c)} <button class="chip-remove" data-name="${escapeHtml(c)}">×</button></span>`).join('')}
+            </div>
+          </div>
         </div>
         <div class="group-modal-actions">
           <button id="group-save-btn">Сохранить</button>
@@ -230,21 +263,79 @@ export function loadGroups() {
 
     const searchInput = modal.querySelector('#group-client-search');
     const listContainer = modal.querySelector('.client-selector-list');
+    const selectedChips = modal.querySelector('.selected-chips');
 
-    searchInput.addEventListener('input', () => {
-      const q = searchInput.value.toLowerCase();
-      Array.from(listContainer.querySelectorAll('label.client-checkbox-item')).forEach(label => {
-        label.style.display = label.textContent.toLowerCase().includes(q) ? '' : 'none';
-      });
+    let currentClients = group.clients.slice();
+
+    function renderClientResults() {
+      const q = searchInput.value.trim().toLowerCase();
+      if (!q) {
+        listContainer.classList.remove('visible');
+        listContainer.innerHTML = '';
+        return;
+      }
+      const matches = clients
+        .filter(c => c.name.toLowerCase().includes(q) || (c.phone || '').toLowerCase().includes(q))
+        .slice(0, 10);
+      listContainer.innerHTML = matches.map(client => `
+        <label class="client-checkbox-item" data-name="${escapeHtml(client.name)}">
+          <input type="checkbox" value="${escapeHtml(client.name)}" ${currentClients.includes(client.name) ? 'checked' : ''} ${client.blacklisted ? 'disabled' : ''}>
+          <span>${escapeHtml(client.name)}${client.blacklisted ? ' (В чёрном списке)' : ''}</span>
+          <div class="client-phone">${escapeHtml(client.phone || '')}</div>
+        </label>
+      `).join('');
+      listContainer.classList.add('visible');
+    }
+
+    function refreshSelectedChips() {
+      selectedChips.innerHTML = currentClients.map(c => `
+        <span class="chip" data-name="${escapeHtml(c)}">${escapeHtml(c)} <button class="chip-remove" data-name="${escapeHtml(c)}">×</button></span>
+      `).join('');
+    }
+
+    searchInput.addEventListener('input', renderClientResults);
+
+    listContainer.addEventListener('change', (ev) => {
+      if (ev.target.matches('input[type="checkbox"]')) {
+        const name = ev.target.value;
+        if (ev.target.checked) {
+          if (!currentClients.includes(name)) currentClients.push(name);
+        } else {
+          currentClients = currentClients.filter(c => c !== name);
+        }
+        refreshSelectedChips();
+        listContainer.classList.remove('visible');
+        searchInput.value = '';
+        renderClientResults();
+      }
     });
 
-    document.getElementById('group-save-btn').addEventListener('click', () => {
-      const selectedClients = Array.from(listContainer.querySelectorAll('input[type="checkbox"]:checked')).map(i => i.value);
-      callback(selectedClients);
+    listContainer.addEventListener('click', (ev) => {
+      const item = ev.target.closest('.client-checkbox-item');
+      if (!item) return;
+      const checkbox = item.querySelector('input[type="checkbox"]');
+      if (checkbox && !checkbox.disabled) {
+        checkbox.checked = !checkbox.checked;
+        const ev = new Event('change', { bubbles: true });
+        checkbox.dispatchEvent(ev);
+      }
+    });
+
+    selectedChips.addEventListener('click', (ev) => {
+      if (ev.target.classList.contains('chip-remove')) {
+        const name = ev.target.getAttribute('data-name');
+        currentClients = currentClients.filter(c => c !== name);
+        refreshSelectedChips();
+        renderClientResults();
+      }
+    });
+
+    modal.querySelector('#group-save-btn').addEventListener('click', () => {
+      callback(currentClients);
       modal.remove();
     });
 
-    document.getElementById('group-cancel-btn').addEventListener('click', () => {
+    modal.querySelector('#group-cancel-btn').addEventListener('click', () => {
       modal.remove();
     });
   }
