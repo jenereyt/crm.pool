@@ -34,11 +34,32 @@ document.addEventListener('DOMContentLoaded', () => {
     </ul>
   `;
 
+  // Function to update sidebar and main-content state based on viewport
+  function updateSidebarState() {
+    const isMobile = window.innerWidth <= 768;
+    if (isMobile) {
+      sidebar.classList.add('closed');
+      sidebar.classList.remove('open');
+      mainContent.classList.add('sidebar-closed');
+      mainContent.classList.remove('sidebar-open');
+    } else {
+      sidebar.classList.remove('closed');
+      sidebar.classList.add('open');
+      mainContent.classList.add('sidebar-open');
+      mainContent.classList.remove('sidebar-closed');
+    }
+  }
+
+  // Initial call to set correct state on load
+  updateSidebarState();
+
+  // Update on window resize
+  window.addEventListener('resize', updateSidebarState);
+
   sidebarNav.addEventListener('click', (e) => {
     const link = e.target.closest('.sidebar-link');
     if (link) {
       const section = link.getAttribute('data-section');
-      const mainContent = document.getElementById('main-content');
       mainContent.innerHTML = '';
 
       if (section === 'home') {
@@ -65,15 +86,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   toggleButton.addEventListener('click', () => {
     sidebar.classList.toggle('closed');
+    sidebar.classList.toggle('open');
     mainContent.classList.toggle('sidebar-closed');
     mainContent.classList.toggle('sidebar-open');
   });
-
-  if (sidebar.classList.contains('closed')) {
-    mainContent.classList.add('sidebar-closed');
-    mainContent.classList.remove('sidebar-open');
-  } else {
-    mainContent.classList.add('sidebar-open');
-    mainContent.classList.remove('sidebar-closed');
-  }
 });

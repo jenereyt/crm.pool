@@ -1,4 +1,3 @@
-// clients.js
 import { getSubscriptionTemplates } from './subscriptions.js';
 import { getGroups } from './groups.js';
 
@@ -21,7 +20,9 @@ let clientsData = [
       daysOfWeek: ['Пн', 'Ср'],
       classTime: '10:00',
       group: 'Йога для начинающих',
-      remainingClasses: 8 // per-client remaining classes
+      remainingClasses: 8,
+      isPaid: true,
+      renewalHistory: []
     },
     photo: 'client1.jpg'
   },
@@ -43,7 +44,9 @@ let clientsData = [
       daysOfWeek: [],
       classTime: '09:00',
       group: '',
-      remainingClasses: Infinity
+      remainingClasses: Infinity,
+      isPaid: true,
+      renewalHistory: []
     },
     photo: ''
   }
@@ -72,8 +75,6 @@ export function updateClient(id, data) {
 export function removeClient(id) {
   clientsData = clientsData.filter(c => c.id !== id);
 }
-
-/* ---- UI: loadClients and forms ---- */
 
 export function loadClients() {
   const mainContent = document.getElementById('main-content');
@@ -107,8 +108,11 @@ export function loadClients() {
 
   function renderClients() {
     const search = document.getElementById('client-search').value.toLowerCase();
-    clientList.innerHTML = clientsData
-      .filter(client => client.name.toLowerCase().includes(search) || client.phone.toLowerCase().includes(search))
+    const filteredClients = clientsData.filter(client =>
+      client.name.toLowerCase().includes(search) || client.phone.toLowerCase().includes(search)
+    );
+
+    clientList.innerHTML = filteredClients
       .map(client => {
         const hasDiagnosis = client.diagnosis && client.diagnosis !== 'Нет';
         return `
@@ -116,16 +120,16 @@ export function loadClients() {
             <div class="client-info">
               ${client.photo ? `<img src="${client.photo}" class="client-photo" alt="${client.name}">` : `<img src="images/default-icon.svg" class="client-photo" alt="Нет фото">`}
               <div class="client-name-phone">
-                <h3>${client.name}${client.blacklisted ? ' (В чёрном списке)' : ''}${hasDiagnosis ? ' <span class="client-diagnosis-icon">⚕️</span>' : ''}</h3>
+                <h3 class="${hasDiagnosis ? 'has-diagnosis' : ''}">${client.name}${client.blacklisted ? ' (В чёрном списке)' : ''}</h3>
                 <p>${client.phone}</p>
               </div>
             </div>
             <div class="client-actions">
-              <button class="client-action-icon edit" data-id="${client.id}" title="Редактировать">✏️</button>
-              <button class="client-action-icon blacklist ${client.blacklisted ? 'blacklisted' : ''}" data-id="${client.id}" title="${client.blacklisted ? 'Убрать из чёрного списка' : 'В чёрный список'}">🚫</button>
-              <button class="client-action-icon subscription" data-id="${client.id}" title="Абонемент">🎟️</button>
-              <button class="client-action-icon group" data-id="${client.id}" title="Группы">👥</button>
-              <button class="client-action-icon delete" data-id="${client.id}" title="Удалить">🗑️</button>
+              <button class="client-action-icon edit" data-id="${client.id}" title="Редактировать"><img src="./images/icon-edit.svg" alt="Редактировать"></button>
+              <button class="client-action-icon blacklist ${client.blacklisted ? 'blacklisted' : ''}" data-id="${client.id}" title="${client.blacklisted ? 'Убрать из чёрного списка' : 'В чёрный список'}"><img class="img_blacklist" src="./images/blacklist.svg" alt="Чёрный список"></button>
+              <button class="client-action-icon subscription" data-id="${client.id}" title="Абонемент"><img class="img_sub" src="./images/icon-subscriptions.svg" alt="Абонемент"></button>
+              <button class="client-action-icon group" data-id="${client.id}" title="Группы"><img src="./images/icon-group.svg" alt="Группы"></button>
+              <button class="client-action-icon delete" data-id="${client.id}" title="Удалить"><img src="./images/trash.svg" alt="Удалить"></button>
             </div>
           </div>
         `;
@@ -145,20 +149,22 @@ export function loadClients() {
 
   clientList.addEventListener('click', (e) => {
     const target = e.target;
-    const clientId = target.closest('.client-container')?.getAttribute('data-id') || target.getAttribute('data-id');
+    const clientContainer = target.closest('.client-container');
+    const clientId = clientContainer ? clientContainer.getAttribute('data-id') : null;
     const client = clientsData.find(c => c.id === clientId);
     if (!client) return;
 
-    if (target.classList.contains('client-action-icon')) {
-      if (target.classList.contains('edit')) {
+    const actionIcon = target.closest('.client-action-icon');
+    if (actionIcon) {
+      if (actionIcon.classList.contains('edit')) {
         showClientForm('Редактировать клиента', client, (data) => {
           updateClient(clientId, data);
           renderClients();
         });
-      } else if (target.classList.contains('blacklist')) {
+      } else if (actionIcon.classList.contains('blacklist')) {
         client.blacklisted = !client.blacklisted;
         renderClients();
-      } else if (target.classList.contains('subscription')) {
+      } else if (actionIcon.classList.contains('subscription')) {
         const sub = client.subscription ? { ...client.subscription, clientId } : {
           clientId,
           templateId: '',
@@ -168,7 +174,9 @@ export function loadClients() {
           daysOfWeek: [],
           classTime: '09:00',
           group: '',
-          remainingClasses: 0
+          remainingClasses: 0,
+          isPaid: true,
+          renewalHistory: []
         };
         showSubscriptionForm('Абонемент клиента', sub, clientsData, getGroups(), (data) => {
           const template = getSubscriptionTemplates().find(t => t.id === data.templateId);
@@ -181,49 +189,107 @@ export function loadClients() {
             daysOfWeek: data.daysOfWeek,
             classTime: data.classTime,
             group: data.group,
-            remainingClasses: remaining
+            remainingClasses: remaining,
+            isPaid: data.isPaid,
+            renewalHistory: data.renewalHistory || []
           };
           renderClients();
         });
-      } else if (target.classList.contains('group')) {
+      } else if (actionIcon.classList.contains('group')) {
         showGroupForm('Управление группами', client, getGroups(), (groups) => {
           client.groups = groups;
           renderClients();
         });
-      } else if (target.classList.contains('delete')) {
+      } else if (actionIcon.classList.contains('delete')) {
         if (confirm('Удалить клиента?')) {
           removeClient(clientId);
           renderClients();
         }
       }
-    } else if (target.closest('.client-info')) {
+    } else {
       showClientDetails(client);
     }
   });
 
-  /* ---- Модалки ---- */
+  function showPhotoZoomModal(photoSrc) {
+    if (!photoSrc || photoSrc.includes('default-icon.svg')) return;
+
+    const modal = document.createElement('div');
+    modal.className = 'photo-zoom-modal';
+    modal.innerHTML = `
+      <div class="photo-zoom-content">
+        <img src="${photoSrc}" class="photo-zoom-image" alt="Увеличенное фото">
+        <button class="photo-zoom-close">Закрыть</button>
+      </div>
+    `;
+    document.getElementById('main-content').appendChild(modal);
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.remove();
+      }
+    });
+
+    modal.querySelector('.photo-zoom-close').addEventListener('click', () => {
+      modal.remove();
+    });
+  }
 
   function showClientDetails(client) {
     const subscriptionTemplate = client.subscription ? getSubscriptionTemplates().find(t => t.id === client.subscription.templateId) : null;
+    const isActive = client.subscription && client.subscription.isPaid && new Date(client.subscription.endDate) >= new Date();
     const modal = document.createElement('div');
     modal.className = 'client-details-modal';
     modal.innerHTML = `
       <div class="client-details-content">
         <h2>${client.name}${client.blacklisted ? ' (В чёрном списке)' : ''}</h2>
-        ${client.photo ? `<img src="${client.photo}" class="client-photo-preview" alt="${client.name}">` : `<img src="images/default-icon.svg" class="client-photo-preview" alt="Нет фото">`}
+        <div class="client-photo-container">
+          ${client.photo ? `<img src="${client.photo}" class="client-photo-preview" alt="${client.name}">` : `<img src="images/default-icon.svg" class="client-photo-preview" alt="Нет фото">`}
+        </div>
         <p>Телефон: ${client.phone}</p>
         ${client.phoneSecondary ? `<p>Доп. телефон: ${client.phoneSecondary}</p>` : ''}
         ${client.parentName ? `<p>Родитель: ${client.parentName}</p>` : ''}
-        ${client.diagnosis ? `<p>Диагноз: ${client.diagnosis}</p>` : ''}
+        ${client.diagnosis && client.diagnosis !== 'Нет' ? `<p>Диагноз: ${client.diagnosis}</p>` : ''}
         ${client.features ? `<p>Особенности: ${client.features}</p>` : ''}
         <p>Группы: ${client.groups.length ? client.groups.join(', ') : 'Нет'}</p>
         <p>Абонемент: ${subscriptionTemplate ? subscriptionTemplate.type : (client.subscription ? 'Данные абонемента' : 'Нет')}</p>
+        ${client.subscription ? `<p>Статус абонемента: ${isActive ? 'Активный' : 'Неактивный'}</p>` : ''}
+        ${client.subscription && client.subscription.renewalHistory?.length ? `<p>История продлений: ${client.subscription.renewalHistory.map(date => new Date(date).toISOString().split('T')[0]).join(', ')}</p>` : ''}
         <div class="client-details-actions">
+          ${client.subscription ? `<button id="client-subscription-renew-btn">Продлить абонемент</button>` : ''}
           <button id="client-close-btn">Закрыть</button>
         </div>
       </div>
     `;
     mainContent.appendChild(modal);
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.remove();
+      }
+    });
+
+    const photo = modal.querySelector('.client-photo-preview');
+    photo.addEventListener('click', () => {
+      showPhotoZoomModal(client.photo);
+    });
+
+    if (client.subscription) {
+      document.getElementById('client-subscription-renew-btn').addEventListener('click', () => {
+        const newEndDate = new Date(Math.max(new Date(), new Date(client.subscription.endDate)));
+        newEndDate.setDate(newEndDate.getDate() + 30);
+        const renewalHistory = client.subscription.renewalHistory || [];
+        renewalHistory.push(new Date().toISOString());
+        client.subscription = {
+          ...client.subscription,
+          endDate: newEndDate.toISOString().split('T')[0],
+          isPaid: true,
+          renewalHistory
+        };
+        modal.remove();
+        renderClients();
+      });
+    }
 
     document.getElementById('client-close-btn').addEventListener('click', () => {
       modal.remove();
@@ -274,6 +340,12 @@ export function loadClients() {
     `;
     mainContent.appendChild(modal);
 
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.remove();
+      }
+    });
+
     const photoInput = document.getElementById('client-photo');
     const photoPreview = document.getElementById('client-photo-preview');
     photoInput.addEventListener('change', (e) => {
@@ -287,6 +359,10 @@ export function loadClients() {
       } else {
         photoPreview.src = client.photo || 'images/default-icon.svg';
       }
+    });
+
+    photoPreview.addEventListener('click', () => {
+      showPhotoZoomModal(photoPreview.src);
     });
 
     document.getElementById('client-save-btn').addEventListener('click', () => {
@@ -362,7 +438,12 @@ export function loadClients() {
             ${groups.map(group => `<option value="${group}" ${sub.group === group ? 'selected' : ''}>${group}</option>`).join('')}
           </select>
         </div>
+        <div class="client-form-field">
+          <label for="subscription-is-paid">Оплачен</label>
+          <input type="checkbox" id="subscription-is-paid" ${sub.isPaid !== false ? 'checked' : ''}>
+        </div>
         <div class="subscription-modal-actions">
+          <button id="subscription-renew-btn">Продлить</button>
           <button id="subscription-save-btn">Сохранить</button>
           <button id="subscription-cancel-btn">Отмена</button>
         </div>
@@ -370,11 +451,35 @@ export function loadClients() {
     `;
     mainContent.appendChild(modal);
 
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.remove();
+      }
+    });
+
     const dayButtons = modal.querySelectorAll('.day-button');
     dayButtons.forEach(button => {
       button.addEventListener('click', () => {
         button.classList.toggle('selected');
       });
+    });
+
+    document.getElementById('subscription-renew-btn').addEventListener('click', () => {
+      const client = clients.find(c => c.id === sub.clientId);
+      if (client) {
+        const newEndDate = new Date(Math.max(new Date(), new Date(sub.endDate)));
+        newEndDate.setDate(newEndDate.getDate() + 30);
+        const renewalHistory = client.subscription.renewalHistory || [];
+        renewalHistory.push(new Date().toISOString());
+        client.subscription = {
+          ...client.subscription,
+          endDate: newEndDate.toISOString().split('T')[0],
+          isPaid: true,
+          renewalHistory
+        };
+        modal.remove();
+        renderClients();
+      }
     });
 
     document.getElementById('subscription-save-btn').addEventListener('click', () => {
@@ -386,12 +491,13 @@ export function loadClients() {
       const endDate = document.getElementById('subscription-end-date').value;
       const classTime = document.getElementById('subscription-class-time').value;
       const group = document.getElementById('subscription-group').value;
+      const isPaid = document.getElementById('subscription-is-paid').checked;
 
       if (clientId && templateId && !isNaN(classesPerWeek) && startDate && endDate && classTime) {
         const start = new Date(startDate);
         const end = new Date(endDate);
         if (end > start) {
-          callback({ clientId, templateId, startDate, endDate, classesPerWeek, daysOfWeek, classTime, group });
+          callback({ clientId, templateId, startDate, endDate, classesPerWeek, daysOfWeek, classTime, group, isPaid, renewalHistory: sub.renewalHistory || [] });
           modal.remove();
         } else {
           alert('Дата окончания должна быть позже даты начала!');
@@ -442,6 +548,12 @@ export function loadClients() {
       </div>
     `;
     mainContent.appendChild(modal);
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.remove();
+      }
+    });
 
     renderSelectedGroups();
 

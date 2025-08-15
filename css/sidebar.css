@@ -2,7 +2,7 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-      font-family: Arial, sans-serif;
+  font-family: Arial, sans-serif;
 }
 
 .sidebar {
@@ -50,7 +50,6 @@
   padding: 10px 20px;
   color: #fff;
   text-decoration: none;
-  transition: background-color 0.2s;
 }
 
 .sidebar-link:hover {
@@ -103,5 +102,15 @@
 
   .sidebar-icon {
     margin-right: 0;
+  }
+
+  .sidebar-toggle {
+    display: none;
+    /* Hide toggle button by default on mobile */
+  }
+
+  .sidebar.open .sidebar-toggle {
+    display: block;
+    /* Show toggle button when sidebar is open */
   }
 }
