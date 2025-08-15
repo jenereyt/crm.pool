@@ -125,11 +125,11 @@ export function loadClients() {
               </div>
             </div>
             <div class="client-actions">
-              <button class="client-action-icon edit" data-id="${client.id}" title="Редактировать"><img src="./images/icon-edit.svg" alt="Редактировать"></button>
+              <button class="client-action-icon edit" data-id="${client.id}" title="Редактировать"><img class="img_edit" src="./images/icon-edit.svg" alt="Редактировать"></button>
               <button class="client-action-icon blacklist ${client.blacklisted ? 'blacklisted' : ''}" data-id="${client.id}" title="${client.blacklisted ? 'Убрать из чёрного списка' : 'В чёрный список'}"><img class="img_blacklist" src="./images/blacklist.svg" alt="Чёрный список"></button>
               <button class="client-action-icon subscription" data-id="${client.id}" title="Абонемент"><img class="img_sub" src="./images/icon-subscriptions.svg" alt="Абонемент"></button>
-              <button class="client-action-icon group" data-id="${client.id}" title="Группы"><img src="./images/icon-group.svg" alt="Группы"></button>
-              <button class="client-action-icon delete" data-id="${client.id}" title="Удалить"><img src="./images/trash.svg" alt="Удалить"></button>
+              <button class="client-action-icon group" data-id="${client.id}" title="Группы"><img class="img_grp" src="./images/icon-group.svg" alt="Группы"></button>
+              <button class="client-action-icon delete" data-id="${client.id}" title="Удалить"><img class="img_del" src="./images/trash.svg" alt="Удалить"></button>
             </div>
           </div>
         `;

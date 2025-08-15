@@ -122,7 +122,10 @@
 }
 
 .img_sub,
-.img_blacklist {
+.img_blacklist,
+.img_grp,
+.img_del,
+.img_edit {
     width: 18px;
     /* Уменьшенный размер изображения */
     height: 18px;
@@ -534,7 +537,10 @@
     }
 
     .img_sub,
-    .img_blacklist {
+    .img_blacklist,
+    .img_grp,
+    .img_del,
+    .img_edit {
         width: 16px;
         height: 16px;
     }
