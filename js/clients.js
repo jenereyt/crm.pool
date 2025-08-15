@@ -22,9 +22,10 @@ let clientsData = [
       group: 'Йога для начинающих',
       remainingClasses: 8,
       isPaid: true,
-      renewalHistory: []
+      renewalHistory: [],
+      subscriptionNumber: 'SUB-001' // Добавлено
     },
-    photo: 'client1.jpg'
+    photo: ''
   },
   {
     id: 'client2',
@@ -37,7 +38,7 @@ let clientsData = [
     blacklisted: false,
     groups: [],
     subscription: {
-      templateId: 'template3',
+      templateId: 'template1',
       startDate: '2025-08-01',
       endDate: '2025-08-31',
       classesPerWeek: 0,
@@ -46,7 +47,8 @@ let clientsData = [
       group: '',
       remainingClasses: Infinity,
       isPaid: true,
-      renewalHistory: []
+      renewalHistory: [],
+      subscriptionNumber: 'SUB-002' // Добавлено
     },
     photo: ''
   }
@@ -61,14 +63,23 @@ export function getClientById(id) {
 }
 
 export function addClient(client) {
-  const newClient = { id: `client${Date.now()}`, ...client };
+  const newClient = { 
+    id: `client${Date.now()}`, 
+    ...client, 
+    subscription: client.subscription ? { ...client.subscription, subscriptionNumber: `SUB-${String(clientsData.length + 1).padStart(3, '0')}` } : null 
+  };
   clientsData.push(newClient);
   return newClient;
 }
 
 export function updateClient(id, data) {
   const client = clientsData.find(c => c.id === id);
-  if (client) Object.assign(client, data);
+  if (client) {
+    Object.assign(client, data);
+    if (client.subscription && !client.subscription.subscriptionNumber) {
+      client.subscription.subscriptionNumber = `SUB-${String(id).replace('client', '').padStart(3, '0')}`;
+    }
+  }
   return client;
 }
 
@@ -121,7 +132,7 @@ export function loadClients() {
               ${client.photo ? `<img src="${client.photo}" class="client-photo" alt="${client.name}">` : `<img src="images/default-icon.svg" class="client-photo" alt="Нет фото">`}
               <div class="client-name-phone">
                 <h3 class="${hasDiagnosis ? 'has-diagnosis' : ''}">${client.name}${client.blacklisted ? ' (В чёрном списке)' : ''}</h3>
-                <p>${client.phone}</p>
+                <p>${client.phone}${hasDiagnosis ? ` <span class="diagnosis">${client.diagnosis}</span>` : ''}</p>
               </div>
             </div>
             <div class="client-actions">
@@ -176,7 +187,8 @@ export function loadClients() {
           group: '',
           remainingClasses: 0,
           isPaid: true,
-          renewalHistory: []
+          renewalHistory: [],
+          subscriptionNumber: `SUB-${String(clientId).replace('client', '').padStart(3, '0')}`
         };
         showSubscriptionForm('Абонемент клиента', sub, clientsData, getGroups(), (data) => {
           const template = getSubscriptionTemplates().find(t => t.id === data.templateId);
@@ -191,7 +203,8 @@ export function loadClients() {
             group: data.group,
             remainingClasses: remaining,
             isPaid: data.isPaid,
-            renewalHistory: data.renewalHistory || []
+            renewalHistory: data.renewalHistory || [],
+            subscriptionNumber: data.subscriptionNumber || `SUB-${String(clientId).replace('client', '').padStart(3, '0')}`
           };
           renderClients();
         });
@@ -252,7 +265,7 @@ export function loadClients() {
         ${client.diagnosis && client.diagnosis !== 'Нет' ? `<p>Диагноз: ${client.diagnosis}</p>` : ''}
         ${client.features ? `<p>Особенности: ${client.features}</p>` : ''}
         <p>Группы: ${client.groups.length ? client.groups.join(', ') : 'Нет'}</p>
-        <p>Абонемент: ${subscriptionTemplate ? subscriptionTemplate.type : (client.subscription ? 'Данные абонемента' : 'Нет')}</p>
+        <p>Абонемент: ${subscriptionTemplate ? subscriptionTemplate.type : (client.subscription ? `Абонемент #${client.subscription.subscriptionNumber}` : 'Нет')}</p>
         ${client.subscription ? `<p>Статус абонемента: ${isActive ? 'Активный' : 'Неактивный'}</p>` : ''}
         ${client.subscription && client.subscription.renewalHistory?.length ? `<p>История продлений: ${client.subscription.renewalHistory.map(date => new Date(date).toISOString().split('T')[0]).join(', ')}</p>` : ''}
         <div class="client-details-actions">
@@ -439,7 +452,7 @@ export function loadClients() {
           </select>
         </div>
         <div class="client-form-field">
-          <label for="subscription-is-paid">Оплачен</label>
+          <label for="subscription-is-paid">Оплачен <span class="tooltip" title="Отметьте, если абонемент оплачен (влияет на статус активности)">ℹ️</span></label>
           <input type="checkbox" id="subscription-is-paid" ${sub.isPaid !== false ? 'checked' : ''}>
         </div>
         <div class="subscription-modal-actions">
@@ -469,13 +482,14 @@ export function loadClients() {
       if (client) {
         const newEndDate = new Date(Math.max(new Date(), new Date(sub.endDate)));
         newEndDate.setDate(newEndDate.getDate() + 30);
-        const renewalHistory = client.subscription.renewalHistory || [];
+        const renewalHistory = client.subscription?.renewalHistory || [];
         renewalHistory.push(new Date().toISOString());
         client.subscription = {
           ...client.subscription,
           endDate: newEndDate.toISOString().split('T')[0],
           isPaid: true,
-          renewalHistory
+          renewalHistory,
+          subscriptionNumber: client.subscription?.subscriptionNumber || `SUB-${String(sub.clientId).replace('client', '').padStart(3, '0')}`
         };
         modal.remove();
         renderClients();
@@ -497,7 +511,19 @@ export function loadClients() {
         const start = new Date(startDate);
         const end = new Date(endDate);
         if (end > start) {
-          callback({ clientId, templateId, startDate, endDate, classesPerWeek, daysOfWeek, classTime, group, isPaid, renewalHistory: sub.renewalHistory || [] });
+          callback({ 
+            clientId, 
+            templateId, 
+            startDate, 
+            endDate, 
+            classesPerWeek, 
+            daysOfWeek, 
+            classTime, 
+            group, 
+            isPaid, 
+            renewalHistory: sub.renewalHistory || [],
+            subscriptionNumber: sub.subscriptionNumber || `SUB-${String(clientId).replace('client', '').padStart(3, '0')}`
+          });
           modal.remove();
         } else {
           alert('Дата окончания должна быть позже даты начала!');
@@ -582,4 +608,4 @@ export function loadClients() {
       modal.remove();
     });
   }
-}
+} 

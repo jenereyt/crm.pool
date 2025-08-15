@@ -1,19 +1,19 @@
 /* Стили для страницы Абонементы */
 .template-section {
-  padding: 15px;
+  padding: 10px;
   max-height: 200px;
   overflow-y: auto;
 }
 
 .subscription-section {
-  padding: 15px;
+  padding: 10px;
   flex: 1;
 }
 
 .template-section h2,
 .subscription-section h2 {
-  margin: 0 0 10px;
-  font-size: 1.3em;
+  margin: 0 0 8px;
+  font-size: 1.2em;
   color: #333;
   text-align: left;
   font-weight: 600;
@@ -21,9 +21,8 @@
 
 .subscription-tabs {
   display: flex;
-  gap: 8px;
-  margin-bottom: 10px;
-  padding-left: 15px;
+  gap: 6px;
+  margin-bottom: 8px;
 }
 
 .tab-button {
@@ -49,21 +48,21 @@
 
 .template-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
 }
 
 .template-container {
   background-color: #ffffff;
   border: 1px solid #e0e0e0;
   border-radius: 6px;
-  padding: 10px;
+  padding: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   transition: transform 0.2s, box-shadow 0.2s;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  min-height: 60px;
+  min-height: 48px;
 }
 
 .template-container:hover {
@@ -73,14 +72,14 @@
 
 .template-info h3 {
   margin: 0 0 4px;
-  font-size: 1em;
+  font-size: 0.95em;
   color: #333;
 }
 
 .template-info p {
   margin: 0;
   color: #666;
-  font-size: 0.8em;
+  font-size: 0.75em;
 }
 
 .template-actions {
@@ -89,8 +88,8 @@
 }
 
 .template-action-icon {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   background: none;
   border: none;
   cursor: pointer;
@@ -101,8 +100,8 @@
 }
 
 .template-action-icon img {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
 }
 
 .template-action-icon.edit {
@@ -129,10 +128,10 @@
   transform: translateX(-50%);
   background-color: #333;
   color: #fff;
-  padding: 3px 6px;
-  border-radius: 3px;
+  padding: 4px 8px;
+  border-radius: 4px;
   white-space: nowrap;
-  font-size: 0.65em;
+  font-size: 0.7em;
   pointer-events: none;
   opacity: 1;
   transition: opacity 0.1s;
@@ -146,7 +145,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: 400px;
+  max-height: calc(80vh - 30px);
   overflow-y: auto;
   padding-right: 5px;
 }
@@ -155,14 +154,14 @@
   background-color: #ffffff;
   border: 1px solid #e0e0e0;
   border-radius: 6px;
-  padding: 10px;
+  padding: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   transition: transform 0.2s, box-shadow 0.2s;
   cursor: pointer;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  min-height: 50px;
+  min-height: 48px;
 }
 
 .subscription-container:hover {
@@ -172,14 +171,14 @@
 
 .subscription-info h3 {
   margin: 0 0 4px;
-  font-size: 1em;
+  font-size: 0.95em;
   color: #333;
 }
 
 .subscription-info p {
   margin: 2px 0;
   color: #666;
-  font-size: 0.8em;
+  font-size: 0.75em;
 }
 
 .subscription-actions {
@@ -188,8 +187,8 @@
 }
 
 .subscription-action-icon {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   background: none;
   border: none;
   cursor: pointer;
@@ -199,16 +198,21 @@
   position: relative;
 }
 
+.subscription-action-icon:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .subscription-action-icon img {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
 }
 
 .subscription-action-icon.edit {
   color: #007bff;
 }
 
-.subscription-action-icon.edit:hover {
+.subscription-action-icon.edit:hover:not(:disabled) {
   color: #0056b3;
 }
 
@@ -216,7 +220,7 @@
   color: #dc3545;
 }
 
-.subscription-action-icon.delete:hover {
+.subscription-action-icon.delete:hover:not(:disabled) {
   color: #b02a37;
 }
 
@@ -228,10 +232,10 @@
   transform: translateX(-50%);
   background-color: #333;
   color: #fff;
-  padding: 3px 6px;
-  border-radius: 3px;
+  padding: 4px 8px;
+  border-radius: 4px;
   white-space: nowrap;
-  font-size: 0.65em;
+  font-size: 0.7em;
   pointer-events: none;
   opacity: 1;
   transition: opacity 0.1s;
@@ -242,13 +246,13 @@
 }
 
 .subscription-add-btn {
+  padding: 8px 16px;
   background-color: #007bff;
   color: white;
   border: none;
-  padding: 6px 10px;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 0.85em;
+  font-size: 0.9em;
   font-weight: 500;
 }
 
@@ -264,7 +268,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(0, 0, 0, 0.7);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -274,21 +278,21 @@
 .subscription-modal-content,
 .template-modal-content,
 .subscription-details-content {
-  background-color: #ffffff;
+  background-color: #f9f9f9;
   padding: 15px;
-  border-radius: 8px;
+  border-radius: 12px;
   width: 90%;
-  max-width: 380px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  max-height: 90vh;
+  max-width: 480px;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+  max-height: 85vh;
   overflow-y: auto;
 }
 
 .subscription-modal-content h2,
 .template-modal-content h2,
 .subscription-details-content h2 {
-  margin: 0 0 10px;
-  font-size: 1.3em;
+  margin: 0 0 12px;
+  font-size: 1.4em;
   color: #007bff;
   text-align: center;
   font-weight: 600;
@@ -315,9 +319,28 @@
 }
 
 .subscription-details-content p {
-  margin: 3px 0;
+  margin: 4px 0;
   color: #666;
-  font-size: 0.8em;
+  font-size: 0.85em;
+}
+
+.tooltip {
+  cursor: help;
+  color: #007bff;
+  margin-left: 4px;
+}
+
+.tooltip:hover::after {
+  content: attr(title);
+  position: absolute;
+  background-color: #333;
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  font-size: 0.7em;
+  z-index: 10;
+  margin-left: 5px;
 }
 
 .days-of-week {
@@ -338,10 +361,10 @@
 }
 
 .day-button {
-  padding: 5px 8px;
+  padding: 4px 8px;
   border: 1px solid #ccc;
   border-radius: 4px;
-  background: #f9f9f9;
+  background: #f8f9fa;
   cursor: pointer;
   transition: background 0.2s, border-color 0.2s;
   font-size: 0.8em;
@@ -367,13 +390,13 @@
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  margin-top: 10px;
+  margin-top: 12px;
 }
 
 .subscription-modal-actions button,
 .template-modal-actions button,
 .subscription-details-actions button {
-  padding: 6px 10px;
+  padding: 8px 16px;
   border: none;
   border-radius: 4px;
   cursor: pointer;
@@ -432,10 +455,9 @@
 
 /* Адаптивность для ширины 350px и меньше */
 @media (max-width: 350px) {
-
   .template-section,
   .subscription-section {
-    padding: 10px;
+    padding: 8px;
   }
 
   .template-section h2,
@@ -444,7 +466,7 @@
   }
 
   .subscription-tabs {
-    gap: 6px;
+    gap: 5px;
   }
 
   .tab-button {
@@ -454,13 +476,13 @@
 
   .template-list {
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 8px;
+    gap: 6px;
   }
 
   .template-container,
   .subscription-container {
-    padding: 8px;
-    min-height: 50px;
+    padding: 6px;
+    min-height: 40px;
   }
 
   .template-info h3,
@@ -470,44 +492,44 @@
 
   .template-info p,
   .subscription-info p {
-    font-size: 0.75em;
+    font-size: 0.7em;
   }
 
   .template-action-icon,
   .subscription-action-icon {
-    width: 18px;
-    height: 18px;
+    width: 20px;
+    height: 20px;
   }
 
   .template-action-icon img,
   .subscription-action-icon img {
-    width: 14px;
-    height: 14px;
+    width: 16px;
+    height: 16px;
   }
 
   .template-action-icon[title]:hover::after,
   .subscription-action-icon[title]:hover::after {
-    font-size: 0.6em;
-    padding: 2px 5px;
+    font-size: 0.65em;
+    padding: 3px 6px;
   }
 
   .subscription-add-btn {
-    padding: 5px 8px;
-    font-size: 0.8em;
+    padding: 6px 12px;
+    font-size: 0.85em;
   }
 
   .subscription-modal-content,
   .template-modal-content,
   .subscription-details-content {
-    padding: 10px;
+    padding: 12px;
     max-width: 300px;
-    max-height: 85vh;
+    max-height: 90vh;
   }
 
   .subscription-modal-content h2,
   .template-modal-content h2,
   .subscription-details-content h2 {
-    font-size: 1.1em;
+    font-size: 1.2em;
   }
 
   .subscription-modal-content input,
@@ -519,7 +541,7 @@
   }
 
   .subscription-details-content p {
-    font-size: 0.75em;
+    font-size: 0.8em;
   }
 
   .days-of-week-buttons {
@@ -527,14 +549,22 @@
   }
 
   .day-button {
-    padding: 4px 6px;
+    padding: 3px 6px;
     font-size: 0.75em;
   }
 
   .subscription-modal-actions button,
   .template-modal-actions button,
   .subscription-details-actions button {
-    padding: 5px 8px;
+    padding: 6px 12px;
     font-size: 0.8em;
   }
+
+  .tooltip:hover::after {
+    font-size: 0.65em;
+    padding: 3px 6px;
+  }
+}
+.subscription-tabs{
+  padding-left: 15px;
 }
