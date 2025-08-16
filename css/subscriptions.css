@@ -262,7 +262,8 @@
 
 .subscription-modal,
 .template-modal,
-.subscription-details-modal {
+.subscription-details-modal,
+.renew-subscription-modal {
   position: fixed;
   top: 0;
   left: 0;
@@ -277,7 +278,8 @@
 
 .subscription-modal-content,
 .template-modal-content,
-.subscription-details-content {
+.subscription-details-content,
+.renew-subscription-modal-content {
   background-color: #f9f9f9;
   padding: 15px;
   border-radius: 12px;
@@ -290,7 +292,8 @@
 
 .subscription-modal-content h2,
 .template-modal-content h2,
-.subscription-details-content h2 {
+.subscription-details-content h2,
+.renew-subscription-modal-content h2 {
   margin: 0 0 12px;
   font-size: 1.4em;
   color: #007bff;
@@ -298,10 +301,32 @@
   font-weight: 600;
 }
 
+.renew-subscription-info {
+  background-color: #ffffff;
+  padding: 10px;
+  border-radius: 6px;
+  margin-bottom: 15px;
+  border: 1px solid #e0e0e0;
+}
+
+.renew-subscription-info h3 {
+  margin: 0 0 8px;
+  font-size: 1.1em;
+  color: #333;
+}
+
+.renew-subscription-info p {
+  margin: 4px 0;
+  color: #666;
+  font-size: 0.85em;
+}
+
 .subscription-modal-content input,
 .subscription-modal-content select,
 .template-modal-content input,
-.template-modal-content select {
+.template-modal-content select,
+.renew-subscription-modal-content input,
+.renew-subscription-modal-content select {
   width: 100%;
   padding: 6px;
   margin-bottom: 8px;
@@ -313,7 +338,9 @@
 .subscription-modal-content input:focus,
 .subscription-modal-content select:focus,
 .template-modal-content input:focus,
-.template-modal-content select:focus {
+.template-modal-content select:focus,
+.renew-subscription-modal-content input:focus,
+.renew-subscription-modal-content select:focus {
   border-color: #0056b3;
   outline: none;
 }
@@ -351,7 +378,6 @@
   font-size: 0.85em;
   margin-bottom: 4px;
   display: block;
-  font-weight: 500;
 }
 
 .days-of-week-buttons {
@@ -362,208 +388,74 @@
 
 .day-button {
   padding: 4px 8px;
-  border: 1px solid #ccc;
+  border: 1px solid #007bff;
   border-radius: 4px;
-  background: #f8f9fa;
+  background-color: #fff;
   cursor: pointer;
-  transition: background 0.2s, border-color 0.2s;
   font-size: 0.8em;
-}
-
-.day-button.selected {
-  background: #007bff;
-  color: #fff;
-  border-color: #007bff;
+  transition: background 0.2s, color 0.2s;
 }
 
 .day-button:hover {
-  background: #e0e0e0;
+  background-color: #e9ecef;
 }
 
-.day-button.selected:hover {
-  background: #0056b3;
+.day-button.selected {
+  background-color: #007bff;
+  color: white;
 }
 
 .subscription-modal-actions,
 .template-modal-actions,
-.subscription-details-actions {
+.subscription-details-actions,
+.renew-subscription-modal-actions {
   display: flex;
-  justify-content: flex-end;
   gap: 8px;
+  justify-content: flex-end;
   margin-top: 12px;
 }
 
 .subscription-modal-actions button,
 .template-modal-actions button,
-.subscription-details-actions button {
+.subscription-details-actions button,
+.renew-subscription-modal-actions button {
   padding: 8px 16px;
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 0.85em;
+  font-size: 0.9em;
   font-weight: 500;
+  transition: background 0.2s;
 }
 
-.subscription-modal-actions button[id="subscription-save-btn"],
-.template-modal-actions button[id="template-save-btn"],
-.subscription-details-actions button[id="subscription-renew-btn"] {
+#subscription-save-btn,
+#template-save-btn,
+#subscription-renew-btn,
+#renew-save-btn {
   background-color: #007bff;
   color: white;
 }
 
-.subscription-modal-actions button[id="subscription-save-btn"]:hover,
-.template-modal-actions button[id="template-save-btn"]:hover,
-.subscription-details-actions button[id="subscription-renew-btn"]:hover {
+#subscription-save-btn:hover,
+#template-save-btn:hover,
+#subscription-renew-btn:hover,
+#renew-save-btn:hover {
   background-color: #0056b3;
 }
 
-.subscription-modal-actions button[id="subscription-cancel-btn"],
-.template-modal-actions button[id="template-cancel-btn"],
-.subscription-details-actions button[id="subscription-close-btn"] {
-  background-color: #6c757d;
+#subscription-cancel-btn,
+#template-cancel-btn,
+#subscription-close-btn,
+#renew-cancel-btn {
+  background-color: #dc3545;
   color: white;
 }
 
-.subscription-modal-actions button[id="subscription-cancel-btn"]:hover,
-.template-modal-actions button[id="template-cancel-btn"]:hover,
-.subscription-details-actions button[id="subscription-close-btn"]:hover {
-  background-color: #5a6268;
-}
-
-/* Стили для скроллбара */
-.template-list::-webkit-scrollbar,
-.subscription-list::-webkit-scrollbar {
-  width: 6px;
-}
-
-.template-list::-webkit-scrollbar-track,
-.subscription-list::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 3px;
-}
-
-.template-list::-webkit-scrollbar-thumb,
-.subscription-list::-webkit-scrollbar-thumb {
-  background: #007bff;
-  border-radius: 3px;
-}
-
-.template-list::-webkit-scrollbar-thumb:hover,
-.subscription-list::-webkit-scrollbar-thumb:hover {
-  background: #0056b3;
-}
-
-/* Адаптивность для ширины 350px и меньше */
-@media (max-width: 350px) {
-  .template-section,
-  .subscription-section {
-    padding: 8px;
-  }
-
-  .template-section h2,
-  .subscription-section h2 {
-    font-size: 1.1em;
-  }
-
-  .subscription-tabs {
-    gap: 5px;
-  }
-
-  .tab-button {
-    padding: 5px 10px;
-    font-size: 0.8em;
-  }
-
-  .template-list {
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 6px;
-  }
-
-  .template-container,
-  .subscription-container {
-    padding: 6px;
-    min-height: 40px;
-  }
-
-  .template-info h3,
-  .subscription-info h3 {
-    font-size: 0.9em;
-  }
-
-  .template-info p,
-  .subscription-info p {
-    font-size: 0.7em;
-  }
-
-  .template-action-icon,
-  .subscription-action-icon {
-    width: 20px;
-    height: 20px;
-  }
-
-  .template-action-icon img,
-  .subscription-action-icon img {
-    width: 16px;
-    height: 16px;
-  }
-
-  .template-action-icon[title]:hover::after,
-  .subscription-action-icon[title]:hover::after {
-    font-size: 0.65em;
-    padding: 3px 6px;
-  }
-
-  .subscription-add-btn {
-    padding: 6px 12px;
-    font-size: 0.85em;
-  }
-
-  .subscription-modal-content,
-  .template-modal-content,
-  .subscription-details-content {
-    padding: 12px;
-    max-width: 300px;
-    max-height: 90vh;
-  }
-
-  .subscription-modal-content h2,
-  .template-modal-content h2,
-  .subscription-details-content h2 {
-    font-size: 1.2em;
-  }
-
-  .subscription-modal-content input,
-  .subscription-modal-content select,
-  .template-modal-content input,
-  .template-modal-content select {
-    padding: 5px;
-    font-size: 0.8em;
-  }
-
-  .subscription-details-content p {
-    font-size: 0.8em;
-  }
-
-  .days-of-week-buttons {
-    gap: 3px;
-  }
-
-  .day-button {
-    padding: 3px 6px;
-    font-size: 0.75em;
-  }
-
-  .subscription-modal-actions button,
-  .template-modal-actions button,
-  .subscription-details-actions button {
-    padding: 6px 12px;
-    font-size: 0.8em;
-  }
-
-  .tooltip:hover::after {
-    font-size: 0.65em;
-    padding: 3px 6px;
-  }
+#subscription-cancel-btn:hover,
+#template-cancel-btn:hover,
+#subscription-close-btn:hover,
+#renew-cancel-btn:hover {
+  background-color: #b02a37;
 }
 .subscription-tabs{
   padding-left: 15px;

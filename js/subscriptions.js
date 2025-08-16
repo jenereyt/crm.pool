@@ -1,4 +1,4 @@
-import { getClients } from './clients.js';
+import { getClients, getClientById, updateClient } from './clients.js';
 import { scheduleData } from './schedule.js';
 import { getGroups as getGroupNames } from './groups.js';
 
@@ -16,7 +16,7 @@ export function getActiveSubscriptions() {
   return getClients()
     .filter(client => client.subscription)
     .map(client => ({
-      id: `sub_${client.id}_${client.subscription.subscriptionNumber}`, // Стабильный ID
+      id: `sub_${client.id}_${client.subscription.subscriptionNumber}`,
       clientId: client.id,
       templateId: client.subscription.templateId,
       startDate: client.subscription.startDate,
@@ -28,7 +28,7 @@ export function getActiveSubscriptions() {
       remainingClasses: client.subscription.remainingClasses !== undefined ? client.subscription.remainingClasses : Infinity,
       isPaid: client.subscription.isPaid !== undefined ? client.subscription.isPaid : true,
       renewalHistory: client.subscription.renewalHistory || [],
-      subscriptionNumber: client.subscription.subscriptionNumber || `SUB-${String(client.id).padStart(3, '0')}`
+      subscriptionNumber: client.subscription.subscriptionNumber || `SUB-${String(client.id).replace('client', '').padStart(3, '0')}`
     }))
     .filter(sub => sub.isPaid && new Date(sub.endDate) >= new Date());
 }
@@ -49,7 +49,7 @@ export function getInactiveSubscriptions() {
       remainingClasses: client.subscription.remainingClasses !== undefined ? client.subscription.remainingClasses : Infinity,
       isPaid: client.subscription.isPaid !== undefined ? client.subscription.isPaid : true,
       renewalHistory: client.subscription.renewalHistory || [],
-      subscriptionNumber: client.subscription.subscriptionNumber || `SUB-${String(client.id).padStart(3, '0')}`
+      subscriptionNumber: client.subscription.subscriptionNumber || `SUB-${String(client.id).replace('client', '').padStart(3, '0')}`
     }))
     .filter(sub => !sub.isPaid || new Date(sub.endDate) < new Date());
 }
@@ -198,24 +198,25 @@ export function loadSubscriptions() {
 
   subscriptionList.addEventListener('click', (e) => {
     const subContainer = e.target.closest('.subscription-container');
-    const actionIcon = e.target.closest('.subscription-action-icon');
     if (!subContainer) return;
     const subId = subContainer.getAttribute('data-id');
     const sub = getActiveSubscriptions().concat(getInactiveSubscriptions()).find(s => s.id === subId);
     if (!sub) return;
 
+    const actionIcon = e.target.closest('.subscription-action-icon');
     if (actionIcon) {
       if (actionIcon.classList.contains('delete')) {
         if (confirm('Удалить абонемент?')) {
-          const client = clients.find(c => c.id === sub.clientId);
+          const client = getClientById(sub.clientId);
           if (client) {
             client.subscription = null;
+            updateClient(client.id, client);
             renderSubscriptions(document.querySelector('.tab-button.active').getAttribute('data-tab'));
           }
         }
       } else if (actionIcon.classList.contains('edit')) {
         showSubscriptionForm('Редактировать абонемент', sub, clients, groups, (data) => {
-          const client = clients.find(c => c.id === data.clientId);
+          const client = getClientById(data.clientId);
           if (client) {
             const template = subscriptionTemplates.find(t => t.id === data.templateId);
             client.subscription = {
@@ -228,9 +229,10 @@ export function loadSubscriptions() {
               group: data.group,
               remainingClasses: template ? template.remainingClasses : Infinity,
               isPaid: data.isPaid,
-              renewalHistory: data.renewalHistory || client.subscription.renewalHistory || [],
-              subscriptionNumber: data.subscriptionNumber || client.subscription.subscriptionNumber || `SUB-${String(client.id).padStart(3, '0')}`
+              renewalHistory: data.renewalHistory || client.subscription?.renewalHistory || [],
+              subscriptionNumber: data.subscriptionNumber || client.subscription?.subscriptionNumber || `SUB-${String(client.id).replace('client', '').padStart(3, '0')}`
             };
+            updateClient(client.id, client);
             renderSubscriptions(document.querySelector('.tab-button.active').getAttribute('data-tab'));
           }
         });
@@ -285,7 +287,7 @@ export function loadSubscriptions() {
   }
 
   function showSubscriptionDetails(sub) {
-    const client = clients.find(c => c.id === sub.clientId);
+    const client = getClientById(sub.clientId);
     const template = subscriptionTemplates.find(t => t.id === sub.templateId);
     const modal = document.createElement('div');
     modal.className = 'subscription-details-modal';
@@ -301,18 +303,7 @@ export function loadSubscriptions() {
         <p>Время: ${sub.classTime || 'Не указано'}</p>
         <p>Группа: ${sub.group || 'Не указана'}</p>
         <p>Статус: ${sub.isPaid && new Date(sub.endDate) >= new Date() ? 'Активный' : 'Неактивный'}</p>
-        <p>История продлений: ${sub.renewalHistory.length ? sub.renewalHistory.map(entry => {
-      const date = formatDate(new Date(entry.date));
-      const changeText = entry.fromTemplate && entry.toTemplate ? ` (с "${entry.fromTemplate}" на "${entry.toTemplate}")` : '';
-      return `${date}${changeText}`;
-    }).join(', ') : 'Нет'}</p>
-        <div class="client-form-field">
-          <label for="renew-template">Новый шаблон абонемента (при продлении)</label>
-          <select id="renew-template">
-            <option value="${sub.templateId}">${template ? template.type : 'Текущий шаблон'}</option>
-            ${subscriptionTemplates.filter(t => t.id !== sub.templateId).map(t => `<option value="${t.id}">${t.type}</option>`).join('')}
-          </select>
-        </div>
+        <p>История продлений: ${sub.renewalHistory.length ? sub.renewalHistory.map(entry => new Date(entry.date || entry).toISOString().split('T')[0]).join(', ') : 'Нет'}</p>
         <div class="subscription-details-actions">
           <button id="subscription-renew-btn" title="Продлить абонемент на 30 дней с выбранным шаблоном">Продлить</button>
           <button id="subscription-close-btn">Закрыть</button>
@@ -326,35 +317,108 @@ export function loadSubscriptions() {
     });
 
     document.getElementById('subscription-renew-btn').addEventListener('click', () => {
-      const client = clients.find(c => c.id === sub.clientId);
-      const newTemplateId = document.getElementById('renew-template').value;
-      const newTemplate = subscriptionTemplates.find(t => t.id === newTemplateId);
-      if (client) {
-        const newEndDate = new Date(Math.max(new Date(), new Date(sub.endDate)));
-        newEndDate.setDate(newEndDate.getDate() + 30);
-        const renewalHistory = client.subscription.renewalHistory || [];
-        const renewalEntry = { date: new Date().toISOString() };
-        if (newTemplateId !== sub.templateId) {
-          const oldTemplate = subscriptionTemplates.find(t => t.id === sub.templateId);
-          renewalEntry.fromTemplate = oldTemplate ? oldTemplate.type : 'Неизвестный шаблон';
-          renewalEntry.toTemplate = newTemplate ? newTemplate.type : 'Неизвестный шаблон';
+      showRenewSubscriptionForm('Продление абонемента', client, sub, (data) => {
+        const client = getClientById(sub.clientId);
+        if (client) {
+          client.subscription = { ...client.subscription, ...data };
+          updateClient(client.id, client);
+          modal.remove();
+          renderSubscriptions(document.querySelector('.tab-button.active').getAttribute('data-tab'));
         }
-        renewalHistory.push(renewalEntry);
-        client.subscription = {
-          ...client.subscription,
-          templateId: newTemplateId,
-          endDate: formatDate(newEndDate),
-          remainingClasses: newTemplate ? newTemplate.remainingClasses : Infinity,
-          isPaid: true,
-          renewalHistory,
-          subscriptionNumber: client.subscription.subscriptionNumber || `SUB-${String(client.id).padStart(3, '0')}`
-        };
-        modal.remove();
-        renderSubscriptions(document.querySelector('.tab-button.active').getAttribute('data-tab'));
-      }
+      });
     });
 
     document.getElementById('subscription-close-btn').addEventListener('click', () => {
+      modal.remove();
+    });
+  }
+
+  function showRenewSubscriptionForm(title, client, sub, callback) {
+    const subscriptionTemplate = subscriptionTemplates.find(t => t.id === sub.templateId);
+    const defaultEndDate = new Date(Math.max(new Date(), new Date(sub.endDate)));
+    defaultEndDate.setDate(defaultEndDate.getDate() + 30);
+    const modal = document.createElement('div');
+    modal.className = 'renew-subscription-modal';
+    modal.innerHTML = `
+      <div class="renew-subscription-modal-content">
+        <h2>${title}</h2>
+        <div class="renew-subscription-info">
+          <h3>Текущий абонемент</h3>
+          <p>Клиент: ${client.name}</p>
+          <p>Номер абонемента: #${sub.subscriptionNumber}</p>
+          <p>Тип: ${subscriptionTemplate ? subscriptionTemplate.type : 'Неизвестный шаблон'}</p>
+          <p>Дата начала: ${sub.startDate}</p>
+          <p>Дата окончания: ${sub.endDate}</p>
+          <p>Осталось занятий: ${sub.remainingClasses === Infinity ? 'Безлимит' : sub.remainingClasses}</p>
+          <p>Статус: ${sub.isPaid && new Date(sub.endDate) >= new Date() ? 'Активный' : 'Неактивный'}</p>
+          <p>История продлений: ${sub.renewalHistory.length ? sub.renewalHistory.map(entry => new Date(entry.date || entry).toISOString().split('T')[0]).join(', ') : 'Нет'}</p>
+        </div>
+        <h3>Параметры продления</h3>
+        <div class="client-form-field">
+          <label for="renew-template">Шаблон абонемента <span class="tooltip" title="Выберите новый шаблон или оставьте текущий">ℹ️</span></label>
+          <select id="renew-template" required>
+            <option value="${sub.templateId}">${subscriptionTemplate ? subscriptionTemplate.type : 'Текущий шаблон'}</option>
+            ${subscriptionTemplates.filter(t => t.id !== sub.templateId).map(t => `<option value="${t.id}">${t.type}</option>`).join('')}
+          </select>
+        </div>
+        <div class="client-form-field">
+          <label for="renew-end-date">Новая дата окончания <span class="tooltip" title="Дата окончания абонемента после продления (по умолчанию +30 дней)">ℹ️</span></label>
+          <input type="date" id="renew-end-date" value="${defaultEndDate.toISOString().split('T')[0]}" required>
+        </div>
+        <div class="client-form-field">
+          <label for="renew-is-paid">Оплачен <span class="tooltip" title="Отметьте, если продление оплачено (влияет на статус активности)">ℹ️</span></label>
+          <input type="checkbox" id="renew-is-paid" checked>
+        </div>
+        <div class="renew-subscription-modal-actions">
+          <button id="renew-save-btn">Продлить</button>
+          <button id="renew-cancel-btn">Отмена</button>
+        </div>
+      </div>
+    `;
+    mainContent.appendChild(modal);
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.remove();
+      }
+    });
+
+    document.getElementById('renew-save-btn').addEventListener('click', () => {
+      const templateId = document.getElementById('renew-template').value;
+      const endDate = document.getElementById('renew-end-date').value;
+      const isPaid = document.getElementById('renew-is-paid').checked;
+
+      if (templateId && endDate) {
+        const start = new Date(sub.startDate);
+        const end = new Date(endDate);
+        if (end > start) {
+          const template = subscriptionTemplates.find(t => t.id === templateId);
+          const renewalHistory = sub.renewalHistory || [];
+          const renewalEntry = { date: new Date().toISOString() };
+          if (templateId !== sub.templateId) {
+            const oldTemplate = subscriptionTemplates.find(t => t.id === sub.templateId);
+            renewalEntry.fromTemplate = oldTemplate ? oldTemplate.type : 'Неизвестный шаблон';
+            renewalEntry.toTemplate = template ? template.type : 'Неизвестный шаблон';
+          }
+          renewalHistory.push(renewalEntry);
+          callback({
+            templateId,
+            endDate,
+            remainingClasses: template ? template.remainingClasses : sub.remainingClasses,
+            isPaid,
+            renewalHistory,
+            subscriptionNumber: sub.subscriptionNumber
+          });
+          modal.remove();
+        } else {
+          alert('Дата окончания должна быть позже даты начала абонемента!');
+        }
+      } else {
+        alert('Заполните все обязательные поля!');
+      }
+    });
+
+    document.getElementById('renew-cancel-btn').addEventListener('click', () => {
       modal.remove();
     });
   }
@@ -369,7 +433,7 @@ export function loadSubscriptions() {
           <label for="subscription-client">Клиент</label>
           <select id="subscription-client" required>
             <option value="">Выберите клиента</option>
-            ${clients.map(client => `<option value="${client.id}" ${sub.clientId === client.id ? 'selected' : ''}>${client.name}${client.blacklisted ? ' (В чёрном списке)' : ''}</option>`).join('')}
+            ${clients.map(c => `<option value="${c.id}" ${sub.clientId === c.id ? 'selected' : ''}>${c.name}${c.blacklisted ? ' (В чёрном списке)' : ''}</option>`).join('')}
           </select>
         </div>
         <div class="client-form-field">
@@ -415,7 +479,6 @@ export function loadSubscriptions() {
           <input type="checkbox" id="subscription-is-paid" ${sub.isPaid !== false ? 'checked' : ''}>
         </div>
         <div class="subscription-modal-actions">
-          <button id="subscription-renew-btn" title="Продлить абонемент на 30 дней">Продлить</button>
           <button id="subscription-save-btn">Сохранить</button>
           <button id="subscription-cancel-btn">Отмена</button>
         </div>
@@ -424,7 +487,9 @@ export function loadSubscriptions() {
     mainContent.appendChild(modal);
 
     modal.addEventListener('click', (e) => {
-      if (e.target === modal) modal.remove();
+      if (e.target === modal) {
+        modal.remove();
+      }
     });
 
     const dayButtons = modal.querySelectorAll('.day-button');
@@ -432,24 +497,6 @@ export function loadSubscriptions() {
       button.addEventListener('click', () => {
         button.classList.toggle('selected');
       });
-    });
-
-    document.getElementById('subscription-renew-btn').addEventListener('click', () => {
-      const client = clients.find(c => c.id === sub.clientId);
-      if (client) {
-        const newEndDate = new Date(Math.max(new Date(), new Date(sub.endDate)));
-        newEndDate.setDate(newEndDate.getDate() + 30);
-        const renewalHistory = client.subscription.renewalHistory || [];
-        renewalHistory.push({ date: new Date().toISOString() });
-        client.subscription = {
-          ...client.subscription,
-          endDate: formatDate(newEndDate),
-          isPaid: true,
-          renewalHistory
-        };
-        modal.remove();
-        renderSubscriptions(document.querySelector('.tab-button.active').getAttribute('data-tab'));
-      }
     });
 
     document.getElementById('subscription-save-btn').addEventListener('click', () => {
@@ -467,10 +514,10 @@ export function loadSubscriptions() {
         const start = new Date(startDate);
         const end = new Date(endDate);
         if (end > start) {
-          const client = clients.find(c => c.id === clientId);
+          const client = getClientById(clientId);
           const template = subscriptionTemplates.find(t => t.id === templateId);
           if (client) {
-            const subscriptionNumber = sub.subscriptionNumber || `SUB-${String(clientId).padStart(3, '0')}`;
+            const subscriptionNumber = sub.subscriptionNumber || `SUB-${String(clientId).replace('client', '').padStart(3, '0')}`;
             client.subscription = {
               templateId,
               startDate,
@@ -513,7 +560,7 @@ export function loadSubscriptions() {
                     trainer: 'Не указан',
                     group: group || '',
                     clients: clientsList,
-                    date: formatDate(d),
+                    date: new Date(d).toISOString().split('T')[0],
                     startTime: classTime,
                     endTime,
                     attendance: clientsList.reduce((acc, cl) => ({ ...acc, [cl]: 'Пришёл' }), {}),
@@ -541,6 +588,7 @@ export function loadSubscriptions() {
             }
 
             classesToAdd.forEach(cls => scheduleData.push(cls));
+            updateClient(client.id, client);
           }
 
           callback({
