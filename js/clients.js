@@ -213,120 +213,110 @@ export function loadClients() {
     });
   }
 
-  function renderClients() {
-    const search = document.getElementById('client-search').value.toLowerCase();
-    const statusFilter = document.getElementById('status-filter').value;
-    const sortBy = document.getElementById('sort-by').value;
+function renderClients() {
+  const search = document.getElementById('client-search').value.toLowerCase();
+  const statusFilter = document.getElementById('status-filter').value;
+  const sortBy = document.getElementById('sort-by').value;
 
-    let filteredClients = clientsData.filter(client => {
-      const matchesSearch = search === '' ||
-        client.name.toLowerCase().includes(search) ||
-        client.phone.toLowerCase().includes(search) ||
-        client.groups.some(group => group.toLowerCase().includes(search));
+  let filteredClients = clientsData.filter(client => {
+    const matchesSearch = search === '' ||
+      client.name.toLowerCase().includes(search) ||
+      client.phone.toLowerCase().includes(search) ||
+      client.groups.some(group => group.toLowerCase().includes(search));
 
-      const matchesStatus = statusFilter === '' || getSubscriptionStatus(client) === statusFilter;
+    const matchesStatus = statusFilter === '' || getSubscriptionStatus(client) === statusFilter;
 
-      return matchesSearch && matchesStatus;
-    });
+    return matchesSearch && matchesStatus;
+  });
 
-    filteredClients = sortClients(filteredClients, sortBy);
+  filteredClients = sortClients(filteredClients, sortBy);
 
-    if (filteredClients.length === 0) {
-      clientList.style.display = 'none';
-      emptyState.style.display = 'flex';
-      return;
-    }
+  if (filteredClients.length === 0) {
+    clientList.style.display = 'none';
+    emptyState.style.display = 'flex';
+    return;
+  }
 
-    clientList.style.display = 'flex';
-    emptyState.style.display = 'none';
+  clientList.style.display = 'grid'; // Указываем grid явно
+  emptyState.style.display = 'none';
 
-    clientList.innerHTML = filteredClients
-      .map(client => {
-        const hasDiagnosis = client.diagnosis && client.diagnosis !== 'Нет';
-        const status = getSubscriptionStatus(client);
-        const statusClass = {
-          'active': 'status-active',
-          'inactive': 'status-inactive',
-          'no-subscription': 'status-none',
-          'blacklisted': 'status-blacklisted'
-        }[status];
+  clientList.innerHTML = filteredClients
+    .map(client => {
+      const hasDiagnosis = client.diagnosis && client.diagnosis !== 'Нет';
+      const status = getSubscriptionStatus(client);
+      const statusClass = {
+        'active': 'status-active',
+        'inactive': 'status-inactive',
+        'no-subscription': 'status-none',
+        'blacklisted': 'status-blacklisted'
+      }[status];
 
-        const statusText = {
-          'active': 'Активный',
-          'inactive': 'Неактивный',
-          'no-subscription': 'Без абонемента',
-          'blacklisted': 'В чёрном списке'
-        }[status];
+      const statusText = {
+        'active': 'Активный',
+        'inactive': 'Неактивный',
+        'no-subscription': 'Без абонемента',
+        'blacklisted': 'В чёрном списке'
+      }[status];
 
-        return `
-            <div class="client-card ${client.blacklisted ? 'blacklisted' : ''}" data-id="${client.id}">
-              <div class="client-main-info">
-                <div class="client-avatar">
-                  ${client.photo ?
-            `<img src="${client.photo}" class="client-photo" alt="${client.name}">` :
-            `<div class="client-photo-placeholder">${client.name.charAt(0).toUpperCase()}</div>`
-          }
-                  <div class="status-indicator ${statusClass}" title="${statusText}"></div>
-                </div>
-                
-                <div class="client-details">
-                  <div class="client-name-section">
-                    <h3 class="client-name ${hasDiagnosis ? 'has-diagnosis' : ''}">${client.name}</h3>
-                    <div class="client-meta">
-                      <span class="client-phone">${client.phone}</span>
-                      ${hasDiagnosis ? `<span class="diagnosis-badge">${client.diagnosis}</span>` : ''}
-                    </div>
-                  </div>
-                  
-                  <div class="client-additional-info">
-                    ${client.groups.length > 0 ?
-            `<div class="groups-info">
-                        <span class="info-label">Группы:</span> 
-                        ${client.groups.map(group => `<span class="group-tag">${group}</span>`).join('')}
-                      </div>` :
-            '<div class="groups-info"><span class="no-groups">Без групп</span></div>'
-          }
-                    
-                    <div class="visit-info">
-                      <span class="info-label">Последний визит:</span>
-                      <span class="last-visit">${formatDate(client.lastVisit)}</span>
-                    </div>
-                    
-                    ${client.subscription && client.subscription.remainingClasses !== undefined ?
-            `<div class="classes-info">
-                        <span class="info-label">Осталось занятий:</span>
-                        <span class="remaining-classes ${client.subscription.remainingClasses <= 3 && client.subscription.remainingClasses !== Infinity ? 'low' : ''}">
-                          ${client.subscription.remainingClasses === Infinity ? '∞' : client.subscription.remainingClasses}
-                        </span>
-                      </div>` : ''
-          }
-                  </div>
+      return `
+        <div class="client-card ${client.blacklisted ? 'blacklisted' : ''}" data-id="${client.id}">
+          <div class="client-main-info">
+            <div class="client-avatar">
+              ${client.photo ?
+                `<img src="${client.photo}" class="client-photo" alt="${client.name}" style="object-fit: cover;">` :
+                `<div class="client-photo-placeholder">${client.name.charAt(0).toUpperCase()}</div>`
+              }
+              <div class="status-indicator ${statusClass}" title="${statusText}"></div>
+            </div>
+            <div class="client-details">
+              <div class="client-name-section">
+                <h3 class="client-name ${hasDiagnosis ? 'has-diagnosis' : ''}">${client.name}</h3>
+                <div class="client-meta">
+                  <span class="client-phone">${client.phone}</span>
+                  ${hasDiagnosis ? `<span class="diagnosis-badge">${client.diagnosis}</span>` : ''}
                 </div>
               </div>
-              
-              <div class="client-actions">
-                <div class="action-buttons-group">
-                  <button class="client-action-btn edit-btn" data-id="${client.id}" title="Редактировать">
-                    <img src="images/icon-edit.svg" alt="Редактировать" class="btn-icon">
-                  </button>
-                  <button class="client-action-btn subscription-btn" data-id="${client.id}" title="Абонемент">
-                    <img src="images/icon-subscriptions.svg" alt="Абонемент" class="btn-icon">
-                  </button>
-                  <button class="client-action-btn group-btn" data-id="${client.id}" title="Группы">
-                    <img src="images/icon-group.svg" alt="Группы" class="btn-icon">
-                  </button>
-                  <button class="client-action-btn blacklist-btn ${client.blacklisted ? 'active' : ''}" data-id="${client.id}" title="${client.blacklisted ? 'Убрать из чёрного списка' : 'В чёрный список'}">
-                    <img src="images/icon-delete.svg" alt="${client.blacklisted ? 'Убрать из чёрного списка' : 'В чёрный список'}" class="btn-icon">
-                  </button>
-                  <button class="client-action-btn delete-btn" data-id="${client.id}" title="Удалить">
-                    <img src="images/trash.svg" alt="Удалить" class="btn-icon">
-                  </button>
-                </div>
+              <div class="client-additional-info">
+                <span class="groups-info">
+                  <span class="info-label">Группы:</span>
+                  ${client.groups.length ? client.groups.map(group => `<span class="group-tag">${group}</span>`).join('') : '<span class="no-groups">Без групп</span>'}
+                </span>
+                <span class="visit-info">
+                  <span class="info-label">Визит:</span>
+                  <span class="last-visit">${formatDate(client.lastVisit)}</span>
+                </span>
+                ${client.subscription && client.subscription.remainingClasses !== undefined ?
+                  `<span class="classes-info">
+                    <span class="info-label">Осталось:</span>
+                    <span class="remaining-classes ${client.subscription.remainingClasses <= 3 && client.subscription.remainingClasses !== Infinity ? 'low' : ''}">
+                      ${client.subscription.remainingClasses === Infinity ? '∞' : client.subscription.remainingClasses}
+                    </span>
+                  </span>` : ''
+                }
               </div>
             </div>
-          `;
-      }).join('');
-  }
+          </div>
+          <div class="action-buttons-group">
+            <button class="client-action-btn edit-btn" data-id="${client.id}" title="Редактировать">
+              <img src="images/icon-edit.svg" alt="Редактировать" class="btn-icon">
+            </button>
+            <button class="client-action-btn subscription-btn" data-id="${client.id}" title="Абонемент">
+              <img src="images/icon-subscriptions.svg" alt="Абонемент" class="btn-icon">
+            </button>
+            <button class="client-action-btn group-btn" data-id="${client.id}" title="Группы">
+              <img src="images/icon-group.svg" alt="Группы" class="btn-icon">
+            </button>
+            <button class="client-action-btn blacklist-btn ${client.blacklisted ? 'active' : ''}" data-id="${client.id}" title="${client.blacklisted ? 'Убрать из чёрного списка' : 'В чёрный список'}">
+              <img src="images/icon-delete.svg" alt="${client.blacklisted ? 'Убрать из чёрного списка' : 'В чёрный список'}" class="btn-icon">
+            </button>
+            <button class="client-action-btn delete-btn" data-id="${client.id}" title="Удалить">
+              <img src="images/trash.svg" alt="Удалить" class="btn-icon">
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+}
 
   renderClients();
 
@@ -784,14 +774,23 @@ export function loadClients() {
 
         const reader = new FileReader();
         reader.onload = (ev) => {
-          photoPreview.innerHTML = `<img src="${ev.target.result}" alt="Предпросмотр">`;
+          // Создаём img с правильными стилями сразу
+          const img = document.createElement('img');
+          img.src = ev.target.result;
+          img.alt = 'Предпросмотр';
+          img.style.width = '100%';
+          img.style.height = '100%';
+          img.style.objectFit = 'cover'; // Ключевой стиль для обрезки
+          img.style.borderRadius = '50%'; // На всякий случай
+
+          photoPreview.innerHTML = ''; // Очищаем
+          photoPreview.appendChild(img);
           photoPreview.classList.remove('placeholder');
           photoRemoveBtn.style.display = 'block';
         };
         reader.readAsDataURL(file);
       }
     });
-
     photoRemoveBtn.addEventListener('click', () => {
       photoPreview.innerHTML = `
         <img src="images/icon-photo.svg" alt="Загрузить фото" class="upload-icon">

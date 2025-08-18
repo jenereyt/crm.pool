@@ -302,35 +302,33 @@ img[class*='icon'] {
   outline: none;
 }
 
-/* Секция клиентов */
-.client-section {
-  padding: 0.5rem;
-}
-
+/* Список клиентов — сетка для рядов */
 .client-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  /* 2-3 колонки на десктопе */
+  gap: 0.25rem;
+  /* Минимальный зазор между карточками */
 }
 
-/* Карточка клиента */
+/* Карточка клиента — компактная */
 .client-card {
-  background: var(--card-background);
+  padding: 0.5rem;
+  /* Меньше отступов */
+  font-size: 0.75rem;
+  /* Меньше шрифт */
   border: 1px solid var(--border-color);
-  border-radius: var(--border-radius-lg);
-  padding: 0.75rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  transition: var(--transition);
-  cursor: pointer;
+  border-radius: var(--border-radius);
   box-shadow: var(--shadow-sm);
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  /* Центрируем всё по вертикали */
+  gap: 0.5rem;
+  /* Меньше зазор */
 }
 
 .client-card:hover {
   box-shadow: var(--shadow);
-  border-color: var(--gray-300);
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
 
 .client-card.blacklisted {
@@ -338,26 +336,178 @@ img[class*='icon'] {
   background: #fef2f2;
 }
 
+/* Фото клиента */
+.client-photo,
+.client-photo-placeholder {
+  width: 32px;
+  /* Ещё меньше */
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  /* Обрезает фото */
+  border: 1px solid var(--gray-200);
+}
+
+.client-photo-placeholder {
+  background: var(--primary-light);
+  color: var(--primary-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.client-photo-preview,
+.client-photo-preview img {
+  width: 64px;
+  /* Меньше для формы */
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--gray-200);
+}
+
+.client-photo-preview.placeholder {
+  background: var(--gray-100);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--gray-500);
+  font-size: 0.75rem;
+}
+
+/* Детали клиента — всё в одну строку */
 .client-main-info {
   display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
+  align-items: center;
+  gap: 0.5rem;
   flex: 1;
 }
 
-.client-avatar {
-  position: relative;
-  flex-shrink: 0;
+.client-details {
+  display: flex;
+  /* Меняем на flex вместо grid */
+  flex-direction: row;
+  /* Всё в строку */
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: nowrap;
+  /* Запрещаем перенос */
 }
 
-.client-photo,
-.client-photo-placeholder {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid var(--gray-200);
+.client-name-section {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
+
+.client-name {
+  font-size: 0.875rem;
+  /* Меньше шрифт */
+  font-weight: 600;
+  color: var(--text-color);
+  white-space: nowrap;
+  /* Не переносим имя */
+}
+
+.client-name.has-diagnosis {
+  color: var(--danger-color);
+}
+
+.client-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.client-phone {
+  color: var(--gray-600);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.diagnosis-badge {
+  background: var(--danger-color);
+  color: white;
+  padding: 0.2rem 0.4rem;
+  border-radius: 8px;
+  font-size: 0.7rem;
+}
+
+.client-additional-info {
+  display: flex;
+  /* В строку */
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.7rem;
+}
+
+.groups-info,
+.visit-info,
+.classes-info {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  white-space: nowrap;
+  /* Без переноса */
+}
+
+.info-label {
+  color: var(--gray-500);
+  font-weight: 500;
+  font-size: 0.7rem;
+}
+
+.group-tag {
+  background: var(--primary-light);
+  color: var(--primary-color);
+  padding: 0.2rem 0.4rem;
+  border-radius: 8px;
+  font-size: 0.7rem;
+}
+
+.no-groups {
+  color: var(--gray-400);
+  font-style: italic;
+  font-size: 0.7rem;
+}
+
+.last-visit {
+  color: var(--gray-700);
+}
+
+.remaining-classes {
+  font-weight: 600;
+  color: var(--success-color);
+}
+
+.remaining-classes.low {
+  color: var(--danger-color);
+}
+
+/* Кнопки действий — компактнее */
+.action-buttons-group {
+  display: flex;
+  gap: 0.2rem;
+}
+
+.client-action-btn {
+  width: 28px;
+  height: 28px;
+  background: var(--gray-100);
+  border: 1px solid var(--gray-300);
+  border-radius: var(--border-radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.client-action-btn img {
+  width: 16px;
+  height: 16px;
+} 
 
 .client-photo-placeholder {
   background: var(--primary-light);
@@ -397,8 +547,6 @@ img[class*='icon'] {
 
 .client-details {
   flex: 1;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
   gap: 0.5rem;
 }
 
@@ -440,10 +588,9 @@ img[class*='icon'] {
 }
 
 .client-additional-info {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.5rem;
-  grid-column: 1 / -1;
+  grid-template-columns: 1fr;
+  /* В карточке теперь одна колонка для высоты */
+  gap: 0.25rem;
 }
 
 .groups-info,
@@ -1351,7 +1498,9 @@ img[class*='icon'] {
     flex-wrap: wrap;
   }
 
-  .modal-header, .modal-body, .modal-footer {
+  .modal-header,
+  .modal-body,
+  .modal-footer {
     padding: 0.5rem;
   }
 
@@ -1383,7 +1532,8 @@ img[class*='icon'] {
     padding: 0.5rem;
   }
 
-  .client-photo, .client-photo-placeholder {
+  .client-photo,
+  .client-photo-placeholder {
     width: 40px;
     height: 40px;
   }
@@ -1422,7 +1572,8 @@ img[class*='icon'] {
     height: 32px;
   }
 
-  .client-photo-large, .client-photo-placeholder-large {
+  .client-photo-large,
+  .client-photo-placeholder-large {
     width: 64px;
     height: 64px;
   }
@@ -1441,7 +1592,8 @@ img[class*='icon'] {
     padding: 0.25rem;
   }
 
-  .client-photo, .client-photo-placeholder {
+  .client-photo,
+  .client-photo-placeholder {
     width: 32px;
     height: 32px;
   }
@@ -1451,7 +1603,8 @@ img[class*='icon'] {
     height: 24px;
   }
 
-  .status-filter, .sort-select {
+  .status-filter,
+  .sort-select {
     min-width: 100px;
   }
 }
@@ -1479,7 +1632,8 @@ img[class*='icon'] {
   }
 }
 
-.client-card, .modal-content {
+.client-card,
+.modal-content {
   animation: fadeIn 0.3s ease-out;
 }
 
