@@ -33,20 +33,6 @@
   --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-body {
-  font-family: var(--font-family);
-  background: var(--background-color);
-  color: var(--text-color);
-  line-height: 1.5;
-  font-size: 15px;
-}
-
 /* Стили для SVG-иконок */
 img[class*='icon'] {
   width: 18px;
@@ -65,6 +51,12 @@ img[class*='icon'] {
   transition: var(--transition);
 }
 
+.client-details-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
 /* Общие стили для кнопок */
 .btn-primary,
 .btn-secondary,
@@ -73,7 +65,10 @@ img[class*='icon'] {
 .confirm-btn-ok,
 .confirm-btn-cancel,
 .photo-remove-btn,
-.photo-zoom-close {
+.photo-zoom-close,
+.add-parent-btn,
+.new-sub-btn,
+.renew-sub-btn {
   border: none;
   padding: 0.5rem 1rem;
   border-radius: var(--border-radius);
@@ -83,6 +78,11 @@ img[class*='icon'] {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  opacity: 1;
+}
+
+.new-sub-btn {
+  margin-top: 5px;
 }
 
 .btn-primary,
@@ -95,9 +95,8 @@ img[class*='icon'] {
 .btn-add-group:hover {
   background: var(--primary-hover);
   transform: translateY(-1px);
+  opacity: 1;
 }
-
-
 
 .for-flex {
   display: flex;
@@ -117,6 +116,7 @@ img[class*='icon'] {
   background: var(--gray-200);
   border-color: var(--gray-400);
   transform: translateY(-1px);
+  opacity: 1;
 }
 
 .client-action-btn {
@@ -131,52 +131,72 @@ img[class*='icon'] {
   background: var(--gray-200);
   border-color: var(--gray-400);
   transform: scale(1.05);
+  opacity: 1;
 }
 
 .edit-btn:hover {
   background: var(--info-color);
   color: white;
   border-color: var(--info-color);
+  opacity: 1;
 }
 
 .subscription-btn:hover {
   background: var(--warning-color);
   color: white;
   border-color: var(--warning-color);
+  opacity: 1;
 }
 
 .group-btn:hover {
   background: var(--primary-color);
   color: white;
   border-color: var(--primary-color);
+  opacity: 1;
 }
 
 .blacklist-btn:hover,
 .blacklist-btn.active,
 .delete-btn:hover,
 .confirm-btn-ok,
-.photo-remove-btn {
+.photo-remove-btn,
+.add-parent-btn {
   background: var(--danger-color);
   color: white;
   border-color: var(--danger-color);
+  opacity: 1;
 }
 
 .confirm-btn-ok:hover,
-.photo-remove-btn:hover {
+.photo-remove-btn:hover,
+.add-parent-btn:hover {
   background: #dc2626;
   transform: translateY(-1px);
+  opacity: 1;
+}
+
+.new-sub-btn,
+.renew-sub-btn {
+  background: var(--success-color);
+  color: white;
+}
+
+.new-sub-btn:hover,
+.renew-sub-btn:hover {
+  background: #059669;
+  transform: translateY(-1px);
+  opacity: 1;
 }
 
 /* Заголовок приложения */
 .header {
   background: var(--card-background);
   border-bottom: 1px solid var(--border-color);
-  display: flex;
-  align-items: center;
   box-shadow: var(--shadow-sm);
   position: sticky;
   top: 0;
   z-index: 100;
+  padding: 0.5rem 1rem;
 }
 
 .header-content {
@@ -302,28 +322,24 @@ img[class*='icon'] {
   outline: none;
 }
 
-/* Список клиентов — сетка для рядов */
+/* Список клиентов */
 .client-list {
-  /* 2-3 колонки на десктопе */
+  display: flex;
+  flex-direction: column;
   gap: 0.25rem;
-  /* Минимальный зазор между карточками */
 }
 
-/* Карточка клиента — компактная */
+/* Карточка клиента */
 .client-card {
   padding: 0.5rem;
-  /* Меньше отступов */
   font-size: 0.75rem;
-  /* Меньше шрифт */
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius);
   box-shadow: var(--shadow-sm);
   transition: var(--transition);
   display: flex;
   align-items: center;
-  /* Центрируем всё по вертикали */
   gap: 0.5rem;
-  /* Меньше зазор */
 }
 
 .client-card:hover {
@@ -340,11 +356,9 @@ img[class*='icon'] {
 .client-photo,
 .client-photo-placeholder {
   width: 32px;
-  /* Ещё меньше */
   height: 32px;
   border-radius: 50%;
   object-fit: cover;
-  /* Обрезает фото */
   border: 1px solid var(--gray-200);
 }
 
@@ -361,7 +375,6 @@ img[class*='icon'] {
 .client-photo-preview,
 .client-photo-preview img {
   width: 64px;
-  /* Меньше для формы */
   height: 64px;
   border-radius: 50%;
   object-fit: cover;
@@ -378,7 +391,7 @@ img[class*='icon'] {
   font-size: 0.75rem;
 }
 
-/* Детали клиента — всё в одну строку */
+/* Детали клиента */
 .client-main-info {
   display: flex;
   align-items: center;
@@ -388,13 +401,10 @@ img[class*='icon'] {
 
 .client-details {
   display: flex;
-  /* Меняем на flex вместо grid */
   flex-direction: row;
-  /* Всё в строку */
   align-items: center;
   gap: 0.5rem;
   flex-wrap: nowrap;
-  /* Запрещаем перенос */
 }
 
 .client-name-section {
@@ -405,11 +415,9 @@ img[class*='icon'] {
 
 .client-name {
   font-size: 0.875rem;
-  /* Меньше шрифт */
   font-weight: 600;
   color: var(--text-color);
   white-space: nowrap;
-  /* Не переносим имя */
 }
 
 .client-name.has-diagnosis {
@@ -438,20 +446,17 @@ img[class*='icon'] {
 
 .client-additional-info {
   display: flex;
-  /* В строку */
   align-items: center;
   gap: 0.5rem;
   font-size: 0.7rem;
 }
 
 .groups-info,
-.visit-info,
 .classes-info {
   display: flex;
   align-items: center;
   gap: 1px;
   white-space: nowrap;
-  /* Без переноса */
 }
 
 .info-label {
@@ -474,10 +479,6 @@ img[class*='icon'] {
   font-size: 0.7rem;
 }
 
-.last-visit {
-  color: var(--gray-700);
-}
-
 .remaining-classes {
   font-weight: 600;
   color: var(--success-color);
@@ -487,7 +488,7 @@ img[class*='icon'] {
   color: var(--danger-color);
 }
 
-/* Кнопки действий — компактнее */
+/* Кнопки действий */
 .action-buttons-group {
   display: flex;
   gap: 0.2rem;
@@ -507,16 +508,6 @@ img[class*='icon'] {
 .client-action-btn img {
   width: 16px;
   height: 16px;
-} 
-
-.client-photo-placeholder {
-  background: var(--primary-light);
-  color: var(--primary-color);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-  font-size: 1rem;
 }
 
 .status-indicator {
@@ -545,96 +536,6 @@ img[class*='icon'] {
   background: var(--danger-color);
 }
 
-.client-details {
-  flex: 1;
-  gap: 0.5rem;
-}
-
-.client-name-section {
-  grid-column: 1 / -1;
-  margin-bottom: 0.25rem;
-}
-
-.client-name {
-  font-size: 1rem;
-  font-weight: 600;
-  margin-bottom: 0.25rem;
-  color: var(--text-color);
-}
-
-.client-name.has-diagnosis {
-  color: var(--danger-color);
-}
-
-.client-meta {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.client-phone {
-  color: var(--gray-600);
-  font-size: 0.75rem;
-}
-
-.diagnosis-badge {
-  background: var(--danger-color);
-  color: white;
-  padding: 0.25rem 0.5rem;
-  border-radius: 12px;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.client-additional-info {
-  grid-template-columns: 1fr;
-  /* В карточке теперь одна колонка для высоты */
-  gap: 0.25rem;
-}
-
-.groups-info,
-.visit-info,
-.classes-info {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  font-size: 0.75rem;
-}
-
-.info-label {
-  color: var(--gray-500);
-  font-weight: 500;
-  font-size: 0.75rem;
-}
-
-.group-tag {
-  background: var(--primary-light);
-  color: var(--primary-color);
-  padding: 0.25rem 0.5rem;
-  border-radius: 12px;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.no-groups {
-  color: var(--gray-400);
-  font-style: italic;
-}
-
-.last-visit {
-  color: var(--gray-700);
-}
-
-.remaining-classes {
-  font-weight: 600;
-  color: var(--success-color);
-}
-
-.remaining-classes.low {
-  color: var(--danger-color);
-}
-
 /* Пустое состояние */
 .empty-state {
   text-align: center;
@@ -654,13 +555,12 @@ img[class*='icon'] {
 }
 
 /* Модальные окна */
-.client-modal,
-.subscription-modal,
-.renew-subscription-modal,
-.group-management-modal,
 .client-details-modal,
+.client-form-modal,
+.subscription-management-modal,
 .confirm-modal,
-.photo-zoom-modal {
+.photo-zoom-modal,
+.group-management-modal {
   position: fixed;
   top: 0;
   left: 0;
@@ -675,23 +575,25 @@ img[class*='icon'] {
   overflow-y: auto;
 }
 
-.client-modal-content,
-.subscription-modal-content,
-.renew-subscription-modal-content,
-.group-management-modal-content,
 .client-details-content,
-.confirm-modal-content {
+.client-form-content,
+.subscription-management-content,
+.confirm-modal-content,
+.photo-zoom-content,
+.group-management-content {
   background: var(--card-background);
   border-radius: var(--border-radius-lg);
-  max-width: 700px;
+  max-width: 900px;
   width: 100%;
   max-height: 80vh;
   overflow-y: auto;
   box-shadow: var(--shadow-xl);
   animation: fadeIn 0.3s ease-out;
+  padding: 1rem;
 }
 
-.modal-header {
+/* Модалка деталей клиента */
+.client-details-content .modal-header {
   padding: 0.5rem;
   border-bottom: 1px solid var(--border-color);
   display: flex;
@@ -699,13 +601,13 @@ img[class*='icon'] {
   align-items: center;
 }
 
-.modal-header h2 {
+.client-details-content .modal-header h2 {
   font-size: 1rem;
   font-weight: 600;
   color: var(--text-color);
 }
 
-.modal-close {
+.client-details-content .modal-close {
   background: none;
   border: none;
   font-size: 1.25rem;
@@ -716,228 +618,61 @@ img[class*='icon'] {
   transition: var(--transition);
 }
 
-.modal-close:hover {
+.client-details-content .modal-close:hover {
   background: var(--gray-100);
   color: var(--gray-600);
 }
 
-.modal-footer {
-  padding: 0.5rem;
-  border-top: 1px solid var(--border-color);
+.client-details-content .tabs {
   display: flex;
-  justify-content: center;
-  gap: 0.5rem;
-}
-
-/* Формы */
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 0.5rem;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-}
-
-.form-group.full-width {
-  grid-column: 1 / -1;
-}
-
-.form-group label {
-  font-weight: 500;
-  color: var(--gray-700);
-  margin-bottom: 0.25rem;
-  font-size: 0.75rem;
-}
-
-.form-group label.required::after {
-  content: " *";
-  color: var(--danger-color);
-}
-
-.form-group input,
-.form-group select,
-.form-group textarea {
-  padding: 0.5rem;
-  border: 1px solid var(--gray-300);
-  border-radius: var(--border-radius);
-  font-size: 0.75rem;
-  background: var(--card-background);
-  color: var(--text-color);
-  transition: var(--transition);
-}
-
-.form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus {
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px var(--primary-light);
-  outline: none;
-}
-
-.form-group input.error {
-  border-color: var(--danger-color);
-  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
-}
-
-.form-group textarea {
-  resize: vertical;
-  min-height: 80px;
-}
-
-.field-error {
-  color: var(--danger-color);
-  font-size: 0.75rem;
-  margin-top: 0.25rem;
-}
-
-.field-hint {
-  color: var(--gray-500);
-  font-size: 0.75rem;
-  margin-top: 0.25rem;
-}
-
-/* Фото секция */
-.client-photo-section {
+  gap: 1rem;
+  border-bottom: 1px solid var(--border-color);
   margin-bottom: 1rem;
-  text-align: center;
 }
 
-.photo-upload-area {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.client-photo-preview {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid var(--gray-200);
+.client-details-content .tab-button {
+  background: none;
+  border: none;
+  padding: 0.5rem 1rem;
+  font-weight: 500;
   cursor: pointer;
   transition: var(--transition);
+  border-bottom: 2px solid transparent;
 }
 
-.client-photo-preview.placeholder {
-  background: var(--gray-100);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: var(--gray-500);
-  font-size: 0.75rem;
+.client-details-content .tab-button.active {
+  border-bottom: 2px solid var(--primary-color); 
 }
 
-.client-photo-preview:hover {
-  border-color: var(--primary-color);
-  transform: scale(1.02);
+.renewal-entry {
+  font-size: 0.8125rem;
+  font-weight: 400;
+  color: var(--gray-600);
+  display: block;
+  padding: 0.25rem 0;
 }
 
-.upload-icon {
-  width: 24px;
-  height: 24px;
-  margin-bottom: 0.25rem;
-}
-
-.photo-input {
+.client-details-content .tab-content {
   display: none;
 }
 
-.photo-remove-btn img {
-  width: 16px;
-  height: 16px;
+.client-details-content .tab-content.active {
+  display: block;
 }
 
-/* Селектор дней недели */
-.days-of-week-selector {
-  display: flex;
-  gap: 0.25rem;
-  flex-wrap: wrap;
+.client-details-content .client-details-body {
+  padding: 0.5rem;
 }
 
-.day-button {
-  background: var(--gray-100);
-  border: 1px solid var(--gray-300);
-  padding: 0.25rem 0.75rem;
-  border-radius: var(--border-radius);
-  cursor: pointer;
-  transition: var(--transition);
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.day-button:hover {
-  background: var(--gray-200);
-  transform: translateY(-1px);
-}
-
-.day-button.selected {
-  background: var(--primary-color);
-  color: white;
-  border-color: var(--primary-color);
-}
-
-/* Checkbox */
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  cursor: pointer;
-  font-weight: 500;
-}
-
-.checkbox-label input[type="checkbox"] {
-  display: none;
-}
-
-.checkmark {
-  width: 16px;
-  height: 16px;
-  border: 2px solid var(--gray-300);
-  border-radius: 4px;
-  position: relative;
-  transition: var(--transition);
-}
-
-.checkbox-label input[type="checkbox"]:checked+.checkmark {
-  background: var(--primary-color);
-  border-color: var(--primary-color);
-}
-
-.checkbox-label input[type="checkbox"]:checked+.checkmark::after {
-  content: "✓";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  color: white;
-  font-size: 12px;
-  font-weight: bold;
-}
-
-/* Детали клиента */
-.client-details-modal .client-details-content {
-  max-width: 700px;
-  padding: 0.5rem
-}
-
-.details-header {
+.client-details-content .details-header {
   display: flex;
   align-items: center;
   gap: 1rem;
   margin-bottom: 1rem;
 }
 
-.client-avatar-large {
-  position: relative;
-}
-
-.client-photo-large,
-.client-photo-placeholder-large {
+.client-details-content .client-photo-large,
+.client-details-content .client-photo-placeholder-large {
   width: 80px;
   height: 80px;
   border-radius: 50%;
@@ -946,7 +681,7 @@ img[class*='icon'] {
   border: 2px solid var(--gray-200);
 }
 
-.client-photo-placeholder-large {
+.client-details-content .client-photo-placeholder-large {
   background: var(--primary-light);
   color: var(--primary-color);
   display: flex;
@@ -956,37 +691,37 @@ img[class*='icon'] {
   font-size: 1.25rem;
 }
 
-.client-title h2 {
+.client-details-content .client-title h2 {
   font-size: 1.25rem;
   margin-bottom: 0.25rem;
   color: var(--text-color);
 }
 
-.client-id {
+.client-details-content .client-id {
   color: var(--gray-500);
   font-size: 0.75rem;
 }
 
-.details-grid {
+.client-details-content .details-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 1rem;
 }
 
-.detail-section {
+.client-details-content .detail-section {
   background: var(--gray-50);
   padding: 0.5rem;
   border-radius: var(--border-radius);
 }
 
-.detail-section h4 {
+.client-details-content .detail-section h4 {
   font-size: 0.875rem;
   font-weight: 600;
   margin-bottom: 0.5rem;
   color: var(--gray-800);
 }
 
-.detail-item {
+.client-details-content .detail-item {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -994,245 +729,460 @@ img[class*='icon'] {
   gap: 0.5rem;
 }
 
-.detail-label {
+.client-details-content .detail-label {
   font-weight: 500;
   color: var(--gray-600);
   font-size: 0.75rem;
   flex-shrink: 0;
 }
 
-.detail-value {
+.client-details-content .detail-value {
   color: var(--text-color);
   font-size: 0.75rem;
   text-align: right;
 }
 
-.detail-value.has-diagnosis {
+.client-details-content .detail-value.has-diagnosis {
   color: var(--danger-color);
   font-weight: 500;
 }
 
-.detail-value.status-active {
+.client-details-content .detail-value.status-active {
+  background: var(--success-color);
   color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
   font-weight: 500;
 }
 
-.detail-value.status-inactive {
-  color: var(--gray-500);
+.client-details-content .detail-value.status-inactive {
+  background: var(--gray-400);
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
   font-weight: 500;
 }
 
-.no-data {
+.client-details-content .no-data {
   color: var(--gray-400);
   font-style: italic;
 }
 
-.groups-list {
+.client-details-content .groups-list {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  justify-content: flex-end;
 }
 
-.renewal-history {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  align-items: flex-end;
-}
-
-.renewal-entry {
-  font-size: 0.75rem;
-  color: var(--gray-600);
-  background: var(--card-background);
+.client-details-content .group-item {
+  background: var(--primary-light);
+  color: var(--primary-color);
   padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-}
-
-.client-details-actions {
-  display: flex;
-  justify-content: center;
-  gap: 0.5rem;
-  padding-top: 1rem;
-}
-
-/* Информация о текущем абонементе */
-.current-subscription-info {
-  background: var(--card-background);
-  padding: 0.5rem;
-  border-radius: var(--border-radius);
-  margin-bottom: 0.5rem;
-}
-
-.current-subscription-info h3 {
-  font-size: 1rem;
-  font-weight: 600;
-  margin-bottom: 0.5rem;
-  color: var(--gray-800);
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.current-subscription-info h3 img,
-.renewal-form h3 img {
-  width: 20px;
-  height: 20px;
-}
-
-.info-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 0.5rem;
-}
-
-.info-item {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.info-item .label {
+  border-radius: 12px;
   font-size: 0.75rem;
-  color: var(--gray-500);
   font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.025em;
 }
 
-.info-item .value {
-  font-weight: 500;
-  color: var(--text-color);
-  font-size: 0.875rem;
-}
-
-.low-classes {
-  color: var(--danger-color) !important;
-}
-
-.renewal-history-section {
-  margin-top: 0.5rem;
-  padding-top: 0.5rem;
-  border-top: 1px solid var(--border-color);
-}
-
-.renewal-history-section h4 {
-  font-size: 0.75rem;
-  font-weight: 600;
-  margin-bottom: 0.25rem;
-  color: var(--gray-700);
-}
-
-.renewal-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.renewal-item {
-  font-size: 0.75rem;
-  color: var(--gray-600);
-  background: var(--card-background);
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-}
-
-.renewal-form {
-  background: var(--card-background);
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius);
-  padding: 0.5rem;
-}
-
-.renewal-form h3 {
-  font-size: 1rem;
-  font-weight: 600;
-  margin-bottom: 0.5rem;
-  color: var(--gray-800);
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-/* Управление группами */
-.client-info-bar {
+.client-details-content .subscription-info {
   background: var(--gray-50);
   padding: 0.5rem;
   border-radius: var(--border-radius);
+  margin-top: 0.5rem;
+}
+
+.client-details-content .subscription-info h4 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--gray-800);
+}
+
+.client-details-content .client-details-footer {
+  padding: 0.5rem;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+/* Модалка редактирования клиента */
+.client-form-content .client-form-header {
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.client-form-content .client-form-header h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.client-form-content .client-form-close {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  color: var(--gray-400);
+  border-radius: var(--border-radius);
+  transition: var(--transition);
+}
+
+.client-form-content .client-form-close:hover {
+  background: var(--gray-100);
+  color: var(--gray-600);
+}
+
+.client-form-content .client-form-tabs {
+  display: flex;
+  gap: 1rem;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 1rem;
+}
+
+.client-form-content .tab-button {
+  background: none;
+  border: none;
+  padding: 0.5rem 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+  border-bottom: 2px solid transparent;
+  color: var(--gray-600);
+}
+
+.client-form-content .tab-button.active {
+  border-bottom: 2px solid var(--primary-color);
+  color: var(--primary-color);
+}
+
+.client-form-content .client-form-tab-content {
+  display: none;
+}
+
+.client-form-content .client-form-tab-content.active {
+  display: block;
+}
+
+.client-form-content .form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.5rem;
+}
+
+.client-form-content .form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.client-form-content .form-group label {
+  font-weight: 500;
+  color: var(--gray-700);
+  margin-bottom: 0.25rem;
+  font-size: 0.75rem;
+}
+
+.client-form-content .form-group label.required::after {
+  content: " *";
+  color: var(--danger-color);
+}
+
+.client-form-content .form-group input,
+.client-form-content .form-group select,
+.client-form-content .form-group textarea {
+  padding: 0.5rem;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--border-radius);
+  font-size: 0.75rem;
+  background: var(--card-background);
+  color: var(--text-color);
+  transition: var(--transition);
+}
+
+.client-form-content .form-group input:focus,
+.client-form-content .form-group select:focus,
+.client-form-content .form-group textarea:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px var(--primary-light);
+  outline: none;
+}
+
+.client-form-content .form-group input.error {
+  border-color: var(--danger-color);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.client-form-content .parent-form {
+  border: 1px solid var(--border-color);
+  padding: 0.5rem;
+  border-radius: var(--border-radius);
+  margin-bottom: 0.5rem;
+}
+
+.client-form-content .parent-form .form-grid {
+  grid-template-columns: 1fr;
+}
+
+.client-form-content .add-parent-btn {
+  background: var(--primary-color);
+  color: white;
+  margin-top: 0.5rem;
+}
+
+.client-form-content .add-parent-btn:hover {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+}
+
+.client-form-content .client-form-footer {
+  padding: 0.5rem;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+/* Модалка управления абонементами */
+.subscription-management-content .subscription-management-header {
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.subscription-management-content .subscription-management-header h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.subscription-management-content .subscription-management-close {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  color: var(--gray-400);
+  border-radius: var(--border-radius);
+  transition: var(--transition);
+}
+
+.subscription-management-content .subscription-management-close:hover {
+  background: var(--gray-100);
+  color: var(--gray-600);
+}
+
+.subscription-management-content .subscription-management-body {
+  padding: 0.5rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  height: 100%;
+}
+
+.subscription-management-content .subscription-history-section {
+  background: var(--gray-50);
+  padding: 0.5rem;
+  border-radius: var(--border-radius);
+}
+
+.subscription-management-content .subscription-history-section h3 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--gray-800);
+}
+
+.subscription-management-content .subscription-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.subscription-management-content .subscription-item {
+  border: 1px solid var(--border-color);
+  padding: 0.5rem;
+  border-radius: var(--border-radius);
+  background: var(--card-background);
+  box-shadow: var(--shadow-sm);
+}
+
+.subscription-management-content .subscription-item.active {
+  border-left: 4px solid var(--success-color);
+}
+
+.subscription-management-content .subscription-item.inactive {
+  border-left: 4px solid var(--gray-400);
+}
+
+.subscription-management-content .detail-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.25rem;
+}
+
+.subscription-management-content .detail-label {
+  font-weight: 500;
+  color: var(--gray-600);
+  font-size: 0.75rem;
+}
+
+.subscription-management-content .detail-value {
+  color: var(--text-color);
+  font-size: 0.75rem;
+  text-align: right;
+}
+
+.subscription-management-content .detail-value.status-active {
+  background: var(--success-color);
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+}
+
+.subscription-management-content .detail-value.status-inactive {
+  background: var(--gray-400);
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+}
+
+.subscription-management-content .active-subscription-section {
+  background: var(--gray-50);
+  padding: 0.5rem;
+  border-radius: var(--border-radius);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.subscription-management-content .active-subscription-section h3 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--gray-800);
+}
+
+.subscription-management-content .active-subscription-section .subscription-item.active-sub {
+  border: 1px solid var(--border-color);
+  background: var(--card-background);
+  box-shadow: var(--shadow-sm);
+}
+
+.subscription-management-content .active-subscription-section .no-data {
+  color: var(--gray-400);
+  font-style: italic;
+  text-align: center;
+  padding: 0.5rem;
+}
+
+.subscription-management-content .active-subscription-section .renew-sub-btn,
+.subscription-management-content .active-subscription-section .new-sub-btn {
+  align-self: flex-end;
+}
+
+/* Модалка управления группами */
+.group-management-content .group-management-header {
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.group-management-content .group-management-header h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.group-management-content .group-management-close {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  color: var(--gray-400);
+  border-radius: var(--border-radius);
+  transition: var(--transition);
+}
+
+.group-management-content .group-management-close:hover {
+  background: var(--gray-100);
+  color: var(--gray-600);
+}
+
+.group-management-content .group-management-body {
+  padding: 0.5rem;
+}
+
+.group-management-content .client-info-bar {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   margin-bottom: 1rem;
 }
 
-.client-avatar-small {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  overflow: hidden;
-  flex-shrink: 0;
+.group-management-content .client-avatar-small {
+  width: 32px;
+  height: 32px;
 }
 
-.client-avatar-small img,
-.client-avatar-small .placeholder {
+.group-management-content .client-avatar-small img,
+.group-management-content .client-avatar-small .placeholder {
   width: 100%;
   height: 100%;
+  border-radius: 50%;
   object-fit: cover;
 }
 
-.client-avatar-small .placeholder {
+.group-management-content .client-avatar-small .placeholder {
   background: var(--primary-light);
   color: var(--primary-color);
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 600;
-  font-size: 1rem;
+  font-size: 0.875rem;
 }
 
-.client-details-small h4 {
+.group-management-content .client-details-small h4 {
+  font-size: 0.875rem;
   font-weight: 600;
-  margin-bottom: 0.125rem;
   color: var(--text-color);
-  font-size: 1rem;
 }
 
-.client-details-small span {
-  color: var(--gray-600);
+.group-management-content .client-details-small span {
   font-size: 0.75rem;
+  color: var(--gray-600);
 }
 
-.group-management-section {
-  display: flex;
-  flex-direction: column;
+.group-management-content .group-sections {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 1rem;
 }
 
-.add-group-section label,
-.selected-groups-section label,
-.available-groups-section label {
-  display: block;
-  font-weight: 500;
-  color: var(--gray-700);
-  margin-bottom: 0.25rem;
-  font-size: 0.75rem;
-}
-
-.group-input-container {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-}
-
-.group-input-container input {
-  flex: 1;
+.group-management-content .selected-groups-section {
+  background: var(--gray-50);
   padding: 0.5rem;
-  border: 1px solid var(--gray-300);
   border-radius: var(--border-radius);
-  font-size: 0.75rem;
 }
 
-.selected-groups {
+.group-management-content .selected-groups-section label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--gray-800);
+  display: block;
+}
+
+.group-management-content .selected-groups {
   min-height: 40px;
   padding: 0.5rem;
   border: 2px dashed var(--gray-300);
@@ -1240,10 +1190,9 @@ img[class*='icon'] {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  align-items: flex-start;
 }
 
-.no-groups-selected {
+.group-management-content .no-groups-selected {
   color: var(--gray-400);
   font-style: italic;
   width: 100%;
@@ -1251,7 +1200,7 @@ img[class*='icon'] {
   padding: 0.5rem 0;
 }
 
-.selected-group-tag {
+.group-management-content .selected-group-tag {
   background: var(--primary-color);
   color: white;
   padding: 0.25rem 0.5rem;
@@ -1263,7 +1212,7 @@ img[class*='icon'] {
   gap: 0.5rem;
 }
 
-.remove-group-btn {
+.group-management-content .remove-group-btn {
   background: rgba(255, 255, 255, 0.3);
   color: white;
   border: none;
@@ -1278,37 +1227,145 @@ img[class*='icon'] {
   transition: var(--transition);
 }
 
-.remove-group-btn:hover {
+.group-management-content .remove-group-btn:hover {
   background: rgba(255, 255, 255, 0.5);
 }
 
-.available-groups {
+.group-management-content .group-history-section {
+  margin-top: 1rem;
+}
+
+.group-management-content .group-history-section h4 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--gray-800);
+}
+
+.group-management-content .group-history {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: var(--card-background);
+  padding: 0.5rem;
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-sm);
+}
+
+.group-management-content .group-history .renewal-entry {
+  font-size: 0.75rem;
+  color: var(--gray-600);
+}
+
+.group-management-content .available-groups-section {
+  background: var(--gray-50);
+  padding: 0.5rem;
+  border-radius: var(--border-radius);
+}
+
+.group-management-content .available-groups-section label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--gray-800);
+  display: block;
+}
+
+.group-management-content .group-search-container {
+  position: relative;
+  margin-bottom: 0.5rem;
+}
+
+.group-management-content #group-search {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--border-radius);
+  font-size: 0.75rem;
+  background: var(--card-background);
+  color: var(--text-color);
+  transition: var(--transition);
+}
+
+.group-management-content #group-search:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px var(--primary-light);
+  outline: none;
+}
+
+.group-management-content .available-groups {
+  display: flex;
+  flex-direction: column;
   gap: 0.5rem;
 }
 
-.group-suggestion {
+.group-management-content .group-suggestion {
   background: var(--gray-100);
   color: var(--gray-700);
   border: 1px solid var(--gray-300);
-  padding: 0.25rem 0.5rem;
-  border-radius: 20px;
+  padding: 0.5rem;
+  border-radius: var(--border-radius);
   font-size: 0.75rem;
   cursor: pointer;
   transition: var(--transition);
 }
 
-.group-suggestion:hover {
+.group-management-content .group-suggestion:hover {
   background: var(--primary-light);
   color: var(--primary-color);
   border-color: var(--primary-color);
   transform: translateY(-1px);
 }
 
+.group-management-content .add-group-section {
+  margin-top: 1rem;
+}
+
+.group-management-content .add-group-section label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--gray-800);
+  display: block;
+}
+
+.group-management-content .group-input-container {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.group-management-content #group-search-input,
+.group-management-content #group-start-date {
+  padding: 0.5rem;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--border-radius);
+  font-size: 0.75rem;
+  background: var(--card-background);
+  color: var(--text-color);
+  transition: var(--transition);
+  flex: 1;
+}
+
+.group-management-content #group-search-input:focus,
+.group-management-content #group-start-date:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px var(--primary-light);
+  outline: none;
+}
+
+.group-management-content .group-management-footer {
+  padding: 0.5rem;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
 /* Модальное окно подтверждения */
 .confirm-modal-content {
   max-width: 350px;
+  padding: 1rem;
 }
 
 .confirm-header h3 {
@@ -1321,6 +1378,7 @@ img[class*='icon'] {
   color: var(--gray-600);
   line-height: 1.5;
   font-size: 0.875rem;
+  margin-bottom: 1rem;
 }
 
 .confirm-actions {
@@ -1421,6 +1479,11 @@ img[class*='icon'] {
   .form-grid {
     grid-template-columns: 1fr;
   }
+
+  .group-management-content .group-sections,
+  .subscription-management-content .subscription-management-body {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 1024px) {
@@ -1473,9 +1536,8 @@ img[class*='icon'] {
   }
 
   .header-content {
-    justify-content: center;
     flex-direction: column;
-    text-align: center;
+    text-align: left;
   }
 
   .header-content h1 {
@@ -1494,36 +1556,28 @@ img[class*='icon'] {
   }
 
   .action-buttons-group {
-    justify-content: center;
+    justify-content: flex-end;
     flex-wrap: wrap;
   }
 
-  .modal-header,
-  .modal-body,
-  .modal-footer {
+  .client-details-content,
+  .client-form-content,
+  .subscription-management-content,
+  .group-management-content {
     padding: 0.5rem;
-  }
-
-  .modal-footer {
-    flex-direction: column-reverse;
-    gap: 0.5rem;
   }
 
   .details-header {
     flex-direction: column;
-    text-align: center;
+    text-align: left;
   }
 
-  .client-details-actions {
+  .client-details-footer {
     flex-direction: column;
   }
 
-  .group-input-container {
-    flex-direction: column;
-  }
-
-  .btn-add-group {
-    align-self: stretch;
+  .client-form-content .parent-form {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -1565,11 +1619,6 @@ img[class*='icon'] {
   .client-photo-preview {
     width: 80px;
     height: 80px;
-  }
-
-  .client-avatar-small {
-    width: 32px;
-    height: 32px;
   }
 
   .client-photo-large,
@@ -1633,7 +1682,10 @@ img[class*='icon'] {
 }
 
 .client-card,
-.modal-content {
+.client-details-content,
+.client-form-content,
+.subscription-management-content,
+.group-management-content {
   animation: fadeIn 0.3s ease-out;
 }
 
@@ -1719,9 +1771,4 @@ img[class*='icon'] {
   to {
     transform: rotate(360deg);
   }
-}
-
-.action-buttons-group {
-  display: flex;
-  gap: 0.25rem;
 }
