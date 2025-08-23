@@ -51,6 +51,12 @@ img[class*='icon'] {
   transition: var(--transition);
 }
 
+.invert{
+  filter: invert(1);
+  border: none;
+
+}
+
 .client-details-actions {
   display: flex;
   justify-content: flex-end;
@@ -64,7 +70,7 @@ img[class*='icon'] {
 .btn-add-group,
 .confirm-btn-ok,
 .confirm-btn-cancel,
-.photo-remove-btn,
+
 .photo-zoom-close,
 .add-parent-btn,
 .new-sub-btn,
@@ -374,9 +380,9 @@ img[class*='icon'] {
 
 .client-photo-preview,
 .client-photo-preview img {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
+  width: 150px;
+  height: 200px;
+  border-radius: var(--border-radius);
   object-fit: cover;
   border: 1px solid var(--gray-200);
 }
@@ -607,6 +613,15 @@ img[class*='icon'] {
   color: var(--text-color);
 }
 
+.remove-parent-btn {
+  padding: 5px;
+  margin-top: 5px;
+  border: none;
+  border-radius: 7px;
+  background-color: #dc2626;
+  color: #ffffff;
+}
+
 .client-details-content .modal-close {
   background: none;
   border: none;
@@ -641,7 +656,7 @@ img[class*='icon'] {
 }
 
 .client-details-content .tab-button.active {
-  border-bottom: 2px solid var(--primary-color); 
+  border-bottom: 2px solid var(--primary-color);
 }
 
 .renewal-entry {
@@ -856,7 +871,6 @@ img[class*='icon'] {
 
 .client-form-content .tab-button.active {
   border-bottom: 2px solid var(--primary-color);
-  color: var(--primary-color);
 }
 
 .client-form-content .client-form-tab-content {
@@ -867,10 +881,21 @@ img[class*='icon'] {
   display: block;
 }
 
-.client-form-content .form-grid {
+.client-form-content #client-tab-personal {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1rem;
+}
+
+.client-form-content .form-grid {
+  display: flex;
   gap: 0.5rem;
+  flex-direction: column;
+}
+
+.client-form-content .form-grid:nth-child(2) {
+  grid-template-columns: repeat(3, 1fr);
+  margin-top: 0.5rem;
 }
 
 .client-form-content .form-group {
@@ -893,7 +918,7 @@ img[class*='icon'] {
 .client-form-content .form-group input,
 .client-form-content .form-group select,
 .client-form-content .form-group textarea {
-  padding: 0.5rem;
+  padding: 0.3rem;
   border: 1px solid var(--gray-300);
   border-radius: var(--border-radius);
   font-size: 0.75rem;
@@ -913,6 +938,53 @@ img[class*='icon'] {
 .client-form-content .form-group input.error {
   border-color: var(--danger-color);
   box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.client-form-content .client-photo-section {
+  display: flex;
+}
+
+
+
+.client-form-content .photo-upload-area {
+  width: 100%;
+  text-align: center;
+}
+
+.client-form-content .client-photo-preview {
+  width: 100%;
+  height: 200px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--border-radius);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--gray-100);
+  cursor: pointer;
+  margin-bottom: 0.5rem;
+}
+
+.client-form-content .client-photo-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--border-radius);
+}
+
+.client-form-content .client-photo-preview.placeholder {
+  font-size: 0.75rem;
+  color: var(--gray-500);
+}
+
+.client-form-content .photo-remove-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  border: none;
+  border-radius: 5px;
+  padding: 3px;
 }
 
 .client-form-content .parent-form {
@@ -1476,7 +1548,11 @@ img[class*='icon'] {
     padding: 1rem;
   }
 
-  .form-grid {
+  .client-form-content #client-tab-personal {
+    grid-template-columns: 1fr;
+  }
+
+  .client-form-content .form-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1579,6 +1655,12 @@ img[class*='icon'] {
   .client-form-content .parent-form {
     grid-template-columns: 1fr;
   }
+
+  .client-form-content .client-photo-preview {
+    width: 100%;
+    max-width: 150px;
+    height: 200px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -1617,8 +1699,8 @@ img[class*='icon'] {
   }
 
   .client-photo-preview {
-    width: 80px;
-    height: 80px;
+    width: 100px;
+    height: 150px;
   }
 
   .client-photo-large,

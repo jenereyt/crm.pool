@@ -175,7 +175,7 @@ export function loadClients() {
           <option value="date-asc">Сначала старые</option>
         </select>
       </div>
-      <button class="btn-primary client-add-btn" id="client-add-btn">
+      <button type="button" class="btn-primary client-add-btn" id="client-add-btn">
         <i class="add-icon">+</i>
         <span>Добавить клиента</span>
       </button>
@@ -322,19 +322,19 @@ export function loadClients() {
               </div>
             </div>
             <div class="action-buttons-group">
-              <button class="client-action-btn edit-btn" data-id="${client.id}" title="Редактировать">
+              <button type="button" class="client-action-btn edit-btn" data-id="${client.id}" title="Редактировать">
                 <img src="images/icon-edit.svg" alt="Редактировать" class="btn-icon">
               </button>
-              <button class="client-action-btn subscription-btn" data-id="${client.id}" title="Абонемент">
+              <button type="button" class="client-action-btn subscription-btn" data-id="${client.id}" title="Абонемент">
                 <img src="images/icon-subscriptions.svg" alt="Абонемент" class="btn-icon">
               </button>
-              <button class="client-action-btn group-btn" data-id="${client.id}" title="Группы">
+              <button type="button" class="client-action-btn group-btn" data-id="${client.id}" title="Группы">
                 <img src="images/icon-group.svg" alt="Группы" class="btn-icon">
               </button>
-              <button class="client-action-btn blacklist-btn ${client.blacklisted ? 'active' : ''}" data-id="${client.id}" title="${client.blacklisted ? 'Убрать из чёрного списка' : 'В чёрный список'}">
+              <button type="button" class="client-action-btn blacklist-btn ${client.blacklisted ? 'active' : ''}" data-id="${client.id}" title="${client.blacklisted ? 'Убрать из чёрного списка' : 'В чёрный список'}">
                 <img src="images/icon-delete.svg" alt="${client.blacklisted ? 'Убрать из чёрного списка' : 'В чёрный список'}" class="btn-icon">
               </button>
-              <button class="client-action-btn delete-btn" data-id="${client.id}" title="Удалить">
+              <button type="button" class="client-action-btn delete-btn" data-id="${client.id}" title="Удалить">
                 <img src="images/trash.svg" alt="Удалить" class="btn-icon">
               </button>
             </div>
@@ -447,8 +447,8 @@ export function loadClients() {
             <p>${message}</p>
           </div>
           <div class="confirm-actions">
-            <button class="confirm-btn-cancel btn-secondary">Отмена</button>
-            <button class="confirm-btn-ok btn-primary">Удалить</button>
+            <button type="button" class="confirm-btn-cancel btn-secondary">Отмена</button>
+            <button type="button" class="confirm-btn-ok btn-primary">Удалить</button>
           </div>
         </div>
       `;
@@ -474,7 +474,7 @@ export function loadClients() {
     modal.innerHTML = `
         <div class="photo-zoom-content">
           <img src="${photoSrc}" class="photo-zoom-image" alt="Увеличенное фото">
-          <button class="photo-zoom-close btn-secondary">Закрыть</button>
+          <button type="button" class="photo-zoom-close btn-secondary">Закрыть</button>
         </div>
       `;
     document.getElementById('main-content').appendChild(modal);
@@ -510,8 +510,8 @@ export function loadClients() {
           </div>
           
           <div class="tabs">
-            <button class="tab-button active" data-tab="main">Основная информация</button>
-            <button class="tab-button" data-tab="groups-subs">Группы и абонементы</button>
+            <button type="button" class="tab-button active" data-tab="main">Основная информация</button>
+            <button type="button" class="tab-button" data-tab="groups-subs">Группы и абонементы</button>
           </div>
           
           <div class="tab-content active" id="tab-main">
@@ -623,8 +623,8 @@ export function loadClients() {
           </div>
           
           <div class="client-details-actions">
-            <button id="client-edit-details-btn" class="btn-secondary">Редактировать</button>
-            <button id="client-close-btn" class="btn-secondary">Закрыть</button>
+            <button type="button" id="client-edit-details-btn" class="btn-secondary">Редактировать</button>
+            <button type="button" id="client-close-btn" class="btn-secondary">Закрыть</button>
           </div>
         </div>
       `;
@@ -699,18 +699,18 @@ export function loadClients() {
     function renderParents() {
       const container = modal.querySelector('#parents-container');
       container.innerHTML = parents.map((p, index) => `
-        <div class="parent-form" data-index="${index}">
-          <div class="form-group">
-            <label for="parent-fullname-${index}" class="required">ФИО родителя/опекуна</label>
-            <input type="text" id="parent-fullname-${index}" value="${p.fullName || ''}" required>
-          </div>
-          <div class="form-group">
-            <label for="parent-phone-${index}" class="required">Телефон</label>
-            <input type="tel" id="parent-phone-${index}" value="${p.phone || ''}" required>
-          </div>
-          <button type="button" class="btn-danger remove-parent-btn" data-index="${index}">Удалить</button>
+      <div class="parent-form" data-index="${index}">
+        <div class="form-group">
+          <label for="parent-fullname-${index}" class="required">ФИО родителя/опекуна</label>
+          <input type="text" id="parent-fullname-${index}" value="${p.fullName || ''}" required>
         </div>
-      `).join('');
+        <div class="form-group">
+          <label for="parent-phone-${index}" class="required">Телефон</label>
+          <input type="tel" id="parent-phone-${index}" value="${p.phone || ''}" required>
+        </div>
+        <button type="button" class="btn-danger remove-parent-btn" data-index="${index}">Удалить</button>
+      </div>
+    `).join('');
 
       container.querySelectorAll('.remove-parent-btn').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -719,105 +719,119 @@ export function loadClients() {
           renderParents();
         });
       });
+
+      parents.forEach((_, index) => {
+        const fullnameInput = document.getElementById(`parent-fullname-${index}`);
+        const phoneInput = document.getElementById(`parent-phone-${index}`);
+
+        if (fullnameInput) {
+          fullnameInput.addEventListener('input', (e) => {
+            parents[index].fullName = e.target.value;
+          });
+        }
+
+        if (phoneInput) {
+          phoneInput.addEventListener('input', (e) => {
+            parents[index].phone = e.target.value;
+          });
+        }
+      });
     }
 
     modal.innerHTML = `
-      <div class="client-form-content">
-        <div class="client-form-header">
-          <h2>${title}</h2>
-          <button class="client-form-close" type="button">×</button>
+    <div class="client-form-content">
+      <div class="client-form-header">
+        <h2>${title}</h2>
+        <button type="button" class="client-form-close">×</button>
+      </div>
+      
+      <div class="client-form-tabs">
+        <button type="button" class="tab-button active" data-tab="personal">Личные данные</button>
+        <button type="button" class="tab-button" data-tab="parents">Родители/опекуны</button>
+        <button type="button" class="tab-button" data-tab="medical">Медицинская информация</button>
+      </div>
+      
+      <div class="client-form-tab-content active" id="client-tab-personal">
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="client-surname" class="required">Фамилия</label>
+            <input type="text" id="client-surname" value="${client.surname || ''}" required>
+            <span class="field-error" id="surname-error"></span>
+          </div>
+          <div class="form-group">
+            <label for="client-name" class="required">Имя</label>
+            <input type="text" id="client-name" value="${client.name || ''}" required>
+            <span class="field-error" id="name-error"></span>
+          </div>
+          <div class="form-group">
+            <label for="client-patronymic">Отчество</label>
+            <input type="text" id="client-patronymic" value="${client.patronymic || ''}">
+          </div>
         </div>
-        
-        <div class="client-form-tabs">
-          <button class="tab-button active" data-tab="personal">Личные данные</button>
-          <button class="tab-button" data-tab="parents">Родители/опекуны</button>
-          <button class="tab-button" data-tab="medical">Медицинская информация</button>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="client-birthdate" class="required">Дата рождения</label>
+            <input type="date" id="client-birthdate" value="${client.birthDate || ''}" required>
+            <span class="field-error" id="birthdate-error"></span>
+          </div>
+          <div class="form-group">
+            <label for="client-gender" class="required">Пол</label>
+            <select id="client-gender" required>
+              <option value="">Выберите пол</option>
+              <option value="male" ${client.gender === 'male' ? 'selected' : ''}>Мужской</option>
+              <option value="female" ${client.gender === 'female' ? 'selected' : ''}>Женский</option>
+            </select>
+            <span class="field-error" id="gender-error"></span>
+          </div>
+          <div class="form-group">
+            <label for="client-phone" class="required">Телефон</label>
+            <input type="tel" id="client-phone" value="${client.phone || ''}" required placeholder="+7 (999) 123-45-67">
+            <span class="field-error" id="phone-error"></span>
+          </div>
         </div>
-        
-        <div class="client-form-tab-content active" id="client-tab-personal">
-          <div class="client-photo-section">
-            <div class="photo-upload-area">
-              ${client.photo ?
+        <div class="client-photo-section">
+          <div class="photo-upload-area">
+            ${client.photo ?
         `<img src="${client.photo}" class="client-photo-preview" id="client-photo-preview" alt="${client.surname || 'Клиент'}">` :
         `<div class="client-photo-preview placeholder" id="client-photo-preview">
-                   <img src="images/icon-photo.svg" alt="Загрузить фото" class="upload-icon">
-                    <span>Добавить фото</span>
-                  </div>`
+                 <img src="images/icon-photo.svg" alt="Загрузить фото" class="upload-icon">
+                 <span>Добавить фото</span>
+               </div>`
       }
-              <input type="file" id="client-photo" accept="image/*" class="photo-input">
-              <button type="button" class="photo-remove-btn btn-primary" id="photo-remove-btn" ${!client.photo ? 'style="display: none;"' : ''}>
-                <img src="images/trash.svg" alt="Удалить фото" class="btn-icon"> Удалить фото
-              </button>
-            </div>
+          <div class= for-flex>
+            <input type="file" id="client-photo" accept="image/*" class="photo-input">
+            <button type="button" class="photo-remove-btn" id="photo-remove-btn" ${!client.photo ? 'style="display: none;"' : ''}>
+              <img src="images/trash.svg" alt="Удалить фото" class="btn-icon invert">
+            </button>
           </div>
-
-          <div class="form-grid">
-            <div class="form-group">
-              <label for="client-surname" class="required">Фамилия</label>
-              <input type="text" id="client-surname" value="${client.surname || ''}" required>
-              <span class="field-error" id="surname-error"></span>
-            </div>
-
-            <div class="form-group">
-              <label for="client-name" class="required">Имя</label>
-              <input type="text" id="client-name" value="${client.name || ''}" required>
-              <span class="field-error" id="name-error"></span>
-            </div>
-
-            <div class="form-group">
-              <label for="client-patronymic">Отчество</label>
-              <input type="text" id="client-patronymic" value="${client.patronymic || ''}">
-            </div>
-
-            <div class="form-group">
-              <label for="client-phone" class="required">Телефон</label>
-              <input type="tel" id="client-phone" value="${client.phone || ''}" required placeholder="+7 (999) 123-45-67">
-              <span class="field-error" id="phone-error"></span>
-            </div>
-
-            <div class="form-group">
-              <label for="client-birthdate" class="required">Дата рождения</label>
-              <input type="date" id="client-birthdate" value="${client.birthDate || ''}" required>
-              <span class="field-error" id="birthdate-error"></span>
-            </div>
-
-            <div class="form-group">
-              <label for="client-gender" class="required">Пол</label>
-              <select id="client-gender" required>
-                <option value="">Выберите пол</option>
-                <option value="male" ${client.gender === 'male' ? 'selected' : ''}>Мужской</option>
-                <option value="female" ${client.gender === 'female' ? 'selected' : ''}>Женский</option>
-              </select>
-              <span class="field-error" id="gender-error"></span>
-            </div>
           </div>
-        </div>
-
-        <div class="client-form-tab-content" id="client-tab-parents">
-          <div id="parents-container"></div>
-          <button type="button" id="add-parent-btn" class="btn-primary">Добавить родителя/опекуна</button>
-        </div>
-
-        <div class="client-form-tab-content" id="client-tab-medical">
-          <div class="form-grid">
-            <div class="form-group full-width">
-              <label for="client-diagnosis">Медицинский диагноз</label>
-              <input type="text" id="client-diagnosis" value="${client.diagnosis || ''}" placeholder="Укажите диагноз или 'Нет'">
-            </div>
-
-            <div class="form-group full-width">
-              <label for="client-features">Особенности и примечания</label>
-              <textarea id="client-features" placeholder="Дополнительная информация о клиенте, особенности занятий...">${client.features || ''}</textarea>
-            </div>
-          </div>
-        </div>
-
-        <div class="client-form-footer">
-          <button type="button" id="client-cancel-btn" class="btn-secondary">Отмена</button>
-          <button type="button" id="client-save-btn" class="btn-primary">Сохранить</button>
         </div>
       </div>
-    `;
+
+      <div class="client-form-tab-content" id="client-tab-parents">
+        <div id="parents-container"></div>
+        <button type="button" id="add-parent-btn" class="btn-primary">Добавить родителя/опекуна</button>
+      </div>
+
+      <div class="client-form-tab-content" id="client-tab-medical">
+        <div class="form-grid">
+          <div class="form-group full-width">
+            <label for="client-diagnosis">Медицинский диагноз</label>
+            <input type="text" id="client-diagnosis" value="${client.diagnosis || ''}" placeholder="Укажите диагноз или 'Нет'">
+          </div>
+          <div class="form-group full-width">
+            <label for="client-features">Особенности и примечания</label>
+            <input type="text" id="client-features" value="${client.features || ''}" placeholder="Дополнительная информация о клиенте, особенности занятий...">
+          </div>
+        </div>
+      </div>
+
+      <div class="client-form-footer">
+        <button type="button" id="client-cancel-btn" class="btn-secondary">Отмена</button>
+        <button type="button" id="client-save-btn" class="btn-primary">Сохранить</button>
+      </div>
+    </div>
+  `;
 
     document.getElementById('main-content').appendChild(modal);
 
@@ -867,7 +881,7 @@ export function loadClients() {
           img.style.width = '100%';
           img.style.height = '100%';
           img.style.objectFit = 'cover';
-          img.style.borderRadius = '50%';
+          img.style.borderRadius = '8px';
 
           photoPreview.innerHTML = '';
           photoPreview.appendChild(img);
@@ -880,9 +894,9 @@ export function loadClients() {
 
     photoRemoveBtn.addEventListener('click', () => {
       photoPreview.innerHTML = `
-        <img src="images/icon-photo.svg" alt="Загрузить фото" class="upload-icon">
-        <span>Добавить фото</span>
-      `;
+      <img src="images/icon-photo.svg" alt="Загрузить фото" class="upload-icon">
+      <span>Добавить фото</span>
+    `;
       photoPreview.classList.add('placeholder');
       photoInput.value = '';
       photoRemoveBtn.style.display = 'none';
@@ -980,10 +994,7 @@ export function loadClients() {
         photo = photoImg.src;
       }
 
-      const updatedParents = parents.map((p, index) => ({
-        fullName: document.getElementById(`parent-fullname-${index}`).value.trim(),
-        phone: document.getElementById(`parent-phone-${index}`).value.trim()
-      }));
+      const updatedParents = [...parents];
 
       callback({
         surname,
@@ -1027,7 +1038,7 @@ export function loadClients() {
       <div class="subscription-management-content">
         <div class="subscription-management-header">
           <h2>Управление абонементами: ${fullName}</h2>
-          <button class="subscription-management-close" type="button">×</button>
+          <button type="button" class="subscription-management-close" >×</button>
         </div>
         
         <div class="subscription-management-body">
@@ -1054,22 +1065,6 @@ export function loadClients() {
                     <div class="detail-item">
                       <span class="detail-label">Период:</span>
                       <span class="detail-value">${sub.startDate} — ${sub.endDate}</span>
-                    </div>
-                    <div class="detail-item">
-                      <span class="detail-label">Занятий в неделю:</span>
-                      <span class="detail-value">${sub.classesPerWeek || 0}</span>
-                    </div>
-                    <div class="detail-item">
-                      <span class="detail-label">Дни недели:</span>
-                      <span class="detail-value">${sub.daysOfWeek?.length ? sub.daysOfWeek.join(', ') : 'Не указаны'}</span>
-                    </div>
-                    <div class="detail-item">
-                      <span class="detail-label">Время:</span>
-                      <span class="detail-value">${sub.classTime || 'Не указано'}</span>
-                    </div>
-                    <div class="detail-item">
-                      <span class="detail-label">Группа:</span>
-                      <span class="detail-value">${sub.group || 'Без группы'}</span>
                     </div>
                     <div class="detail-item">
                       <span class="detail-label">Осталось занятий:</span>
@@ -1118,26 +1113,10 @@ export function loadClients() {
                     <span class="detail-value">${sub.startDate} — ${sub.endDate}</span>
                   </div>
                   <div class="detail-item">
-                    <span class="detail-label">Занятий в неделю:</span>
-                    <span class="detail-value">${sub.classesPerWeek || 0}</span>
-                  </div>
-                  <div class="detail-item">
-                    <span class="detail-label">Дни недели:</span>
-                    <span class="detail-value">${sub.daysOfWeek?.length ? sub.daysOfWeek.join(', ') : 'Не указаны'}</span>
-                  </div>
-                  <div class="detail-item">
-                    <span class="detail-label">Время:</span>
-                    <span class="detail-value">${sub.classTime || 'Не указано'}</span>
-                  </div>
-                  <div class="detail-item">
-                    <span class="detail-label">Группа:</span>
-                    <span class="detail-value">${sub.group || 'Без группы'}</span>
-                  </div>
-                  <div class="detail-item">
                     <span class="detail-label">Осталось занятий:</span>
                     <span class="detail-value">${sub.remainingClasses === Infinity ? 'Безлимит' : sub.remainingClasses}</span>
                   </div>
-                  <button class="btn-primary renew-sub-btn" data-sub-index="${client.subscriptions.indexOf(sub)}">Продлить</button>
+                  <button type="button" class="btn-primary renew-sub-btn" data-sub-index="${client.subscriptions.indexOf(sub)}">Продлить</button>
                 </div>
               `;
       })() : `
@@ -1145,13 +1124,9 @@ export function loadClients() {
                 <span class="no-data">Нет активного абонемента</span>
               </div>
             `}
-            <button class="btn-primary new-sub-btn">Создать новый абонемент</button>
+            <button type="button" class="btn-primary new-sub-btn">Создать новый абонемент</button>
           </div>
-        </div>
-
-        <div class="subscription-management-footer">
-          <button type="button" id="subscription-management-close-btn" class="btn-secondary">Закрыть</button>
-        </div>
+      </div>  ё
       </div>
     `;
 
@@ -1213,7 +1188,7 @@ export function loadClients() {
       <div class="subscription-form-content">
         <div class="subscription-form-header">
           <h2>${title}</h2>
-          <button class="subscription-form-close" type="button">×</button>
+          <button type="button" class="subscription-form-close" >×</button>
         </div>
 
         <div class="subscription-form-body">
@@ -1385,7 +1360,7 @@ export function loadClients() {
       <div class="renew-subscription-content">
         <div class="renew-header">
           <h2>${title}</h2>
-          <button class="renew-close" type="button">×</button>
+          <button type="button" class="renew-close" >×</button>
         </div>
 
         <div class="renew-body">
@@ -1581,7 +1556,7 @@ export function loadClients() {
       <div class="group-management-content">
         <div class="group-management-header">
           <h2>${title}</h2>
-          <button class="group-management-close" type="button">×</button>
+          <button type="button" class="group-management-close" >×</button>
         </div>
 
         <div class="group-management-body">
