@@ -51,7 +51,7 @@ img[class*='icon'] {
   transition: var(--transition);
 }
 
-.invert{
+.invert {
   filter: invert(1);
   border: none;
 
@@ -61,6 +61,7 @@ img[class*='icon'] {
   display: flex;
   justify-content: flex-end;
   gap: 5px;
+  margin-top: 5px;
 }
 
 /* Общие стили для кнопок */
@@ -70,7 +71,6 @@ img[class*='icon'] {
 .btn-add-group,
 .confirm-btn-ok,
 .confirm-btn-cancel,
-
 .photo-zoom-close,
 .add-parent-btn,
 .new-sub-btn,

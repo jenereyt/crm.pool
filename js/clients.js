@@ -835,7 +835,7 @@ export function loadClients() {
 
     document.getElementById('main-content').appendChild(modal);
 
-    const tabButtons = modal.querySelectorAll('.tab-button');
+    const tabButtons = modal.querySelectorAll('.client-form-tabs .tab-button');
     const tabContents = modal.querySelectorAll('.client-form-tab-content');
 
     tabButtons.forEach(button => {
@@ -1126,7 +1126,7 @@ export function loadClients() {
             `}
             <button type="button" class="btn-primary new-sub-btn">Создать новый абонемент</button>
           </div>
-      </div>  ё
+      </div>
       </div>
     `;
 
@@ -1531,6 +1531,7 @@ export function loadClients() {
           renderSelectedGroups();
           renderGroupHistory();
           renderAvailableGroups();
+          document.getElementById('group-save-btn').textContent = `Сохранить (${selectedGroups.length})`;
         });
       });
     }
@@ -1550,6 +1551,48 @@ export function loadClients() {
       container.innerHTML = groupHistory.map(entry => `
         <span class="renewal-entry">${formatDate(entry.date)}: ${entry.action === 'added' ? 'Добавлен в' : 'Удален из'} ${entry.group}</span>
       `).join('');
+    }
+
+    function showDatePrompt(groupName) {
+      const dateModal = document.createElement('div');
+      dateModal.className = 'date-prompt-modal';
+      dateModal.innerHTML = `
+        <div class="date-prompt-content">
+          <div class="date-prompt-header">
+            <h3>Выберите дату добавления в группу</h3>
+          </div>
+          <div class="date-prompt-body">
+            <label for="group-add-date">Дата добавления в "${groupName}"</label>
+            <input type="date" id="group-add-date" required>
+          </div>
+          <div class="date-prompt-footer">
+            <button type="button" class="btn-secondary date-cancel-btn">Отмена</button>
+            <button type="button" class="btn-primary date-confirm-btn">Добавить</button>
+          </div>
+        </div>
+      `;
+      document.getElementById('main-content').appendChild(dateModal);
+
+      const closeDateModal = () => dateModal.remove();
+      dateModal.addEventListener('click', (e) => {
+        if (e.target === dateModal) closeDateModal();
+      });
+      dateModal.querySelector('.date-cancel-btn').addEventListener('click', closeDateModal);
+
+      dateModal.querySelector('.date-confirm-btn').addEventListener('click', () => {
+        const startDate = document.getElementById('group-add-date').value;
+        if (!startDate) {
+          showToast('Выберите дату!', 'error');
+          return;
+        }
+        selectedGroups.push(groupName);
+        groupHistory.push({ date: startDate, action: 'added', group: groupName });
+        renderSelectedGroups();
+        renderGroupHistory();
+        renderAvailableGroups();
+        document.getElementById('group-save-btn').textContent = `Сохранить (${selectedGroups.length})`;
+        closeDateModal();
+      });
     }
 
     modal.innerHTML = `
@@ -1587,20 +1630,6 @@ export function loadClients() {
               <div class="available-groups"></div>
             </div>
           </div>
-
-          <div class="add-group-section">
-            <label for="group-search">Добавить в группу</label>
-            <div class="group-input-container">
-              <input type="text" id="group-search" placeholder="Введите название группы или выберите из справочника" 
-                    list="existing-groups">
-              <datalist id="existing-groups">
-                ${allGroups.filter(group => !selectedGroups.includes(group))
-        .map(group => `<option value="${group}">`).join('')}
-              </datalist>
-              <input type="date" id="group-start-date" placeholder="Дата начала">
-              <button type="button" id="add-group-btn" class="btn-add-group btn-primary">Добавить</button>
-            </div>
-          </div>
         </div>
 
         <div class="group-management-footer">
@@ -1624,48 +1653,10 @@ export function loadClients() {
     renderAvailableGroups();
     renderGroupHistory();
 
-    const searchInput = document.getElementById('group-search');
-    const startDateInput = document.getElementById('group-start-date');
-    const addBtn = document.getElementById('add-group-btn');
-    const saveBtn = document.getElementById('group-save-btn');
-
-    function addGroup(groupName) {
-      const trimmedName = groupName.trim();
-      const startDate = startDateInput.value || new Date().toISOString().split('T')[0];
-      if (trimmedName && !selectedGroups.includes(trimmedName)) {
-        selectedGroups.push(trimmedName);
-        groupHistory.push({ date: startDate, action: 'added', group: trimmedName });
-        renderSelectedGroups();
-        renderGroupHistory();
-        renderAvailableGroups();
-        searchInput.value = '';
-        startDateInput.value = '';
-        saveBtn.textContent = `Сохранить (${selectedGroups.length})`;
-      }
-    }
-
-    addBtn.addEventListener('click', () => {
-      if (!searchInput.value.trim()) {
-        showToast('Введите название группы!', 'error');
-        return;
-      }
-      addGroup(searchInput.value);
-    });
-
-    searchInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        if (!searchInput.value.trim()) {
-          showToast('Введите название группы!', 'error');
-          return;
-        }
-        addGroup(searchInput.value);
-      }
-    });
-
     modal.addEventListener('click', (e) => {
       if (e.target.classList.contains('group-suggestion')) {
-        addGroup(e.target.getAttribute('data-group'));
+        const groupName = e.target.getAttribute('data-group');
+        showDatePrompt(groupName);
       }
     });
 
