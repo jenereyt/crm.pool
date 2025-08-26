@@ -56,7 +56,6 @@ img[class*='icon'] {
 }
 
 
-/* НОВЫЙ КЛАСС ДЛЯ ТЕГОВ ДИАГНОЗОВ (новое) */
 .diagnosis-tag {
   display: inline-block;
   background: var(--pink-100);
