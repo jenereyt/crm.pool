@@ -23,6 +23,10 @@
   --gray-800: #1f2937;
   --gray-900: #111827;
 
+  --pink-100: #fce4ec;
+  --pink-900: #880e4f;
+
+
   --border-radius: 8px;
   --border-radius-lg: 12px;
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
@@ -49,6 +53,27 @@ img[class*='icon'] {
   height: 20px;
   vertical-align: middle;
   transition: var(--transition);
+}
+
+
+/* НОВЫЙ КЛАСС ДЛЯ ТЕГОВ ДИАГНОЗОВ (новое) */
+.diagnosis-tag {
+  display: inline-block;
+  background: var(--pink-100);
+  /* Розовый фон для отличия от групп */
+  color: var(--pink-900);
+  /* Тёмный текст для контраста */
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--border-radius);
+  font-size: 0.75rem;
+  margin: 0.2rem;
+  line-height: 1.2;
+}
+
+.diagnosis-badge {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
 }
 
 .invert {

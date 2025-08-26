@@ -268,7 +268,8 @@ export function loadClients() {
     clientList.innerHTML = filteredClients
       .map(client => {
         const fullName = `${client.surname} ${client.name} ${client.patronymic || ''}`;
-        const hasDiagnosis = client.diagnosis && client.diagnosis !== 'Нет';
+        // Проверяем, есть ли диагнозы, и не является ли единственный диагноз "Нет"
+        const hasDiagnosis = client.diagnosis && client.diagnosis.length > 0 && !(client.diagnosis.length === 1 && client.diagnosis[0].name === 'Нет');
         const status = getSubscriptionStatus(client);
         const statusClass = {
           'active': 'status-active',
@@ -288,58 +289,58 @@ export function loadClients() {
         const remainingClasses = activeSub ? activeSub.remainingClasses : undefined;
 
         return `
-          <div class="client-card ${client.blacklisted ? 'blacklisted' : ''}" data-id="${client.id}">
-            <div class="client-main-info">
-              <div class="client-avatar">
-                ${client.photo ?
+        <div class="client-card ${client.blacklisted ? 'blacklisted' : ''}" data-id="${client.id}">
+          <div class="client-main-info">
+            <div class="client-avatar">
+              ${client.photo ?
             `<img src="${client.photo}" class="client-photo" alt="${fullName}" style="object-fit: cover;">` :
             `<div class="client-photo-placeholder">${client.name.charAt(0).toUpperCase()}</div>`
           }
-                <div class="status-indicator ${statusClass}" title="${statusText}"></div>
-              </div>
-              <div class="client-details">
-                <div class="client-name-section">
-                  <h3 class="client-name ${hasDiagnosis ? 'has-diagnosis' : ''}">${fullName}</h3>
-                  <div class="client-meta">
-                    <span class="client-phone">${client.phone}</span>
-                    ${hasDiagnosis ? `<span class="diagnosis-badge">${client.diagnosis}</span>` : ''}
-                  </div>
-                </div>
-                <div class="client-additional-info">
-                  <span class="groups-info">
-                    <span class="info-label">Группы:</span>
-                    ${client.groups.length ? client.groups.map(group => `<span class="group-tag">${group}</span>`).join('') : '<span class="no-groups">Без групп</span>'}
-                  </span>
-                  ${remainingClasses !== undefined ?
-            `<span class="classes-info">
-                      <span class="info-label">Осталось:</span>
-                      <span class="remaining-classes ${remainingClasses <= 3 && remainingClasses !== Infinity ? 'low' : ''}">
-                        ${remainingClasses === Infinity ? '∞' : remainingClasses}
-                      </span>
-                    </span>` : ''
-          }
-                </div>
-              </div>
+              <div class="status-indicator ${statusClass}" title="${statusText}"></div>
             </div>
-            <div class="action-buttons-group">
-              <button type="button" class="client-action-btn edit-btn" data-id="${client.id}" title="Редактировать">
-                <img src="images/icon-edit.svg" alt="Редактировать" class="btn-icon">
-              </button>
-              <button type="button" class="client-action-btn subscription-btn" data-id="${client.id}" title="Абонемент">
-                <img src="images/icon-subscriptions.svg" alt="Абонемент" class="btn-icon">
-              </button>
-              <button type="button" class="client-action-btn group-btn" data-id="${client.id}" title="Группы">
-                <img src="images/icon-group.svg" alt="Группы" class="btn-icon">
-              </button>
-              <button type="button" class="client-action-btn blacklist-btn ${client.blacklisted ? 'active' : ''}" data-id="${client.id}" title="${client.blacklisted ? 'Убрать из чёрного списка' : 'В чёрный список'}">
-                <img src="images/icon-delete.svg" alt="${client.blacklisted ? 'Убрать из чёрного списка' : 'В чёрный список'}" class="btn-icon">
-              </button>
-              <button type="button" class="client-action-btn delete-btn" data-id="${client.id}" title="Удалить">
-                <img src="images/trash.svg" alt="Удалить" class="btn-icon">
-              </button>
+            <div class="client-details">
+              <div class="client-name-section">
+                <h3 class="client-name ${hasDiagnosis ? 'has-diagnosis' : ''}">${fullName}</h3>
+                <div class="client-meta">
+                  <span class="client-phone">${client.phone}</span>
+                  ${hasDiagnosis ? `
+                    <div class="diagnosis-badge">
+                      ${client.diagnosis.map(d => `<span class="diagnosis-tag">${d.name}${d.notes ? ` (${d.notes})` : ''}</span>`).join('')}
+                    </div>
+                  ` : ''}
+                </div>
+              </div>
+              <div class="client-additional-info">
+                <span class="groups-info">
+                  <span class="info-label">Группы:</span>
+                  ${client.groups.length ? client.groups.map(group => `<span class="group-tag">${group}</span>`).join('') : '<span class="no-groups">Без групп</span>'}
+                </span>
+                ${remainingClasses !== undefined ?
+            `<span class="classes-info">   
+                  </span>` : ''
+          }
+              </div>
             </div>
           </div>
-        `;
+          <div class="action-buttons-group">
+            <button type="button" class="client-action-btn edit-btn" data-id="${client.id}" title="Редактировать">
+              <img src="images/icon-edit.svg" alt="Редактировать" class="btn-icon">
+            </button>
+            <button type="button" class="client-action-btn subscription-btn" data-id="${client.id}" title="Абонемент">
+              <img src="images/icon-subscriptions.svg" alt="Абонемент" class="btn-icon">
+            </button>
+            <button type="button" class="client-action-btn group-btn" data-id="${client.id}" title="Группы">
+              <img src="images/icon-group.svg" alt="Группы" class="btn-icon">
+            </button>
+            <button type="button" class="client-action-btn blacklist-btn ${client.blacklisted ? 'active' : ''}" data-id="${client.id}" title="${client.blacklisted ? 'Убрать из чёрного списка' : 'В чёрный список'}">
+              <img src="images/icon-delete.svg" alt="${client.blacklisted ? 'Убрать из чёрного списка' : 'В чёрный список'}" class="btn-icon">
+            </button>
+            <button type="button" class="client-action-btn delete-btn" data-id="${client.id}" title="Удалить">
+              <img src="images/trash.svg" alt="Удалить" class="btn-icon">
+            </button>
+          </div>
+        </div>
+      `;
       }).join('');
   }
 
@@ -545,8 +546,8 @@ export function loadClients() {
               <div class="detail-item">
   <span class="detail-label">Диагнозы:</span>
   <div class="detail-value ${client.diagnosis && client.diagnosis.some(d => d.name !== 'Нет') ? 'has-diagnosis' : ''}">
-    ${client.diagnosis && client.diagnosis.length > 0 ? 
-      client.diagnosis.map(d => `${d.name} ${d.notes ? `(${d.notes})` : ''}`).join('<br>') : 'Нет'}
+    ${client.diagnosis && client.diagnosis.length > 0 ?
+        client.diagnosis.map(d => `${d.name} ${d.notes ? `(${d.notes})` : ''}`).join('<br>') : 'Нет'}
   </div>
 </div>
                 ${client.features ? `
@@ -677,46 +678,46 @@ export function loadClients() {
   }
 
 
-function showClientForm(title, client, callback) {
-  const modal = document.createElement('div');
-  modal.className = 'client-form-modal';
-  let parents = client.parents ? [...client.parents.map(p => ({
-    surname: p.fullName ? p.fullName.split(' ')[0] || '' : '',
-    name: p.fullName ? p.fullName.split(' ')[1] || '' : '',
-    patronymic: p.fullName ? p.fullName.split(' ')[2] || '' : '',
-    phone: p.phone || '',
-    relation: p.relation || ''
-  }))] : [];
-  let diagnoses = [];
-  if (client.diagnosis) {
-    if (Array.isArray(client.diagnosis)) {
-      diagnoses = [...client.diagnosis];
-    } else {
-      diagnoses = [{ name: client.diagnosis, notes: '' }];
+  function showClientForm(title, client, callback) {
+    const modal = document.createElement('div');
+    modal.className = 'client-form-modal';
+    let parents = client.parents ? [...client.parents.map(p => ({
+      surname: p.fullName ? p.fullName.split(' ')[0] || '' : '',
+      name: p.fullName ? p.fullName.split(' ')[1] || '' : '',
+      patronymic: p.fullName ? p.fullName.split(' ')[2] || '' : '',
+      phone: p.phone || '',
+      relation: p.relation || ''
+    }))] : [];
+    let diagnoses = [];
+    if (client.diagnosis) {
+      if (Array.isArray(client.diagnosis)) {
+        diagnoses = [...client.diagnosis];
+      } else {
+        diagnoses = [{ name: client.diagnosis, notes: '' }];
+      }
     }
-  }
-  const isEdit = !!client.id;
+    const isEdit = !!client.id;
 
-  function calculateAge(birthDate) {
-    if (!birthDate) return null;
-    const today = new Date();
-    const birth = new Date(birthDate);
-    let age = today.getFullYear() - birth.getFullYear();
-    const m = today.getMonth() - birth.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
-      age--;
+    function calculateAge(birthDate) {
+      if (!birthDate) return null;
+      const today = new Date();
+      const birth = new Date(birthDate);
+      let age = today.getFullYear() - birth.getFullYear();
+      const m = today.getMonth() - birth.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+        age--;
+      }
+      return age;
     }
-    return age;
-  }
 
-  function isAdult(birthDate) {
-    const age = calculateAge(birthDate);
-    return age !== null && age >= 18;
-  }
+    function isAdult(birthDate) {
+      const age = calculateAge(birthDate);
+      return age !== null && age >= 18;
+    }
 
-  function renderParents() {
-    const container = modal.querySelector('#parents-container');
-    container.innerHTML = `
+    function renderParents() {
+      const container = modal.querySelector('#parents-container');
+      container.innerHTML = `
     <table class="parents-table">
       <thead>
         <tr>
@@ -748,63 +749,63 @@ function showClientForm(title, client, callback) {
     <button type="button" id="add-parent-btn" class="btn-primary add-parent-btn">Добавить родителя/опекуна</button>
   `;
 
-    container.querySelectorAll('.remove-parent-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const index = parseInt(btn.closest('.parent-row').dataset.index);
-        parents.splice(index, 1);
-        renderParents();
+      container.querySelectorAll('.remove-parent-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const index = parseInt(btn.closest('.parent-row').dataset.index);
+          parents.splice(index, 1);
+          renderParents();
+        });
       });
-    });
 
-    parents.forEach((_, index) => {
-      const row = container.querySelector(`.parent-row[data-index="${index}"]`);
-      if (!row) return;
+      parents.forEach((_, index) => {
+        const row = container.querySelector(`.parent-row[data-index="${index}"]`);
+        if (!row) return;
 
-      const surnameInput = row.querySelector('.parent-surname');
-      const nameInput = row.querySelector('.parent-name');
-      const patronymicInput = row.querySelector('.parent-patronymic');
-      const phoneInput = row.querySelector('.parent-phone');
-      const relationInput = row.querySelector('.parent-relation');
+        const surnameInput = row.querySelector('.parent-surname');
+        const nameInput = row.querySelector('.parent-name');
+        const patronymicInput = row.querySelector('.parent-patronymic');
+        const phoneInput = row.querySelector('.parent-phone');
+        const relationInput = row.querySelector('.parent-relation');
 
-      if (surnameInput) {
-        surnameInput.addEventListener('input', (e) => {
-          parents[index].surname = e.target.value;
-        });
-      }
-      if (nameInput) {
-        nameInput.addEventListener('input', (e) => {
-          parents[index].name = e.target.value;
-        });
-      }
-      if (patronymicInput) {
-        patronymicInput.addEventListener('input', (e) => {
-          parents[index].patronymic = e.target.value;
-        });
-      }
-      if (phoneInput) {
-        phoneInput.addEventListener('input', (e) => {
-          parents[index].phone = e.target.value;
-        });
-      }
-      if (relationInput) {
-        relationInput.addEventListener('input', (e) => {
-          parents[index].relation = e.target.value;
-        });
-      }
-    });
-
-    const addParentBtn = container.querySelector('#add-parent-btn');
-    if (addParentBtn) {
-      addParentBtn.addEventListener('click', () => {
-        parents.push({ surname: '', name: '', patronymic: '', phone: '', relation: '' });
-        renderParents();
+        if (surnameInput) {
+          surnameInput.addEventListener('input', (e) => {
+            parents[index].surname = e.target.value;
+          });
+        }
+        if (nameInput) {
+          nameInput.addEventListener('input', (e) => {
+            parents[index].name = e.target.value;
+          });
+        }
+        if (patronymicInput) {
+          patronymicInput.addEventListener('input', (e) => {
+            parents[index].patronymic = e.target.value;
+          });
+        }
+        if (phoneInput) {
+          phoneInput.addEventListener('input', (e) => {
+            parents[index].phone = e.target.value;
+          });
+        }
+        if (relationInput) {
+          relationInput.addEventListener('input', (e) => {
+            parents[index].relation = e.target.value;
+          });
+        }
       });
+
+      const addParentBtn = container.querySelector('#add-parent-btn');
+      if (addParentBtn) {
+        addParentBtn.addEventListener('click', () => {
+          parents.push({ surname: '', name: '', patronymic: '', phone: '', relation: '' });
+          renderParents();
+        });
+      }
     }
-  }
 
-  function renderDiagnoses() {
-    const container = modal.querySelector('#diagnoses-container');
-    container.innerHTML = `
+    function renderDiagnoses() {
+      const container = modal.querySelector('#diagnoses-container');
+      container.innerHTML = `
       <table class="diagnoses-table">
         <thead>
           <tr>
@@ -830,44 +831,44 @@ function showClientForm(title, client, callback) {
       <button type="button" id="add-diagnosis-btn" class="btn-primary add-diagnosis-btn">Добавить диагноз</button>
     `;
 
-    container.querySelectorAll('.remove-diagnosis-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const index = parseInt(btn.closest('.diagnosis-row').dataset.index);
-        diagnoses.splice(index, 1);
-        renderDiagnoses();
+      container.querySelectorAll('.remove-diagnosis-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const index = parseInt(btn.closest('.diagnosis-row').dataset.index);
+          diagnoses.splice(index, 1);
+          renderDiagnoses();
+        });
       });
-    });
 
-    diagnoses.forEach((_, index) => {
-      const row = container.querySelector(`.diagnosis-row[data-index="${index}"]`);
-      if (!row) return;
+      diagnoses.forEach((_, index) => {
+        const row = container.querySelector(`.diagnosis-row[data-index="${index}"]`);
+        if (!row) return;
 
-      const nameInput = row.querySelector('.diagnosis-name');
-      const notesInput = row.querySelector('.diagnosis-notes');
+        const nameInput = row.querySelector('.diagnosis-name');
+        const notesInput = row.querySelector('.diagnosis-notes');
 
-      if (nameInput) {
-        nameInput.addEventListener('input', (e) => {
-          diagnoses[index].name = e.target.value;
+        if (nameInput) {
+          nameInput.addEventListener('input', (e) => {
+            diagnoses[index].name = e.target.value;
+          });
+        }
+        if (notesInput) {
+          notesInput.addEventListener('input', (e) => {
+            diagnoses[index].notes = e.target.value;
+          });
+        }
+      });
+
+      // Перенесённый обработчик для кнопки добавления диагноза
+      const addDiagnosisBtn = container.querySelector('#add-diagnosis-btn');
+      if (addDiagnosisBtn) {
+        addDiagnosisBtn.addEventListener('click', () => {
+          diagnoses.push({ name: '', notes: '' });
+          renderDiagnoses();
         });
       }
-      if (notesInput) {
-        notesInput.addEventListener('input', (e) => {
-          diagnoses[index].notes = e.target.value;
-        });
-      }
-    });
-
-    // Перенесённый обработчик для кнопки добавления диагноза
-    const addDiagnosisBtn = container.querySelector('#add-diagnosis-btn');
-    if (addDiagnosisBtn) {
-      addDiagnosisBtn.addEventListener('click', () => {
-        diagnoses.push({ name: '', notes: '' });
-        renderDiagnoses();
-      });
     }
-  }
 
-  modal.innerHTML = `
+    modal.innerHTML = `
   <div class="client-form-content">
     <div class="client-form-header">
       <h2>${title}</h2>
@@ -921,12 +922,12 @@ function showClientForm(title, client, callback) {
       <div class="client-photo-section">
         <div class="photo-upload-area">
           ${client.photo ?
-      `<img src="${client.photo}" class="client-photo-preview" id="client-photo-preview" alt="${client.surname || 'Клиент'}">` :
-      `<div class="client-photo-preview placeholder" id="client-photo-preview">
+        `<img src="${client.photo}" class="client-photo-preview" id="client-photo-preview" alt="${client.surname || 'Клиент'}">` :
+        `<div class="client-photo-preview placeholder" id="client-photo-preview">
                <img src="images/icon-photo.svg" alt="Загрузить фото" class="upload-icon">
                <span>Добавить фото</span>
              </div>`
-    }
+      }
         <div class="for-flex">
           <input type="file" id="client-photo" accept="image/*" class="photo-input">
           <button type="button" class="photo-remove-btn" id="photo-remove-btn" ${!client.photo ? 'style="display: none;"' : ''}>
@@ -956,229 +957,229 @@ function showClientForm(title, client, callback) {
   </div>
 `;
 
-  document.getElementById('main-content').appendChild(modal);
+    document.getElementById('main-content').appendChild(modal);
 
-  const tabButtons = modal.querySelectorAll('.client-form-tabs .tab-button');
-  const tabContents = modal.querySelectorAll('.client-form-tab-content');
+    const tabButtons = modal.querySelectorAll('.client-form-tabs .tab-button');
+    const tabContents = modal.querySelectorAll('.client-form-tab-content');
 
-  tabButtons.forEach(button => {
-    button.addEventListener('click', () => {
-      tabButtons.forEach(btn => btn.classList.remove('active'));
-      tabContents.forEach(content => content.classList.remove('active'));
-      button.classList.add('active');
-      modal.querySelector(`#client-tab-${button.dataset.tab}`).classList.add('active');
+    tabButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        tabButtons.forEach(btn => btn.classList.remove('active'));
+        tabContents.forEach(content => content.classList.remove('active'));
+        button.classList.add('active');
+        modal.querySelector(`#client-tab-${button.dataset.tab}`).classList.add('active');
+      });
     });
-  });
 
-  const closeModal = () => modal.remove();
-  modal.addEventListener('click', (e) => {
-    if (e.target === modal) closeModal();
-  });
-  modal.querySelector('.client-form-close').addEventListener('click', closeModal);
+    const closeModal = () => modal.remove();
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+    modal.querySelector('.client-form-close').addEventListener('click', closeModal);
 
-  const photoInput = document.getElementById('client-photo');
-  const photoPreview = document.getElementById('client-photo-preview');
-  const photoRemoveBtn = document.getElementById('photo-remove-btn');
+    const photoInput = document.getElementById('client-photo');
+    const photoPreview = document.getElementById('client-photo-preview');
+    const photoRemoveBtn = document.getElementById('photo-remove-btn');
 
-  photoPreview.addEventListener('click', () => {
-    if (photoPreview.classList.contains('placeholder')) {
-      photoInput.click();
-    } else {
-      showPhotoZoomModal(photoPreview.src);
-    }
-  });
-
-  photoInput.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        showToast('Размер файла не должен превышать 5MB', 'error');
-        return;
+    photoPreview.addEventListener('click', () => {
+      if (photoPreview.classList.contains('placeholder')) {
+        photoInput.click();
+      } else {
+        showPhotoZoomModal(photoPreview.src);
       }
+    });
 
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const img = document.createElement('img');
-        img.src = ev.target.result;
-        img.alt = 'Предпросмотр';
-        img.style.width = '100%';
-        img.style.height = '100%';
-        img.style.objectFit = 'cover';
-        img.style.borderRadius = '8px';
+    photoInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        if (file.size > 5 * 1024 * 1024) {
+          showToast('Размер файла не должен превышать 5MB', 'error');
+          return;
+        }
 
-        photoPreview.innerHTML = '';
-        photoPreview.appendChild(img);
-        photoPreview.classList.remove('placeholder');
-        photoRemoveBtn.style.display = 'block';
-      };
-      reader.readAsDataURL(file);
-    }
-  });
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const img = document.createElement('img');
+          img.src = ev.target.result;
+          img.alt = 'Предпросмотр';
+          img.style.width = '100%';
+          img.style.height = '100%';
+          img.style.objectFit = 'cover';
+          img.style.borderRadius = '8px';
 
-  photoRemoveBtn.addEventListener('click', () => {
-    photoPreview.innerHTML = `
+          photoPreview.innerHTML = '';
+          photoPreview.appendChild(img);
+          photoPreview.classList.remove('placeholder');
+          photoRemoveBtn.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    photoRemoveBtn.addEventListener('click', () => {
+      photoPreview.innerHTML = `
     <img src="images/icon-photo.svg" alt="Загрузить фото" class="upload-icon">
     <span>Добавить фото</span>
   `;
-    photoPreview.classList.add('placeholder');
-    photoInput.value = '';
-    photoRemoveBtn.style.display = 'none';
-  });
+      photoPreview.classList.add('placeholder');
+      photoInput.value = '';
+      photoRemoveBtn.style.display = 'none';
+    });
 
-  renderParents();
-  renderDiagnoses();
+    renderParents();
+    renderDiagnoses();
 
-  function validateForm() {
-    let isValid = true;
+    function validateForm() {
+      let isValid = true;
 
-    document.querySelectorAll('.field-error').forEach(el => el.textContent = '');
-    document.querySelectorAll('.form-group input, .form-group select').forEach(el => el.classList.remove('error'));
+      document.querySelectorAll('.field-error').forEach(el => el.textContent = '');
+      document.querySelectorAll('.form-group input, .form-group select').forEach(el => el.classList.remove('error'));
 
-    const surname = document.getElementById('client-surname').value.trim();
-    if (!surname) {
-      document.getElementById('surname-error').textContent = 'Фамилия обязательна';
-      document.getElementById('client-surname').classList.add('error');
-      isValid = false;
-    }
-
-    const name = document.getElementById('client-name').value.trim();
-    if (!name) {
-      document.getElementById('name-error').textContent = 'Имя обязательно';
-      document.getElementById('client-name').classList.add('error');
-      isValid = false;
-    }
-
-    const phone = document.getElementById('client-phone').value.trim();
-    if (!phone) {
-      document.getElementById('phone-error').textContent = 'Телефон обязателен';
-      document.getElementById('client-phone').classList.add('error');
-      isValid = false;
-    } else if (!/^[\+]?[0-9\s\-\(\)]{10,}$/.test(phone)) {
-      document.getElementById('phone-error').textContent = 'Некорректный номер телефона';
-      document.getElementById('client-phone').classList.add('error');
-      isValid = false;
-    }
-
-    const birthDate = document.getElementById('client-birthdate').value;
-    if (!birthDate) {
-      document.getElementById('birthdate-error').textContent = 'Дата рождения обязательна';
-      document.getElementById('client-birthdate').classList.add('error');
-      isValid = false;
-    }
-
-    const gender = document.getElementById('client-gender').value;
-    if (!gender) {
-      document.getElementById('gender-error').textContent = 'Пол обязателен';
-      document.getElementById('client-gender').classList.add('error');
-      isValid = false;
-    }
-
-    if (!isAdult(birthDate) && parents.length === 0) {
-      showToast('Для несовершеннолетних обязателен хотя бы один родитель/опекун', 'error');
-      tabButtons[1].click();
-      isValid = false;
-    }
-
-    parents.forEach((p, index) => {
-      const row = modal.querySelector(`.parent-row[data-index="${index}"]`);
-      if (!row) return;
-
-      const surnameInput = row.querySelector('.parent-surname');
-      const nameInput = row.querySelector('.parent-name');
-      const phoneInput = row.querySelector('.parent-phone');
-      const relationInput = row.querySelector('.parent-relation');
-
-      if (!surnameInput.value.trim()) {
-        surnameInput.classList.add('error');
+      const surname = document.getElementById('client-surname').value.trim();
+      if (!surname) {
+        document.getElementById('surname-error').textContent = 'Фамилия обязательна';
+        document.getElementById('client-surname').classList.add('error');
         isValid = false;
       }
-      if (!nameInput.value.trim()) {
-        nameInput.classList.add('error');
+
+      const name = document.getElementById('client-name').value.trim();
+      if (!name) {
+        document.getElementById('name-error').textContent = 'Имя обязательно';
+        document.getElementById('client-name').classList.add('error');
         isValid = false;
       }
-      if (!phoneInput.value.trim()) {
-        phoneInput.classList.add('error');
+
+      const phone = document.getElementById('client-phone').value.trim();
+      if (!phone) {
+        document.getElementById('phone-error').textContent = 'Телефон обязателен';
+        document.getElementById('client-phone').classList.add('error');
+        isValid = false;
+      } else if (!/^[\+]?[0-9\s\-\(\)]{10,}$/.test(phone)) {
+        document.getElementById('phone-error').textContent = 'Некорректный номер телефона';
+        document.getElementById('client-phone').classList.add('error');
         isValid = false;
       }
-      if (!relationInput.value.trim()) {
-        relationInput.classList.add('error');
+
+      const birthDate = document.getElementById('client-birthdate').value;
+      if (!birthDate) {
+        document.getElementById('birthdate-error').textContent = 'Дата рождения обязательна';
+        document.getElementById('client-birthdate').classList.add('error');
         isValid = false;
+      }
+
+      const gender = document.getElementById('client-gender').value;
+      if (!gender) {
+        document.getElementById('gender-error').textContent = 'Пол обязателен';
+        document.getElementById('client-gender').classList.add('error');
+        isValid = false;
+      }
+
+      if (!isAdult(birthDate) && parents.length === 0) {
+        showToast('Для несовершеннолетних обязателен хотя бы один родитель/опекун', 'error');
+        tabButtons[1].click();
+        isValid = false;
+      }
+
+      parents.forEach((p, index) => {
+        const row = modal.querySelector(`.parent-row[data-index="${index}"]`);
+        if (!row) return;
+
+        const surnameInput = row.querySelector('.parent-surname');
+        const nameInput = row.querySelector('.parent-name');
+        const phoneInput = row.querySelector('.parent-phone');
+        const relationInput = row.querySelector('.parent-relation');
+
+        if (!surnameInput.value.trim()) {
+          surnameInput.classList.add('error');
+          isValid = false;
+        }
+        if (!nameInput.value.trim()) {
+          nameInput.classList.add('error');
+          isValid = false;
+        }
+        if (!phoneInput.value.trim()) {
+          phoneInput.classList.add('error');
+          isValid = false;
+        }
+        if (!relationInput.value.trim()) {
+          relationInput.classList.add('error');
+          isValid = false;
+        }
+      });
+
+      diagnoses.forEach((d, index) => {
+        const row = modal.querySelector(`.diagnosis-row[data-index="${index}"]`);
+        if (!row) return;
+
+        const nameInput = row.querySelector('.diagnosis-name');
+
+        if (!nameInput.value.trim()) {
+          nameInput.classList.add('error');
+          isValid = false;
+        }
+      });
+
+      return isValid;
+    }
+
+    document.getElementById('client-save-btn').addEventListener('click', () => {
+      if (!validateForm()) return;
+
+      const surname = document.getElementById('client-surname').value.trim();
+      const name = document.getElementById('client-name').value.trim();
+      const patronymic = document.getElementById('client-patronymic').value.trim();
+      const phone = document.getElementById('client-phone').value.trim();
+      const birthDate = document.getElementById('client-birthdate').value;
+      const gender = document.getElementById('client-gender').value;
+      const features = document.getElementById('client-features').value.trim();
+
+      let photo = '';
+      const photoImg = photoPreview.querySelector('img');
+      if (photoImg && !photoPreview.classList.contains('placeholder')) {
+        photo = photoImg.src;
+      }
+
+      const updatedParents = parents.map(p => ({
+        fullName: `${p.surname} ${p.name} ${p.patronymic || ''}`.trim(),
+        phone: p.phone,
+        relation: p.relation
+      }));
+
+      const updatedDiagnoses = diagnoses.filter(d => d.name.trim() !== '');
+
+      callback({
+        surname,
+        name,
+        patronymic,
+        phone,
+        birthDate,
+        gender,
+        parents: updatedParents,
+        diagnosis: updatedDiagnoses,
+        features,
+        photo
+      });
+      closeModal();
+    });
+
+    document.getElementById('client-cancel-btn').addEventListener('click', closeModal);
+
+    setTimeout(() => document.getElementById('client-surname').focus(), 100);
+
+    const birthInput = document.getElementById('client-birthdate');
+    birthInput.addEventListener('change', () => {
+      if (!isAdult(birthInput.value) && parents.length === 0) {
+        tabButtons[1].click();
+        showToast('Клиент несовершеннолетний: заполните данные родителей/опекунов', 'info');
       }
     });
 
-    diagnoses.forEach((d, index) => {
-      const row = modal.querySelector(`.diagnosis-row[data-index="${index}"]`);
-      if (!row) return;
-
-      const nameInput = row.querySelector('.diagnosis-name');
-
-      if (!nameInput.value.trim()) {
-        nameInput.classList.add('error');
-        isValid = false;
+    if (isEdit && !isAdult(client.birthDate)) {
+      if (parents.length === 0) {
+        tabButtons[1].click();
       }
-    });
-
-    return isValid;
+    }
   }
-
-  document.getElementById('client-save-btn').addEventListener('click', () => {
-    if (!validateForm()) return;
-
-    const surname = document.getElementById('client-surname').value.trim();
-    const name = document.getElementById('client-name').value.trim();
-    const patronymic = document.getElementById('client-patronymic').value.trim();
-    const phone = document.getElementById('client-phone').value.trim();
-    const birthDate = document.getElementById('client-birthdate').value;
-    const gender = document.getElementById('client-gender').value;
-    const features = document.getElementById('client-features').value.trim();
-
-    let photo = '';
-    const photoImg = photoPreview.querySelector('img');
-    if (photoImg && !photoPreview.classList.contains('placeholder')) {
-      photo = photoImg.src;
-    }
-
-    const updatedParents = parents.map(p => ({
-      fullName: `${p.surname} ${p.name} ${p.patronymic || ''}`.trim(),
-      phone: p.phone,
-      relation: p.relation
-    }));
-
-    const updatedDiagnoses = diagnoses.filter(d => d.name.trim() !== '');
-
-    callback({
-      surname,
-      name,
-      patronymic,
-      phone,
-      birthDate,
-      gender,
-      parents: updatedParents,
-      diagnosis: updatedDiagnoses,
-      features,
-      photo
-    });
-    closeModal();
-  });
-
-  document.getElementById('client-cancel-btn').addEventListener('click', closeModal);
-
-  setTimeout(() => document.getElementById('client-surname').focus(), 100);
-
-  const birthInput = document.getElementById('client-birthdate');
-  birthInput.addEventListener('change', () => {
-    if (!isAdult(birthInput.value) && parents.length === 0) {
-      tabButtons[1].click();
-      showToast('Клиент несовершеннолетний: заполните данные родителей/опекунов', 'info');
-    }
-  });
-
-  if (isEdit && !isAdult(client.birthDate)) {
-    if (parents.length === 0) {
-      tabButtons[1].click();
-    }
-  }
-}
   function showSubscriptionManagement(client) {
     const fullName = `${client.surname} ${client.name} ${client.patronymic || ''}`;
     const modal = document.createElement('div');
