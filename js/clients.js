@@ -16,7 +16,7 @@ let clientsData = [
         phone: '+7 (987) 654-32-10'
       }
     ],
-    diagnosis: 'Нет',
+    diagnosis: [{ name: 'Нет', notes: '' }],
     features: 'Требуется индивидуальный подход',
     blacklisted: false,
     groups: ['Йога для начинающих'],
@@ -50,7 +50,7 @@ let clientsData = [
     birthDate: '2005-05-05',
     gender: 'female',
     parents: [],
-    diagnosis: 'Сколиоз',
+    diagnosis: [{ name: 'Сколиоз', notes: 'Легкая степень' }],
     features: '',
     blacklisted: false,
     groups: [],
@@ -542,10 +542,13 @@ export function loadClients() {
               
               <div class="detail-section">
                 <h4>Медицинская информация</h4>
-                <div class="detail-item">
-                  <span class="detail-label">Диагноз:</span>
-                  <span class="detail-value ${client.diagnosis && client.diagnosis !== 'Нет' ? 'has-diagnosis' : ''}">${client.diagnosis || 'Нет'}</span>
-                </div>
+              <div class="detail-item">
+  <span class="detail-label">Диагнозы:</span>
+  <div class="detail-value ${client.diagnosis && client.diagnosis.some(d => d.name !== 'Нет') ? 'has-diagnosis' : ''}">
+    ${client.diagnosis && client.diagnosis.length > 0 ? 
+      client.diagnosis.map(d => `${d.name} ${d.notes ? `(${d.notes})` : ''}`).join('<br>') : 'Нет'}
+  </div>
+</div>
                 ${client.features ? `
                   <div class="detail-item">
                     <span class="detail-label">Особенности:</span>
@@ -673,363 +676,509 @@ export function loadClients() {
     });
   }
 
-  function showClientForm(title, client, callback) {
-    const modal = document.createElement('div');
-    modal.className = 'client-form-modal';
-    let parents = client.parents ? [...client.parents] : [];
-    const isEdit = !!client.id;
 
-    function calculateAge(birthDate) {
-      if (!birthDate) return null;
-      const today = new Date();
-      const birth = new Date(birthDate);
-      let age = today.getFullYear() - birth.getFullYear();
-      const m = today.getMonth() - birth.getMonth();
-      if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
-        age--;
-      }
-      return age;
+function showClientForm(title, client, callback) {
+  const modal = document.createElement('div');
+  modal.className = 'client-form-modal';
+  let parents = client.parents ? [...client.parents.map(p => ({
+    surname: p.fullName ? p.fullName.split(' ')[0] || '' : '',
+    name: p.fullName ? p.fullName.split(' ')[1] || '' : '',
+    patronymic: p.fullName ? p.fullName.split(' ')[2] || '' : '',
+    phone: p.phone || '',
+    relation: p.relation || ''
+  }))] : [];
+  let diagnoses = [];
+  if (client.diagnosis) {
+    if (Array.isArray(client.diagnosis)) {
+      diagnoses = [...client.diagnosis];
+    } else {
+      diagnoses = [{ name: client.diagnosis, notes: '' }];
     }
+  }
+  const isEdit = !!client.id;
 
-    function isAdult(birthDate) {
-      const age = calculateAge(birthDate);
-      return age !== null && age >= 18;
+  function calculateAge(birthDate) {
+    if (!birthDate) return null;
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+      age--;
     }
+    return age;
+  }
 
-    function renderParents() {
-      const container = modal.querySelector('#parents-container');
-      container.innerHTML = parents.map((p, index) => `
-      <div class="parent-form" data-index="${index}">
-        <div class="form-group">
-          <label for="parent-fullname-${index}" class="required">ФИО родителя/опекуна</label>
-          <input type="text" id="parent-fullname-${index}" value="${p.fullName || ''}" required>
-        </div>
-        <div class="form-group">
-          <label for="parent-phone-${index}" class="required">Телефон</label>
-          <input type="tel" id="parent-phone-${index}" value="${p.phone || ''}" required>
-        </div>
-        <button type="button" class="btn-danger remove-parent-btn" data-index="${index}">Удалить</button>
-      </div>
-    `).join('');
+  function isAdult(birthDate) {
+    const age = calculateAge(birthDate);
+    return age !== null && age >= 18;
+  }
 
-      container.querySelectorAll('.remove-parent-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const index = parseInt(btn.dataset.index);
-          parents.splice(index, 1);
-          renderParents();
-        });
-      });
-
-      parents.forEach((_, index) => {
-        const fullnameInput = document.getElementById(`parent-fullname-${index}`);
-        const phoneInput = document.getElementById(`parent-phone-${index}`);
-
-        if (fullnameInput) {
-          fullnameInput.addEventListener('input', (e) => {
-            parents[index].fullName = e.target.value;
-          });
-        }
-
-        if (phoneInput) {
-          phoneInput.addEventListener('input', (e) => {
-            parents[index].phone = e.target.value;
-          });
-        }
-      });
-    }
-
-    modal.innerHTML = `
-    <div class="client-form-content">
-      <div class="client-form-header">
-        <h2>${title}</h2>
-        <button type="button" class="client-form-close">×</button>
-      </div>
-      
-      <div class="client-form-tabs">
-        <button type="button" class="tab-button active" data-tab="personal">Личные данные</button>
-        <button type="button" class="tab-button" data-tab="parents">Родители/опекуны</button>
-        <button type="button" class="tab-button" data-tab="medical">Медицинская информация</button>
-      </div>
-      
-      <div class="client-form-tab-content active" id="client-tab-personal">
-        <div class="form-grid">
-          <div class="form-group">
-            <label for="client-surname" class="required">Фамилия</label>
-            <input type="text" id="client-surname" value="${client.surname || ''}" required>
-            <span class="field-error" id="surname-error"></span>
-          </div>
-          <div class="form-group">
-            <label for="client-name" class="required">Имя</label>
-            <input type="text" id="client-name" value="${client.name || ''}" required>
-            <span class="field-error" id="name-error"></span>
-          </div>
-          <div class="form-group">
-            <label for="client-patronymic">Отчество</label>
-            <input type="text" id="client-patronymic" value="${client.patronymic || ''}">
-          </div>
-        </div>
-        <div class="form-grid">
-          <div class="form-group">
-            <label for="client-birthdate" class="required">Дата рождения</label>
-            <input type="date" id="client-birthdate" value="${client.birthDate || ''}" required>
-            <span class="field-error" id="birthdate-error"></span>
-          </div>
-          <div class="form-group">
-            <label for="client-gender" class="required">Пол</label>
-            <select id="client-gender" required>
-              <option value="">Выберите пол</option>
-              <option value="male" ${client.gender === 'male' ? 'selected' : ''}>Мужской</option>
-              <option value="female" ${client.gender === 'female' ? 'selected' : ''}>Женский</option>
-            </select>
-            <span class="field-error" id="gender-error"></span>
-          </div>
-          <div class="form-group">
-            <label for="client-phone" class="required">Телефон</label>
-            <input type="tel" id="client-phone" value="${client.phone || ''}" required placeholder="+7 (999) 123-45-67">
-            <span class="field-error" id="phone-error"></span>
-          </div>
-        </div>
-        <div class="client-photo-section">
-          <div class="photo-upload-area">
-            ${client.photo ?
-        `<img src="${client.photo}" class="client-photo-preview" id="client-photo-preview" alt="${client.surname || 'Клиент'}">` :
-        `<div class="client-photo-preview placeholder" id="client-photo-preview">
-                 <img src="images/icon-photo.svg" alt="Загрузить фото" class="upload-icon">
-                 <span>Добавить фото</span>
-               </div>`
-      }
-          <div class= for-flex>
-            <input type="file" id="client-photo" accept="image/*" class="photo-input">
-            <button type="button" class="photo-remove-btn" id="photo-remove-btn" ${!client.photo ? 'style="display: none;"' : ''}>
-              <img src="images/trash.svg" alt="Удалить фото" class="btn-icon invert">
-            </button>
-          </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="client-form-tab-content" id="client-tab-parents">
-        <div id="parents-container"></div>
-        <button type="button" id="add-parent-btn" class="btn-primary">Добавить родителя/опекуна</button>
-      </div>
-
-      <div class="client-form-tab-content" id="client-tab-medical">
-        <div class="form-grid">
-          <div class="form-group full-width">
-            <label for="client-diagnosis">Медицинский диагноз</label>
-            <input type="text" id="client-diagnosis" value="${client.diagnosis || ''}" placeholder="Укажите диагноз или 'Нет'">
-          </div>
-          <div class="form-group full-width">
-            <label for="client-features">Особенности и примечания</label>
-            <input type="text" id="client-features" value="${client.features || ''}" placeholder="Дополнительная информация о клиенте, особенности занятий...">
-          </div>
-        </div>
-      </div>
-
-      <div class="client-form-footer">
-        <button type="button" id="client-cancel-btn" class="btn-secondary">Отмена</button>
-        <button type="button" id="client-save-btn" class="btn-primary">Сохранить</button>
-      </div>
-    </div>
+  function renderParents() {
+    const container = modal.querySelector('#parents-container');
+    container.innerHTML = `
+    <table class="parents-table">
+      <thead>
+        <tr>
+          <th>Фамилия</th>
+          <th>Имя</th>
+          <th>Отчество</th>
+          <th>Телефон</th>
+          <th>Кем приходится</th>
+          <th>Действия</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${parents.length ? parents.map((p, index) => `
+          <tr class="parent-row" data-index="${index}">
+            <td><input type="text" class="parent-surname" value="${p.surname}" required></td>
+            <td><input type="text" class="parent-name" value="${p.name}" required></td>
+            <td><input type="text" class="parent-patronymic" value="${p.patronymic}"></td>
+            <td><input type="tel" class="parent-phone" value="${p.phone}" required></td>
+            <td><input type="text" class="parent-relation" value="${p.relation}" required></td>
+            <td><button type="button" class="remove-parent-btn btn-danger">Удалить</button></td>
+          </tr>
+        `).join('') : `
+          <tr>
+            <td colspan="6" class="no-parents">Нет добавленных родителей/опекунов</td>
+          </tr>
+        `}
+      </tbody>
+    </table>
+    <button type="button" id="add-parent-btn" class="btn-primary add-parent-btn">Добавить родителя/опекуна</button>
   `;
 
-    document.getElementById('main-content').appendChild(modal);
-
-    const tabButtons = modal.querySelectorAll('.client-form-tabs .tab-button');
-    const tabContents = modal.querySelectorAll('.client-form-tab-content');
-
-    tabButtons.forEach(button => {
-      button.addEventListener('click', () => {
-        tabButtons.forEach(btn => btn.classList.remove('active'));
-        tabContents.forEach(content => content.classList.remove('active'));
-        button.classList.add('active');
-        modal.querySelector(`#client-tab-${button.dataset.tab}`).classList.add('active');
+    container.querySelectorAll('.remove-parent-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const index = parseInt(btn.closest('.parent-row').dataset.index);
+        parents.splice(index, 1);
+        renderParents();
       });
     });
 
-    const closeModal = () => modal.remove();
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) closeModal();
-    });
-    modal.querySelector('.client-form-close').addEventListener('click', closeModal);
+    parents.forEach((_, index) => {
+      const row = container.querySelector(`.parent-row[data-index="${index}"]`);
+      if (!row) return;
 
-    const photoInput = document.getElementById('client-photo');
-    const photoPreview = document.getElementById('client-photo-preview');
-    const photoRemoveBtn = document.getElementById('photo-remove-btn');
+      const surnameInput = row.querySelector('.parent-surname');
+      const nameInput = row.querySelector('.parent-name');
+      const patronymicInput = row.querySelector('.parent-patronymic');
+      const phoneInput = row.querySelector('.parent-phone');
+      const relationInput = row.querySelector('.parent-relation');
 
-    photoPreview.addEventListener('click', () => {
-      if (photoPreview.classList.contains('placeholder')) {
-        photoInput.click();
-      } else {
-        showPhotoZoomModal(photoPreview.src);
+      if (surnameInput) {
+        surnameInput.addEventListener('input', (e) => {
+          parents[index].surname = e.target.value;
+        });
+      }
+      if (nameInput) {
+        nameInput.addEventListener('input', (e) => {
+          parents[index].name = e.target.value;
+        });
+      }
+      if (patronymicInput) {
+        patronymicInput.addEventListener('input', (e) => {
+          parents[index].patronymic = e.target.value;
+        });
+      }
+      if (phoneInput) {
+        phoneInput.addEventListener('input', (e) => {
+          parents[index].phone = e.target.value;
+        });
+      }
+      if (relationInput) {
+        relationInput.addEventListener('input', (e) => {
+          parents[index].relation = e.target.value;
+        });
       }
     });
 
-    photoInput.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (file) {
-        if (file.size > 5 * 1024 * 1024) {
-          showToast('Размер файла не должен превышать 5MB', 'error');
-          return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-          const img = document.createElement('img');
-          img.src = ev.target.result;
-          img.alt = 'Предпросмотр';
-          img.style.width = '100%';
-          img.style.height = '100%';
-          img.style.objectFit = 'cover';
-          img.style.borderRadius = '8px';
-
-          photoPreview.innerHTML = '';
-          photoPreview.appendChild(img);
-          photoPreview.classList.remove('placeholder');
-          photoRemoveBtn.style.display = 'block';
-        };
-        reader.readAsDataURL(file);
-      }
-    });
-
-    photoRemoveBtn.addEventListener('click', () => {
-      photoPreview.innerHTML = `
-      <img src="images/icon-photo.svg" alt="Загрузить фото" class="upload-icon">
-      <span>Добавить фото</span>
-    `;
-      photoPreview.classList.add('placeholder');
-      photoInput.value = '';
-      photoRemoveBtn.style.display = 'none';
-    });
-
-    renderParents();
-
-    document.getElementById('add-parent-btn').addEventListener('click', () => {
-      parents.push({ fullName: '', phone: '' });
-      renderParents();
-    });
-
-    function validateForm() {
-      let isValid = true;
-
-      document.querySelectorAll('.field-error').forEach(el => el.textContent = '');
-      document.querySelectorAll('.form-group input, .form-group select').forEach(el => el.classList.remove('error'));
-
-      const surname = document.getElementById('client-surname').value.trim();
-      if (!surname) {
-        document.getElementById('surname-error').textContent = 'Фамилия обязательна';
-        document.getElementById('client-surname').classList.add('error');
-        isValid = false;
-      }
-
-      const name = document.getElementById('client-name').value.trim();
-      if (!name) {
-        document.getElementById('name-error').textContent = 'Имя обязательно';
-        document.getElementById('client-name').classList.add('error');
-        isValid = false;
-      }
-
-      const phone = document.getElementById('client-phone').value.trim();
-      if (!phone) {
-        document.getElementById('phone-error').textContent = 'Телефон обязателен';
-        document.getElementById('client-phone').classList.add('error');
-        isValid = false;
-      } else if (!/^[\+]?[0-9\s\-\(\)]{10,}$/.test(phone)) {
-        document.getElementById('phone-error').textContent = 'Некорректный номер телефона';
-        document.getElementById('client-phone').classList.add('error');
-        isValid = false;
-      }
-
-      const birthDate = document.getElementById('client-birthdate').value;
-      if (!birthDate) {
-        document.getElementById('birthdate-error').textContent = 'Дата рождения обязательна';
-        document.getElementById('client-birthdate').classList.add('error');
-        isValid = false;
-      }
-
-      const gender = document.getElementById('client-gender').value;
-      if (!gender) {
-        document.getElementById('gender-error').textContent = 'Пол обязателен';
-        document.getElementById('client-gender').classList.add('error');
-        isValid = false;
-      }
-
-      if (!isAdult(birthDate) && parents.length === 0) {
-        showToast('Для несовершеннолетних обязателен хотя бы один родитель/опекун', 'error');
-        tabButtons[1].click();
-        isValid = false;
-      }
-
-      parents.forEach((p, index) => {
-        const fullname = document.getElementById(`parent-fullname-${index}`);
-        const parentPhone = document.getElementById(`parent-phone-${index}`);
-        if (fullname && !fullname.value.trim()) {
-          fullname.classList.add('error');
-          isValid = false;
-        }
-        if (parentPhone && !parentPhone.value.trim()) {
-          parentPhone.classList.add('error');
-          isValid = false;
-        }
+    const addParentBtn = container.querySelector('#add-parent-btn');
+    if (addParentBtn) {
+      addParentBtn.addEventListener('click', () => {
+        parents.push({ surname: '', name: '', patronymic: '', phone: '', relation: '' });
+        renderParents();
       });
-
-      return isValid;
-    }
-
-    document.getElementById('client-save-btn').addEventListener('click', () => {
-      if (!validateForm()) return;
-
-      const surname = document.getElementById('client-surname').value.trim();
-      const name = document.getElementById('client-name').value.trim();
-      const patronymic = document.getElementById('client-patronymic').value.trim();
-      const phone = document.getElementById('client-phone').value.trim();
-      const birthDate = document.getElementById('client-birthdate').value;
-      const gender = document.getElementById('client-gender').value;
-      const diagnosis = document.getElementById('client-diagnosis').value.trim();
-      const features = document.getElementById('client-features').value.trim();
-
-      let photo = '';
-      const photoImg = photoPreview.querySelector('img');
-      if (photoImg && !photoPreview.classList.contains('placeholder')) {
-        photo = photoImg.src;
-      }
-
-      const updatedParents = [...parents];
-
-      callback({
-        surname,
-        name,
-        patronymic,
-        phone,
-        birthDate,
-        gender,
-        parents: updatedParents,
-        diagnosis: diagnosis || 'Нет',
-        features,
-        photo
-      });
-      closeModal();
-    });
-
-    document.getElementById('client-cancel-btn').addEventListener('click', closeModal);
-
-    setTimeout(() => document.getElementById('client-surname').focus(), 100);
-
-    const birthInput = document.getElementById('client-birthdate');
-    birthInput.addEventListener('change', () => {
-      if (!isAdult(birthInput.value) && parents.length === 0) {
-        tabButtons[1].click();
-        showToast('Клиент несовершеннолетний: заполните данные родителей/опекунов', 'info');
-      }
-    });
-
-    if (isEdit && !isAdult(client.birthDate)) {
-      if (parents.length === 0) {
-        tabButtons[1].click();
-      }
     }
   }
 
+  function renderDiagnoses() {
+    const container = modal.querySelector('#diagnoses-container');
+    container.innerHTML = `
+      <table class="diagnoses-table">
+        <thead>
+          <tr>
+            <th>Диагноз</th>
+            <th>Примечания/Особенности диагноза</th>
+            <th>Действия</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${diagnoses.length ? diagnoses.map((d, index) => `
+            <tr class="diagnosis-row" data-index="${index}">
+              <td><input type="text" class="diagnosis-name" value="${d.name}" required></td>
+              <td><input type="text" class="diagnosis-notes" value="${d.notes || ''}"></td>
+              <td><button type="button" class="remove-diagnosis-btn btn-danger">Удалить</button></td>
+            </tr>
+          `).join('') : `
+            <tr>
+              <td colspan="3" class="no-diagnoses">Нет добавленных диагнозов</td>
+            </tr>
+          `}
+        </tbody>
+      </table>
+      <button type="button" id="add-diagnosis-btn" class="btn-primary add-diagnosis-btn">Добавить диагноз</button>
+    `;
+
+    container.querySelectorAll('.remove-diagnosis-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const index = parseInt(btn.closest('.diagnosis-row').dataset.index);
+        diagnoses.splice(index, 1);
+        renderDiagnoses();
+      });
+    });
+
+    diagnoses.forEach((_, index) => {
+      const row = container.querySelector(`.diagnosis-row[data-index="${index}"]`);
+      if (!row) return;
+
+      const nameInput = row.querySelector('.diagnosis-name');
+      const notesInput = row.querySelector('.diagnosis-notes');
+
+      if (nameInput) {
+        nameInput.addEventListener('input', (e) => {
+          diagnoses[index].name = e.target.value;
+        });
+      }
+      if (notesInput) {
+        notesInput.addEventListener('input', (e) => {
+          diagnoses[index].notes = e.target.value;
+        });
+      }
+    });
+
+    // Перенесённый обработчик для кнопки добавления диагноза
+    const addDiagnosisBtn = container.querySelector('#add-diagnosis-btn');
+    if (addDiagnosisBtn) {
+      addDiagnosisBtn.addEventListener('click', () => {
+        diagnoses.push({ name: '', notes: '' });
+        renderDiagnoses();
+      });
+    }
+  }
+
+  modal.innerHTML = `
+  <div class="client-form-content">
+    <div class="client-form-header">
+      <h2>${title}</h2>
+      <button type="button" class="client-form-close">×</button>
+    </div>
+    
+    <div class="client-form-tabs">
+      <button type="button" class="tab-button active" data-tab="personal">Личные данные</button>
+      <button type="button" class="tab-button" data-tab="parents">Родители/опекуны</button>
+      <button type="button" class="tab-button" data-tab="medical">Медицинская информация</button>
+    </div>
+    
+    <div class="client-form-tab-content active" id="client-tab-personal">
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="client-surname" class="required">Фамилия</label>
+          <input type="text" id="client-surname" value="${client.surname || ''}" required>
+          <span class="field-error" id="surname-error"></span>
+        </div>
+        <div class="form-group">
+          <label for="client-name" class="required">Имя</label>
+          <input type="text" id="client-name" value="${client.name || ''}" required>
+          <span class="field-error" id="name-error"></span>
+        </div>
+        <div class="form-group">
+          <label for="client-patronymic">Отчество</label>
+          <input type="text" id="client-patronymic" value="${client.patronymic || ''}">
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="client-birthdate" class="required">Дата рождения</label>
+          <input type="date" id="client-birthdate" value="${client.birthDate || ''}" required>
+          <span class="field-error" id="birthdate-error"></span>
+        </div>
+        <div class="form-group">
+          <label for="client-gender" class="required">Пол</label>
+          <select id="client-gender" required>
+            <option value="">Выберите пол</option>
+            <option value="male" ${client.gender === 'male' ? 'selected' : ''}>Мужской</option>
+            <option value="female" ${client.gender === 'female' ? 'selected' : ''}>Женский</option>
+          </select>
+          <span class="field-error" id="gender-error"></span>
+        </div>
+        <div class="form-group">
+          <label for="client-phone" class="required">Телефон</label>
+          <input type="tel" id="client-phone" value="${client.phone || ''}" required placeholder="+7 (999) 123-45-67">
+          <span class="field-error" id="phone-error"></span>
+        </div>
+      </div>
+      <div class="client-photo-section">
+        <div class="photo-upload-area">
+          ${client.photo ?
+      `<img src="${client.photo}" class="client-photo-preview" id="client-photo-preview" alt="${client.surname || 'Клиент'}">` :
+      `<div class="client-photo-preview placeholder" id="client-photo-preview">
+               <img src="images/icon-photo.svg" alt="Загрузить фото" class="upload-icon">
+               <span>Добавить фото</span>
+             </div>`
+    }
+        <div class="for-flex">
+          <input type="file" id="client-photo" accept="image/*" class="photo-input">
+          <button type="button" class="photo-remove-btn" id="photo-remove-btn" ${!client.photo ? 'style="display: none;"' : ''}>
+            <img src="images/trash.svg" alt="Удалить фото" class="btn-icon invert">
+          </button>
+        </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="client-form-tab-content" id="client-tab-parents">
+      <div id="parents-container"></div>
+    </div>
+
+    <div class="client-form-tab-content" id="client-tab-medical">
+      <div id="diagnoses-container"></div>
+      <div class="form-group full-width">
+        <label for="client-features">Общие особенности клиента</label>
+        <input type="text" id="client-features" value="${client.features || ''}" placeholder="Дополнительная информация о клиенте, особенности занятий...">
+      </div>
+    </div>
+
+    <div class="client-form-footer">
+      <button type="button" id="client-cancel-btn" class="btn-secondary">Отмена</button>
+      <button type="button" id="client-save-btn" class="btn-primary">Сохранить</button>
+    </div>
+  </div>
+`;
+
+  document.getElementById('main-content').appendChild(modal);
+
+  const tabButtons = modal.querySelectorAll('.client-form-tabs .tab-button');
+  const tabContents = modal.querySelectorAll('.client-form-tab-content');
+
+  tabButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      tabButtons.forEach(btn => btn.classList.remove('active'));
+      tabContents.forEach(content => content.classList.remove('active'));
+      button.classList.add('active');
+      modal.querySelector(`#client-tab-${button.dataset.tab}`).classList.add('active');
+    });
+  });
+
+  const closeModal = () => modal.remove();
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeModal();
+  });
+  modal.querySelector('.client-form-close').addEventListener('click', closeModal);
+
+  const photoInput = document.getElementById('client-photo');
+  const photoPreview = document.getElementById('client-photo-preview');
+  const photoRemoveBtn = document.getElementById('photo-remove-btn');
+
+  photoPreview.addEventListener('click', () => {
+    if (photoPreview.classList.contains('placeholder')) {
+      photoInput.click();
+    } else {
+      showPhotoZoomModal(photoPreview.src);
+    }
+  });
+
+  photoInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        showToast('Размер файла не должен превышать 5MB', 'error');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const img = document.createElement('img');
+        img.src = ev.target.result;
+        img.alt = 'Предпросмотр';
+        img.style.width = '100%';
+        img.style.height = '100%';
+        img.style.objectFit = 'cover';
+        img.style.borderRadius = '8px';
+
+        photoPreview.innerHTML = '';
+        photoPreview.appendChild(img);
+        photoPreview.classList.remove('placeholder');
+        photoRemoveBtn.style.display = 'block';
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+
+  photoRemoveBtn.addEventListener('click', () => {
+    photoPreview.innerHTML = `
+    <img src="images/icon-photo.svg" alt="Загрузить фото" class="upload-icon">
+    <span>Добавить фото</span>
+  `;
+    photoPreview.classList.add('placeholder');
+    photoInput.value = '';
+    photoRemoveBtn.style.display = 'none';
+  });
+
+  renderParents();
+  renderDiagnoses();
+
+  function validateForm() {
+    let isValid = true;
+
+    document.querySelectorAll('.field-error').forEach(el => el.textContent = '');
+    document.querySelectorAll('.form-group input, .form-group select').forEach(el => el.classList.remove('error'));
+
+    const surname = document.getElementById('client-surname').value.trim();
+    if (!surname) {
+      document.getElementById('surname-error').textContent = 'Фамилия обязательна';
+      document.getElementById('client-surname').classList.add('error');
+      isValid = false;
+    }
+
+    const name = document.getElementById('client-name').value.trim();
+    if (!name) {
+      document.getElementById('name-error').textContent = 'Имя обязательно';
+      document.getElementById('client-name').classList.add('error');
+      isValid = false;
+    }
+
+    const phone = document.getElementById('client-phone').value.trim();
+    if (!phone) {
+      document.getElementById('phone-error').textContent = 'Телефон обязателен';
+      document.getElementById('client-phone').classList.add('error');
+      isValid = false;
+    } else if (!/^[\+]?[0-9\s\-\(\)]{10,}$/.test(phone)) {
+      document.getElementById('phone-error').textContent = 'Некорректный номер телефона';
+      document.getElementById('client-phone').classList.add('error');
+      isValid = false;
+    }
+
+    const birthDate = document.getElementById('client-birthdate').value;
+    if (!birthDate) {
+      document.getElementById('birthdate-error').textContent = 'Дата рождения обязательна';
+      document.getElementById('client-birthdate').classList.add('error');
+      isValid = false;
+    }
+
+    const gender = document.getElementById('client-gender').value;
+    if (!gender) {
+      document.getElementById('gender-error').textContent = 'Пол обязателен';
+      document.getElementById('client-gender').classList.add('error');
+      isValid = false;
+    }
+
+    if (!isAdult(birthDate) && parents.length === 0) {
+      showToast('Для несовершеннолетних обязателен хотя бы один родитель/опекун', 'error');
+      tabButtons[1].click();
+      isValid = false;
+    }
+
+    parents.forEach((p, index) => {
+      const row = modal.querySelector(`.parent-row[data-index="${index}"]`);
+      if (!row) return;
+
+      const surnameInput = row.querySelector('.parent-surname');
+      const nameInput = row.querySelector('.parent-name');
+      const phoneInput = row.querySelector('.parent-phone');
+      const relationInput = row.querySelector('.parent-relation');
+
+      if (!surnameInput.value.trim()) {
+        surnameInput.classList.add('error');
+        isValid = false;
+      }
+      if (!nameInput.value.trim()) {
+        nameInput.classList.add('error');
+        isValid = false;
+      }
+      if (!phoneInput.value.trim()) {
+        phoneInput.classList.add('error');
+        isValid = false;
+      }
+      if (!relationInput.value.trim()) {
+        relationInput.classList.add('error');
+        isValid = false;
+      }
+    });
+
+    diagnoses.forEach((d, index) => {
+      const row = modal.querySelector(`.diagnosis-row[data-index="${index}"]`);
+      if (!row) return;
+
+      const nameInput = row.querySelector('.diagnosis-name');
+
+      if (!nameInput.value.trim()) {
+        nameInput.classList.add('error');
+        isValid = false;
+      }
+    });
+
+    return isValid;
+  }
+
+  document.getElementById('client-save-btn').addEventListener('click', () => {
+    if (!validateForm()) return;
+
+    const surname = document.getElementById('client-surname').value.trim();
+    const name = document.getElementById('client-name').value.trim();
+    const patronymic = document.getElementById('client-patronymic').value.trim();
+    const phone = document.getElementById('client-phone').value.trim();
+    const birthDate = document.getElementById('client-birthdate').value;
+    const gender = document.getElementById('client-gender').value;
+    const features = document.getElementById('client-features').value.trim();
+
+    let photo = '';
+    const photoImg = photoPreview.querySelector('img');
+    if (photoImg && !photoPreview.classList.contains('placeholder')) {
+      photo = photoImg.src;
+    }
+
+    const updatedParents = parents.map(p => ({
+      fullName: `${p.surname} ${p.name} ${p.patronymic || ''}`.trim(),
+      phone: p.phone,
+      relation: p.relation
+    }));
+
+    const updatedDiagnoses = diagnoses.filter(d => d.name.trim() !== '');
+
+    callback({
+      surname,
+      name,
+      patronymic,
+      phone,
+      birthDate,
+      gender,
+      parents: updatedParents,
+      diagnosis: updatedDiagnoses,
+      features,
+      photo
+    });
+    closeModal();
+  });
+
+  document.getElementById('client-cancel-btn').addEventListener('click', closeModal);
+
+  setTimeout(() => document.getElementById('client-surname').focus(), 100);
+
+  const birthInput = document.getElementById('client-birthdate');
+  birthInput.addEventListener('change', () => {
+    if (!isAdult(birthInput.value) && parents.length === 0) {
+      tabButtons[1].click();
+      showToast('Клиент несовершеннолетний: заполните данные родителей/опекунов', 'info');
+    }
+  });
+
+  if (isEdit && !isAdult(client.birthDate)) {
+    if (parents.length === 0) {
+      tabButtons[1].click();
+    }
+  }
+}
   function showSubscriptionManagement(client) {
     const fullName = `${client.surname} ${client.name} ${client.patronymic || ''}`;
     const modal = document.createElement('div');

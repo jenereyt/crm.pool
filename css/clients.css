@@ -442,12 +442,77 @@ img[class*='icon'] {
   white-space: nowrap;
 }
 
-.diagnosis-badge {
-  background: var(--danger-color);
+/* НОВЫЕ СТИЛИ ДЛЯ ТАБЛИЦЫ ДИАГНОЗОВ (новое) */
+.diagnoses-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+}
+
+.diagnoses-table th,
+.diagnoses-table td {
+  padding: 0.5rem;
+  border: 1px solid var(--gray-200);
+  text-align: left;
+}
+
+.diagnoses-table th {
+  background: var(--gray-50);
+  font-weight: 600;
+  color: var(--gray-800);
+  font-size: 0.75rem;
+}
+
+.diagnoses-table td input {
+  width: 100%;
+  padding: 0.3rem;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--border-radius);
+  font-size: 0.75rem;
+  background: var(--card-background);
+  color: var(--text-color);
+  transition: var(--transition);
+}
+
+.diagnoses-table td input:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px var(--primary-light);
+  outline: none;
+}
+
+.diagnoses-table td input.error {
+  border-color: var(--danger-color);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.no-diagnoses {
+  text-align: center;
+  color: var(--gray-400);
+  font-style: italic;
+  padding: 1rem;
+}
+
+.diagnoses-table .remove-diagnosis-btn {
+  padding: 0.3rem 0.5rem;
+  font-size: 0.75rem;
+  width: 100%;
+}
+
+/* Новая кнопка добавления диагноза (новое) */
+.add-diagnosis-btn {
+  background: var(--primary-color);
   color: white;
-  padding: 0.2rem 0.4rem;
-  border-radius: 8px;
-  font-size: 0.7rem;
+  margin-top: 0.5rem;
+}
+
+.add-diagnosis-btn:hover {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+}
+
+/* Обновленный стиль для контейнера диагнозов (новое) */
+#diagnoses-container {
+  margin-bottom: 1rem;
 }
 
 .client-additional-info {
@@ -484,6 +549,10 @@ img[class*='icon'] {
   font-style: italic;
   font-size: 0.7rem;
 }
+
+
+
+
 
 .remaining-classes {
   font-weight: 600;
@@ -882,9 +951,13 @@ img[class*='icon'] {
 }
 
 .client-form-content #client-tab-personal {
-  display: grid;
+
   grid-template-columns: 1fr 1fr 1fr;
   gap: 1rem;
+}
+
+#client-tab-personal.active {
+  display: grid;
 }
 
 .client-form-content .form-grid {
@@ -1008,6 +1081,81 @@ img[class*='icon'] {
   background: var(--primary-hover);
   transform: translateY(-1px);
 }
+
+
+/* НОВЫЕ СТИЛИ ДЛЯ ТАБЛИЦЫ РОДИТЕЛЕЙ */
+.parents-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+}
+
+.parents-table th,
+.parents-table td {
+  padding: 0.5rem;
+  border: 1px solid var(--gray-200);
+  text-align: left;
+}
+
+.parents-table th {
+  background: var(--gray-50);
+  font-weight: 600;
+  color: var(--gray-800);
+  font-size: 0.75rem;
+}
+
+.parents-table td input {
+  width: 100%;
+  padding: 0.3rem;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--border-radius);
+  font-size: 0.75rem;
+  background: var(--card-background);
+  color: var(--text-color);
+  transition: var(--transition);
+}
+
+.parents-table td input:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px var(--primary-light);
+  outline: none;
+}
+
+.parents-table td input.error {
+  border-color: var(--danger-color);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.no-parents {
+  text-align: center;
+  color: var(--gray-400);
+  font-style: italic;
+  padding: 1rem;
+}
+
+.parents-table .remove-parent-btn {
+  padding: 0.3rem 0.5rem;
+  font-size: 0.75rem;
+  width: 100%;
+}
+
+/* Существующие стили для кнопки добавления (без изменений) */
+.add-parent-btn {
+  background: var(--primary-color);
+  color: white;
+  margin-top: 0.5rem;
+}
+
+.add-parent-btn:hover {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+}
+
+/* Обновленный стиль для контейнера родителей */
+#parents-container {
+  margin-bottom: 1rem;
+}
+
 
 .client-form-content .client-form-footer {
   padding: 0.5rem;
