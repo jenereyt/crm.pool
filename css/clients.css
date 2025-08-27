@@ -11,7 +11,6 @@
   --background-color: #f9fafb;
   --card-background: #ffffff;
   --border-color: #e5e7eb;
-
   --gray-50: #f9fafb;
   --gray-100: #f3f4f6;
   --gray-200: #e5e7eb;
@@ -22,11 +21,8 @@
   --gray-700: #374151;
   --gray-800: #1f2937;
   --gray-900: #111827;
-
   --pink-100: #fce4ec;
   --pink-900: #880e4f;
-
-
   --border-radius: 8px;
   --border-radius-lg: 12px;
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
@@ -48,20 +44,18 @@ img[class*='icon'] {
 .search-icon,
 .add-icon,
 .btn-icon,
-.upload-icon {
+.upload-icon,
+.diagnosis-dictionary-btn {
   width: 20px;
   height: 20px;
   vertical-align: middle;
   transition: var(--transition);
 }
 
-
 .diagnosis-tag {
   display: inline-block;
   background: var(--pink-100);
-  /* Розовый фон для отличия от групп */
   color: var(--pink-900);
-  /* Тёмный текст для контраста */
   padding: 0.25rem 0.5rem;
   border-radius: var(--border-radius);
   font-size: 0.75rem;
@@ -78,7 +72,6 @@ img[class*='icon'] {
 .invert {
   filter: invert(1);
   border: none;
-
 }
 
 .client-details-actions {
@@ -98,7 +91,8 @@ img[class*='icon'] {
 .photo-zoom-close,
 .add-parent-btn,
 .new-sub-btn,
-.renew-sub-btn {
+.renew-sub-btn,
+.add-diagnosis-btn {
   border: none;
   padding: 0.5rem 1rem;
   border-radius: var(--border-radius);
@@ -116,13 +110,15 @@ img[class*='icon'] {
 }
 
 .btn-primary,
-.btn-add-group {
+.btn-add-group,
+.add-diagnosis-btn {
   background: var(--primary-color);
   color: white;
 }
 
 .btn-primary:hover,
-.btn-add-group:hover {
+.btn-add-group:hover,
+.add-diagnosis-btn:hover {
   background: var(--primary-hover);
   transform: translateY(-1px);
   opacity: 1;
@@ -189,7 +185,6 @@ img[class*='icon'] {
 .blacklist-btn.active,
 .delete-btn:hover,
 .confirm-btn-ok,
-.photo-remove-btn,
 .add-parent-btn {
   background: var(--danger-color);
   color: white;
@@ -198,11 +193,14 @@ img[class*='icon'] {
 }
 
 .confirm-btn-ok:hover,
-.photo-remove-btn:hover,
 .add-parent-btn:hover {
   background: #dc2626;
   transform: translateY(-1px);
   opacity: 1;
+}
+
+.flex-end {
+  justify-content: flex-end;
 }
 
 .new-sub-btn,
@@ -466,19 +464,25 @@ img[class*='icon'] {
   white-space: nowrap;
 }
 
-/* НОВЫЕ СТИЛИ ДЛЯ ТАБЛИЦЫ ДИАГНОЗОВ (новое) */
+/* НОВЫЕ СТИЛИ ДЛЯ ТАБЛИЦЫ ДИАГНОЗОВ */
 .diagnoses-table {
   width: 100%;
   border-collapse: collapse;
   margin-bottom: 1rem;
 }
 
-.diagnoses-table th,
-.diagnoses-table td {
-  padding: 0.5rem;
+.diagnoses-table th {
   border: 1px solid var(--gray-200);
+  padding: 0.5rem;
   text-align: left;
 }
+
+.diagnoses-table td {
+  text-align: left;
+  border: 1px solid var(--gray-200);
+}
+
+
 
 .diagnoses-table th {
   background: var(--gray-50);
@@ -490,8 +494,8 @@ img[class*='icon'] {
 .diagnoses-table td input {
   width: 100%;
   padding: 0.3rem;
-  border: 1px solid var(--gray-300);
-  border-radius: var(--border-radius);
+  border: none;
+
   font-size: 0.75rem;
   background: var(--card-background);
   color: var(--text-color);
@@ -509,11 +513,41 @@ img[class*='icon'] {
   box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
 }
 
-.no-diagnoses {
+.diagnoses-table .diagnosis-row td:first-child {
+  display: flex;
+  align-items: center;
+}
+
+.diagnoses-table .diagnosis-name {
+  flex: 1;
+}
+
+.diagnoses-table .diagnosis-dictionary-btn {
+  background: var(--gray-100);
+  border: 1px solid var(--gray-300);
+  border-radius: var(--border-radius);
+  padding: 0.3rem;
+  cursor: pointer;
   text-align: center;
-  color: var(--gray-400);
-  font-style: italic;
-  padding: 1rem;
+  justify-content: center;
+}
+
+.parents-controls {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.btn-danger {
+  padding: 5px;
+  border: none;
+  border-radius: 7px;
+  background-color: #dc2626;
+  color: #ffffff;
+}
+
+.diagnoses-table .diagnosis-dictionary-btn:hover {
+  background: var(--gray-200);
 }
 
 .diagnoses-table .remove-diagnosis-btn {
@@ -522,11 +556,27 @@ img[class*='icon'] {
   width: 100%;
 }
 
-/* Новая кнопка добавления диагноза (новое) */
+.no-diagnoses {
+  text-align: center;
+  color: var(--gray-400);
+  font-style: italic;
+  padding: 1rem;
+}
+
+#diagnoses-container {
+  margin-bottom: 1rem;
+}
+
+.diagnoses-controls {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Новая кнопка добавления диагноза */
 .add-diagnosis-btn {
   background: var(--primary-color);
   color: white;
-  margin-top: 0.5rem;
 }
 
 .add-diagnosis-btn:hover {
@@ -534,9 +584,80 @@ img[class*='icon'] {
   transform: translateY(-1px);
 }
 
-/* Обновленный стиль для контейнера диагнозов (новое) */
-#diagnoses-container {
+/* Модалка справочника диагнозов */
+.diagnosis-dictionary-content {
+  max-width: 400px;
+  padding: 1rem;
+  background: var(--card-background);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-xl);
+}
+
+.diagnosis-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 1rem;
+}
+
+.diagnosis-header h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.diagnosis-close {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  color: var(--gray-400);
+  border-radius: var(--border-radius);
+  transition: var(--transition);
+}
+
+.diagnosis-close:hover {
+  background: var(--gray-100);
+  color: var(--gray-600);
+}
+
+.diagnosis-body input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--border-radius);
+  font-size: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.diagnoses-list {
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--border-radius);
+  margin-bottom: 0.5rem;
+}
+
+.diagnosis-item {
+  padding: 0.5rem;
+  cursor: pointer;
+  font-size: 0.75rem;
+}
+
+.diagnosis-item:hover {
+  background: var(--gray-100);
+}
+
+.diagnosis-item.selected {
+  background: var(--primary-color);
+  color: white;
+}
+
+.diagnosis-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
 }
 
 .client-additional-info {
@@ -573,10 +694,6 @@ img[class*='icon'] {
   font-style: italic;
   font-size: 0.7rem;
 }
-
-
-
-
 
 .remaining-classes {
   font-weight: 600;
@@ -659,7 +776,8 @@ img[class*='icon'] {
 .subscription-management-modal,
 .confirm-modal,
 .photo-zoom-modal,
-.group-management-modal {
+.group-management-modal,
+.diagnosis-dictionary-modal {
   position: fixed;
   top: 0;
   left: 0;
@@ -679,7 +797,8 @@ img[class*='icon'] {
 .subscription-management-content,
 .confirm-modal-content,
 .photo-zoom-content,
-.group-management-content {
+.group-management-content,
+.diagnosis-dictionary-content {
   background: var(--card-background);
   border-radius: var(--border-radius-lg);
   max-width: 900px;
@@ -975,13 +1094,13 @@ img[class*='icon'] {
 }
 
 .client-form-content #client-tab-personal {
-
   grid-template-columns: 1fr 1fr 1fr;
   gap: 1rem;
 }
 
 #client-tab-personal.active {
   display: grid;
+  align-items: center;
 }
 
 .client-form-content .form-grid {
@@ -1017,7 +1136,6 @@ img[class*='icon'] {
 .client-form-content .form-group textarea {
   padding: 0.3rem;
   border: 1px solid var(--gray-300);
-  border-radius: var(--border-radius);
   font-size: 0.75rem;
   background: var(--card-background);
   color: var(--text-color);
@@ -1040,8 +1158,6 @@ img[class*='icon'] {
 .client-form-content .client-photo-section {
   display: flex;
 }
-
-
 
 .client-form-content .photo-upload-area {
   width: 100%;
@@ -1078,10 +1194,12 @@ img[class*='icon'] {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 0.75rem;
+  font-size: 12px;
   border: none;
   border-radius: 5px;
   padding: 3px;
+  background-color: transparent;
+  cursor: pointer;
 }
 
 .client-form-content .parent-form {
@@ -1098,14 +1216,13 @@ img[class*='icon'] {
 .client-form-content .add-parent-btn {
   background: var(--primary-color);
   color: white;
-  margin-top: 0.5rem;
+
 }
 
 .client-form-content .add-parent-btn:hover {
   background: var(--primary-hover);
   transform: translateY(-1px);
 }
-
 
 /* НОВЫЕ СТИЛИ ДЛЯ ТАБЛИЦЫ РОДИТЕЛЕЙ */
 .parents-table {
@@ -1116,12 +1233,12 @@ img[class*='icon'] {
 
 .parents-table th,
 .parents-table td {
-  padding: 0.5rem;
   border: 1px solid var(--gray-200);
   text-align: left;
 }
 
 .parents-table th {
+  padding: 0.5rem;
   background: var(--gray-50);
   font-weight: 600;
   color: var(--gray-800);
@@ -1131,10 +1248,8 @@ img[class*='icon'] {
 .parents-table td input {
   width: 100%;
   padding: 0.3rem;
-  border: 1px solid var(--gray-300);
-  border-radius: var(--border-radius);
+  border: none;
   font-size: 0.75rem;
-  background: var(--card-background);
   color: var(--text-color);
   transition: var(--transition);
 }
@@ -1167,7 +1282,6 @@ img[class*='icon'] {
 .add-parent-btn {
   background: var(--primary-color);
   color: white;
-  margin-top: 0.5rem;
 }
 
 .add-parent-btn:hover {
@@ -1179,7 +1293,6 @@ img[class*='icon'] {
 #parents-container {
   margin-bottom: 1rem;
 }
-
 
 .client-form-content .client-form-footer {
   padding: 0.5rem;
@@ -1708,321 +1821,4 @@ img[class*='icon'] {
   color: var(--text-color);
   font-weight: 500;
   font-size: 0.875rem;
-}
-
-/* Адаптивность */
-@media (max-width: 1200px) {
-  .control-bar {
-    padding: 0.5rem 1rem;
-  }
-
-  .client-section {
-    padding: 1rem;
-  }
-
-  .client-form-content #client-tab-personal {
-    grid-template-columns: 1fr;
-  }
-
-  .client-form-content .form-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .group-management-content .group-sections,
-  .subscription-management-content .subscription-management-body {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 1024px) {
-  .header {
-    padding: 0.5rem 1rem;
-  }
-
-  .header-content {
-    gap: 0.5rem;
-  }
-
-  .header-stats {
-    gap: 0.5rem;
-  }
-
-  .control-bar {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.5rem;
-  }
-
-  .search-container {
-    min-width: auto;
-  }
-
-  .filter-controls {
-    justify-content: center;
-    flex-wrap: wrap;
-  }
-
-  .client-section {
-    padding: 0.5rem;
-  }
-
-  .details-grid {
-    grid-template-columns: 1fr;
-    gap: 0.5rem;
-  }
-
-  .info-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 768px) {
-  .header {
-    flex-direction: column;
-    gap: 0.5rem;
-    align-items: stretch;
-  }
-
-  .header-content {
-    flex-direction: column;
-    text-align: left;
-  }
-
-  .header-content h1 {
-    font-size: 1.25rem;
-  }
-
-  .client-card {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.5rem;
-    padding: 0.5rem;
-  }
-
-  .client-main-info {
-    align-items: flex-start;
-  }
-
-  .action-buttons-group {
-    justify-content: flex-end;
-    flex-wrap: wrap;
-  }
-
-  .client-details-content,
-  .client-form-content,
-  .subscription-management-content,
-  .group-management-content {
-    padding: 0.5rem;
-  }
-
-  .details-header {
-    flex-direction: column;
-    text-align: left;
-  }
-
-  .client-details-footer {
-    flex-direction: column;
-  }
-
-  .client-form-content .parent-form {
-    grid-template-columns: 1fr;
-  }
-
-  .client-form-content .client-photo-preview {
-    width: 100%;
-    max-width: 150px;
-    height: 200px;
-  }
-}
-
-@media (max-width: 480px) {
-  .client-card {
-    padding: 0.5rem;
-  }
-
-  .client-photo,
-  .client-photo-placeholder {
-    width: 40px;
-    height: 40px;
-  }
-
-  .client-name {
-    font-size: 0.875rem;
-  }
-
-  .client-additional-info {
-    font-size: 0.75rem;
-  }
-
-  .action-buttons-group {
-    gap: 0.25rem;
-  }
-
-  .client-action-btn {
-    width: 28px;
-    height: 28px;
-  }
-
-  .toast {
-    top: 10px;
-    right: 10px;
-    left: 10px;
-    max-width: none;
-  }
-
-  .client-photo-preview {
-    width: 100px;
-    height: 150px;
-  }
-
-  .client-photo-large,
-  .client-photo-placeholder-large {
-    width: 64px;
-    height: 64px;
-  }
-}
-
-@media (max-width: 360px) {
-  .header-content h1 {
-    font-size: 1rem;
-  }
-
-  .stat-number {
-    font-size: 1rem;
-  }
-
-  .client-card {
-    padding: 0.25rem;
-  }
-
-  .client-photo,
-  .client-photo-placeholder {
-    width: 32px;
-    height: 32px;
-  }
-
-  .client-action-btn {
-    width: 24px;
-    height: 24px;
-  }
-
-  .status-filter,
-  .sort-select {
-    min-width: 100px;
-  }
-}
-
-/* Анимации */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slideIn {
-  from {
-    transform: translateX(100%);
-  }
-
-  to {
-    transform: translateX(0);
-  }
-}
-
-.client-card,
-.client-details-content,
-.client-form-content,
-.subscription-management-content,
-.group-management-content {
-  animation: fadeIn 0.3s ease-out;
-}
-
-/* Дополнительные утилиты */
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
-.text-center {
-  text-align: center;
-}
-
-.text-left {
-  text-align: left;
-}
-
-.text-right {
-  text-align: right;
-}
-
-.font-bold {
-  font-weight: 700;
-}
-
-.font-medium {
-  font-weight: 500;
-}
-
-.text-sm {
-  font-size: 0.875rem;
-}
-
-.text-xs {
-  font-size: 0.75rem;
-}
-
-.mt-2 {
-  margin-top: 0.5rem;
-}
-
-.mb-2 {
-  margin-bottom: 0.5rem;
-}
-
-.p-2 {
-  padding: 0.5rem;
-}
-
-.p-4 {
-  padding: 1rem;
-}
-
-/* Состояния загрузки */
-.loading {
-  opacity: 0.6;
-  pointer-events: none;
-  position: relative;
-}
-
-.loading::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 20px;
-  height: 20px;
-  margin: -10px 0 0 -10px;
-  border: 2px solid var(--gray-300);
-  border-top-color: var(--primary-color);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
 }

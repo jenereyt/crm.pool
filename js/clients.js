@@ -75,6 +75,8 @@ let clientsData = [
   }
 ];
 
+let commonDiagnoses = ['Сколиоз', 'Кифоз', 'Лордоз', 'Остеохондроз', 'Артрит', 'Астма', 'Диабет', 'Нет', 'Гипертония', 'Аллергія'];
+
 export function getClients() {
   return clientsData;
 }
@@ -677,14 +679,11 @@ export function loadClients() {
     });
   }
 
-
   function showClientForm(title, client, callback) {
     const modal = document.createElement('div');
     modal.className = 'client-form-modal';
     let parents = client.parents ? [...client.parents.map(p => ({
-      surname: p.fullName ? p.fullName.split(' ')[0] || '' : '',
-      name: p.fullName ? p.fullName.split(' ')[1] || '' : '',
-      patronymic: p.fullName ? p.fullName.split(' ')[2] || '' : '',
+      fullName: p.fullName || '',
       phone: p.phone || '',
       relation: p.relation || ''
     }))] : [];
@@ -715,45 +714,65 @@ export function loadClients() {
       return age !== null && age >= 18;
     }
 
-    function renderParents() {
-      const container = modal.querySelector('#parents-container');
+    function renderParents(container) {
       container.innerHTML = `
-    <table class="parents-table">
-      <thead>
-        <tr>
-          <th>Фамилия</th>
-          <th>Имя</th>
-          <th>Отчество</th>
-          <th>Телефон</th>
-          <th>Кем приходится</th>
-          <th>Действия</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${parents.length ? parents.map((p, index) => `
-          <tr class="parent-row" data-index="${index}">
-            <td><input type="text" class="parent-surname" value="${p.surname}" required></td>
-            <td><input type="text" class="parent-name" value="${p.name}" required></td>
-            <td><input type="text" class="parent-patronymic" value="${p.patronymic}"></td>
-            <td><input type="tel" class="parent-phone" value="${p.phone}" required></td>
-            <td><input type="text" class="parent-relation" value="${p.relation}" required></td>
-            <td><button type="button" class="remove-parent-btn btn-danger">Удалить</button></td>
-          </tr>
-        `).join('') : `
-          <tr>
-            <td colspan="6" class="no-parents">Нет добавленных родителей/опекунов</td>
-          </tr>
-        `}
-      </tbody>
-    </table>
-    <button type="button" id="add-parent-btn" class="btn-primary add-parent-btn">Добавить родителя/опекуна</button>
-  `;
+        <div class="parents-controls">
+          <button type="button" id="add-parent-btn" class="btn-primary add-parent-btn">Добавить</button>
+          <button type="button" id="delete-parent-btn" class="btn-danger delete-parent-btn">Удалить</button>
+        </div>
+        <table class="parents-table">
+          <thead>
+            <tr>
+              <th>ФИО</th>
+              <th>Телефон</th>
+              <th>Кем приходится</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${parents.length ? parents.map((p, index) => `
+              <tr class="parent-row" data-index="${index}">
+                <td><input type="text" class="parent-fullname" value="${p.fullName}" required></td>
+                <td><input type="tel" class="parent-phone" value="${p.phone}" required></td>
+                <td><input type="text" class="parent-relation" value="${p.relation}" required></td>
+              </tr>
+            `).join('') : `
+              <tr>
+                <td colspan="3" class="no-parents">Нет добавленных родителей/опекунов</td>
+              </tr>
+            `}
+          </tbody>
+        </table>
+      `;
 
-      container.querySelectorAll('.remove-parent-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const index = parseInt(btn.closest('.parent-row').dataset.index);
-          parents.splice(index, 1);
-          renderParents();
+      const addBtn = container.querySelector('#add-parent-btn');
+      addBtn.addEventListener('click', () => {
+        parents.push({ fullName: '', phone: '', relation: '' });
+        renderParents(container);
+      });
+
+      const deleteBtn = container.querySelector('#delete-parent-btn');
+      deleteBtn.addEventListener('click', () => {
+        showToast('Выберите строку для удаления', 'info');
+        const rows = container.querySelectorAll('.parent-row');
+        rows.forEach(row => {
+          row.style.cursor = 'pointer';
+          const deleteHandler = () => {
+            const index = parseInt(row.dataset.index);
+            showConfirmDialog(
+              'Удалить родителя?',
+              'Вы уверены, что хотите удалить этого родителя/опекуна? Это действие нельзя отменить.',
+              () => {
+                parents.splice(index, 1);
+                renderParents(container);
+                showToast('Родитель удален', 'success');
+              }
+            );
+            rows.forEach(r => {
+              r.removeEventListener('click', deleteHandler);
+              r.style.cursor = 'default';
+            });
+          };
+          row.addEventListener('click', deleteHandler, { once: true });
         });
       });
 
@@ -761,81 +780,79 @@ export function loadClients() {
         const row = container.querySelector(`.parent-row[data-index="${index}"]`);
         if (!row) return;
 
-        const surnameInput = row.querySelector('.parent-surname');
-        const nameInput = row.querySelector('.parent-name');
-        const patronymicInput = row.querySelector('.parent-patronymic');
+        const fullnameInput = row.querySelector('.parent-fullname');
         const phoneInput = row.querySelector('.parent-phone');
         const relationInput = row.querySelector('.parent-relation');
 
-        if (surnameInput) {
-          surnameInput.addEventListener('input', (e) => {
-            parents[index].surname = e.target.value;
-          });
-        }
-        if (nameInput) {
-          nameInput.addEventListener('input', (e) => {
-            parents[index].name = e.target.value;
-          });
-        }
-        if (patronymicInput) {
-          patronymicInput.addEventListener('input', (e) => {
-            parents[index].patronymic = e.target.value;
-          });
-        }
-        if (phoneInput) {
-          phoneInput.addEventListener('input', (e) => {
-            parents[index].phone = e.target.value;
-          });
-        }
-        if (relationInput) {
-          relationInput.addEventListener('input', (e) => {
-            parents[index].relation = e.target.value;
-          });
-        }
+        fullnameInput.addEventListener('input', (e) => parents[index].fullName = e.target.value);
+        phoneInput.addEventListener('input', (e) => parents[index].phone = e.target.value);
+        relationInput.addEventListener('input', (e) => parents[index].relation = e.target.value);
       });
-
-      const addParentBtn = container.querySelector('#add-parent-btn');
-      if (addParentBtn) {
-        addParentBtn.addEventListener('click', () => {
-          parents.push({ surname: '', name: '', patronymic: '', phone: '', relation: '' });
-          renderParents();
-        });
-      }
     }
 
-    function renderDiagnoses() {
-      const container = modal.querySelector('#diagnoses-container');
+    function renderDiagnoses(container) {
       container.innerHTML = `
-      <table class="diagnoses-table">
-        <thead>
-          <tr>
-            <th>Диагноз</th>
-            <th>Примечания/Особенности диагноза</th>
-            <th>Действия</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${diagnoses.length ? diagnoses.map((d, index) => `
-            <tr class="diagnosis-row" data-index="${index}">
-              <td><input type="text" class="diagnosis-name" value="${d.name}" required></td>
-              <td><input type="text" class="diagnosis-notes" value="${d.notes || ''}"></td>
-              <td><button type="button" class="remove-diagnosis-btn btn-danger">Удалить</button></td>
-            </tr>
-          `).join('') : `
+        <div class="diagnoses-controls">
+          <button type="button" id="add-diagnosis-btn" class="btn-primary add-diagnosis-btn">Добавить</button>
+          <button type="button" id="delete-diagnosis-btn" class="btn-danger delete-diagnosis-btn">Удалить</button>
+        </div>
+        <table class="diagnoses-table">
+          <thead>
             <tr>
-              <td colspan="3" class="no-diagnoses">Нет добавленных диагнозов</td>
+              <th>Диагноз</th>
+              <th>Описание</th>
             </tr>
-          `}
-        </tbody>
-      </table>
-      <button type="button" id="add-diagnosis-btn" class="btn-primary add-diagnosis-btn">Добавить диагноз</button>
-    `;
+          </thead>
+          <tbody>
+            ${diagnoses.length ? diagnoses.map((d, index) => `
+              <tr class="diagnosis-row" data-index="${index}">
+                <td>
+                  <input type="text" list="diagnosis-list" class="diagnosis-name" value="${d.name}" required>
+                  <datalist id="diagnosis-list">
+                    ${commonDiagnoses.map(diag => `<option value="${diag}">`).join('')}
+                  </datalist>
+                  <button type="button" class="diagnosis-dictionary-btn btn-secondary">...</button>
+                </td>
+                <td><input type="text" class="diagnosis-notes" value="${d.notes || ''}"></td>
+              </tr>
+            `).join('') : `
+              <tr>
+                <td colspan="2" class="no-diagnoses">Нет добавленных диагнозов</td>
+              </tr>
+            `}
+          </tbody>
+        </table>
+      `;
 
-      container.querySelectorAll('.remove-diagnosis-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const index = parseInt(btn.closest('.diagnosis-row').dataset.index);
-          diagnoses.splice(index, 1);
-          renderDiagnoses();
+      const addBtn = container.querySelector('#add-diagnosis-btn');
+      addBtn.addEventListener('click', () => {
+        diagnoses.push({ name: '', notes: '' });
+        renderDiagnoses(container);
+      });
+
+      const deleteBtn = container.querySelector('#delete-diagnosis-btn');
+      deleteBtn.addEventListener('click', () => {
+        showToast('Выберите строку для удаления', 'info');
+        const rows = container.querySelectorAll('.diagnosis-row');
+        rows.forEach(row => {
+          row.style.cursor = 'pointer';
+          const deleteHandler = () => {
+            const index = parseInt(row.dataset.index);
+            showConfirmDialog(
+              'Удалить диагноз?',
+              'Вы уверены, что хотите удалить этот диагноз? Это действие нельзя отменить.',
+              () => {
+                diagnoses.splice(index, 1);
+                renderDiagnoses(container);
+                showToast('Диагноз удален', 'success');
+              }
+            );
+            rows.forEach(r => {
+              r.removeEventListener('click', deleteHandler);
+              r.style.cursor = 'default';
+            });
+          };
+          row.addEventListener('click', deleteHandler, { once: true });
         });
       });
 
@@ -845,27 +862,20 @@ export function loadClients() {
 
         const nameInput = row.querySelector('.diagnosis-name');
         const notesInput = row.querySelector('.diagnosis-notes');
+        const dictionaryBtn = row.querySelector('.diagnosis-dictionary-btn');
 
-        if (nameInput) {
-          nameInput.addEventListener('input', (e) => {
-            diagnoses[index].name = e.target.value;
-          });
-        }
-        if (notesInput) {
-          notesInput.addEventListener('input', (e) => {
-            diagnoses[index].notes = e.target.value;
-          });
-        }
-      });
+        nameInput.addEventListener('input', (e) => diagnoses[index].name = e.target.value);
+        notesInput.addEventListener('input', (e) => diagnoses[index].notes = e.target.value);
 
-      // Перенесённый обработчик для кнопки добавления диагноза
-      const addDiagnosisBtn = container.querySelector('#add-diagnosis-btn');
-      if (addDiagnosisBtn) {
-        addDiagnosisBtn.addEventListener('click', () => {
-          diagnoses.push({ name: '', notes: '' });
-          renderDiagnoses();
+        dictionaryBtn.addEventListener('click', () => {
+          showDiagnosisDictionary((selectedDiagnosis) => {
+            if (selectedDiagnosis) {
+              nameInput.value = selectedDiagnosis;
+              diagnoses[index].name = selectedDiagnosis;
+            }
+          });
         });
-      }
+      });
     }
 
     modal.innerHTML = `
@@ -921,19 +931,18 @@ export function loadClients() {
       </div>
       <div class="client-photo-section">
         <div class="photo-upload-area">
-          ${client.photo ?
-        `<img src="${client.photo}" class="client-photo-preview" id="client-photo-preview" alt="${client.surname || 'Клиент'}">` :
-        `<div class="client-photo-preview placeholder" id="client-photo-preview">
-               <img src="images/icon-photo.svg" alt="Загрузить фото" class="upload-icon">
-               <span>Добавить фото</span>
-             </div>`
+             <div class="for-flex flex-end">
+             <button type="button" class="photo-remove-btn" id="photo-remove-btn" ${!client.photo ? 'style="display: none;"' : ''}>
+              X
+             </button>
+             </div>
+          <div id="client-photo-preview" class="client-photo-preview ${!client.photo ? 'placeholder' : ''}">
+            ${client.photo ?
+        `<img src="${client.photo}" alt="${client.surname || 'Клиент'}">` :
+        `<img src="images/icon-photo.svg" alt="Загрузить фото" class="upload-icon">`
       }
-        <div class="for-flex">
-          <input type="file" id="client-photo" accept="image/*" class="photo-input">
-          <button type="button" class="photo-remove-btn" id="photo-remove-btn" ${!client.photo ? 'style="display: none;"' : ''}>
-            <img src="images/trash.svg" alt="Удалить фото" class="btn-icon invert">
-          </button>
-        </div>
+          </div>
+          <input type="file" id="client-photo" accept="image/*" style="display: none;">
         </div>
       </div>
     </div>
@@ -945,7 +954,7 @@ export function loadClients() {
     <div class="client-form-tab-content" id="client-tab-medical">
       <div id="diagnoses-container"></div>
       <div class="form-group full-width">
-        <label for="client-features">Общие особенности клиента</label>
+        <label for="client-features">Примечания</label>
         <input type="text" id="client-features" value="${client.features || ''}" placeholder="Дополнительная информация о клиенте, особенности занятий...">
       </div>
     </div>
@@ -985,7 +994,7 @@ export function loadClients() {
       if (photoPreview.classList.contains('placeholder')) {
         photoInput.click();
       } else {
-        showPhotoZoomModal(photoPreview.src);
+        showPhotoZoomModal(photoPreview.querySelector('img').src);
       }
     });
 
@@ -1018,16 +1027,19 @@ export function loadClients() {
 
     photoRemoveBtn.addEventListener('click', () => {
       photoPreview.innerHTML = `
-    <img src="images/icon-photo.svg" alt="Загрузить фото" class="upload-icon">
-    <span>Добавить фото</span>
-  `;
+        <img src="images/icon-photo.svg" alt="Загрузить фото" class="upload-icon">
+        <span>Файл не выбран</span>
+      `;
       photoPreview.classList.add('placeholder');
       photoInput.value = '';
       photoRemoveBtn.style.display = 'none';
     });
 
-    renderParents();
-    renderDiagnoses();
+    const parentsContainer = modal.querySelector('#parents-container');
+    renderParents(parentsContainer);
+
+    const diagnosesContainer = modal.querySelector('#diagnoses-container');
+    renderDiagnoses(diagnosesContainer);
 
     function validateForm() {
       let isValid = true;
@@ -1084,17 +1096,12 @@ export function loadClients() {
         const row = modal.querySelector(`.parent-row[data-index="${index}"]`);
         if (!row) return;
 
-        const surnameInput = row.querySelector('.parent-surname');
-        const nameInput = row.querySelector('.parent-name');
+        const fullnameInput = row.querySelector('.parent-fullname');
         const phoneInput = row.querySelector('.parent-phone');
         const relationInput = row.querySelector('.parent-relation');
 
-        if (!surnameInput.value.trim()) {
-          surnameInput.classList.add('error');
-          isValid = false;
-        }
-        if (!nameInput.value.trim()) {
-          nameInput.classList.add('error');
+        if (!fullnameInput.value.trim()) {
+          fullnameInput.classList.add('error');
           isValid = false;
         }
         if (!phoneInput.value.trim()) {
@@ -1134,13 +1141,13 @@ export function loadClients() {
       const features = document.getElementById('client-features').value.trim();
 
       let photo = '';
-      const photoImg = photoPreview.querySelector('img');
-      if (photoImg && !photoPreview.classList.contains('placeholder')) {
+      const photoImg = photoPreview.querySelector('img:not(.upload-icon)');
+      if (photoImg) {
         photo = photoImg.src;
       }
 
-      const updatedParents = parents.map(p => ({
-        fullName: `${p.surname} ${p.name} ${p.patronymic || ''}`.trim(),
+      const updatedParents = parents.filter(p => p.fullName.trim() !== '').map(p => ({
+        fullName: p.fullName.trim(),
         phone: p.phone,
         relation: p.relation
       }));
@@ -1179,6 +1186,84 @@ export function loadClients() {
         tabButtons[1].click();
       }
     }
+  }
+
+  function showDiagnosisDictionary(callback) {
+    const modal = document.createElement('div');
+    modal.className = 'diagnosis-dictionary-modal';
+    let selectedDiagnosis = null;
+
+    function renderDiagnosesList(filter = '') {
+      const list = modal.querySelector('.diagnoses-list');
+      const filteredDiagnoses = commonDiagnoses.filter(d => d.toLowerCase().includes(filter.toLowerCase()));
+      list.innerHTML = filteredDiagnoses.map(d => `
+        <div class="diagnosis-item ${selectedDiagnosis === d ? 'selected' : ''}" data-diagnosis="${d}">
+          ${d}
+        </div>
+      `).join('');
+
+      list.querySelectorAll('.diagnosis-item').forEach(item => {
+        item.addEventListener('click', () => {
+          selectedDiagnosis = item.dataset.diagnosis;
+          renderDiagnosesList(filter);
+        });
+      });
+    }
+
+    modal.innerHTML = `
+      <div class="diagnosis-dictionary-content">
+        <div class="diagnosis-header">
+          <h2>Справочник диагнозов</h2>
+          <button type="button" class="diagnosis-close">×</button>
+        </div>
+        <div class="diagnosis-body">
+          <input type="text" id="diagnosis-search" placeholder="Поиск диагноза...">
+          <div class="diagnoses-list"></div>
+          <button type="button" id="add-new-diagnosis-btn" class="btn-primary">Создать новый</button>
+        </div>
+        <div class="diagnosis-footer">
+          <button type="button" id="diagnosis-cancel-btn" class="btn-secondary">Отмена</button>
+          <button type="button" id="diagnosis-select-btn" class="btn-primary">Выбрать</button>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('main-content').appendChild(modal);
+
+    const closeModal = () => {
+      modal.remove();
+      callback(null);
+    };
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+    modal.querySelector('.diagnosis-close').addEventListener('click', closeModal);
+    modal.querySelector('#diagnosis-cancel-btn').addEventListener('click', closeModal);
+
+    modal.querySelector('#diagnosis-select-btn').addEventListener('click', () => {
+      if (selectedDiagnosis) {
+        modal.remove();
+        callback(selectedDiagnosis);
+      } else {
+        showToast('Выберите диагноз', 'error');
+      }
+    });
+
+    modal.querySelector('#add-new-diagnosis-btn').addEventListener('click', () => {
+      const newDiagnosis = prompt('Введите новый диагноз:');
+      if (newDiagnosis && newDiagnosis.trim() && !commonDiagnoses.includes(newDiagnosis.trim())) {
+        commonDiagnoses.push(newDiagnosis.trim());
+        renderDiagnosesList(modal.querySelector('#diagnosis-search').value);
+        showToast('Новый диагноз добавлен', 'success');
+      }
+    });
+
+    const searchInput = modal.querySelector('#diagnosis-search');
+    searchInput.addEventListener('input', (e) => {
+      renderDiagnosesList(e.target.value);
+    });
+
+    renderDiagnosesList();
   }
   function showSubscriptionManagement(client) {
     const fullName = `${client.surname} ${client.name} ${client.patronymic || ''}`;
