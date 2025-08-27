@@ -94,7 +94,7 @@ img[class*='icon'] {
 .renew-sub-btn,
 .add-diagnosis-btn {
   border: none;
-  padding: 0.5rem 1rem;
+  padding: 0.3rem;
   border-radius: var(--border-radius);
   font-weight: 500;
   cursor: pointer;
@@ -525,11 +525,11 @@ img[class*='icon'] {
 .diagnoses-table .diagnosis-dictionary-btn {
   background: var(--gray-100);
   border: 1px solid var(--gray-300);
-  border-radius: var(--border-radius);
   padding: 0.3rem;
   cursor: pointer;
   text-align: center;
   justify-content: center;
+  height: 100%;
 }
 
 .parents-controls {
@@ -544,6 +544,10 @@ img[class*='icon'] {
   border-radius: 7px;
   background-color: #dc2626;
   color: #ffffff;
+}
+.input-with-button{
+  display: flex;
+  width: 100%;
 }
 
 .diagnoses-table .diagnosis-dictionary-btn:hover {
