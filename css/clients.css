@@ -52,6 +52,15 @@ img[class*='icon'] {
   transition: var(--transition);
 }
 
+.diagnosis-dictionary-btn,
+.relation-dictionary-btn {
+  display: flex;
+  justify-content: center;
+  border: 1px solid var(--gray-300);
+  padding: 5px;
+  cursor: pointer;
+}
+
 .diagnosis-tag {
   display: inline-block;
   background: var(--pink-100);
@@ -545,7 +554,8 @@ img[class*='icon'] {
   background-color: #dc2626;
   color: #ffffff;
 }
-.input-with-button{
+
+.input-with-button {
   display: flex;
   width: 100%;
 }
@@ -1296,6 +1306,647 @@ img[class*='icon'] {
 /* Обновленный стиль для контейнера родителей */
 #parents-container {
   margin-bottom: 1rem;
+}
+
+/* Модалка справочника отношений */
+.relation-dictionary-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 0.5rem;
+  overflow-y :auto;
+}
+
+.relation-dictionary-content{
+  background: var(--card-background);
+  padding: 10px;
+  border-radius: var(--border-radius-lg);
+  width: 350px;
+}
+
+.relation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.relation-header h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.relation-close {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  color: var(--gray-400);
+  border-radius: var(--border-radius);
+  transition: var(--transition);
+}
+
+.relation-close:hover {
+  background: var(--gray-100);
+  color: var(--gray-600);
+}
+
+.relation-body input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--border-radius);
+  font-size: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.relations-list {
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--border-radius);
+  margin-bottom: 0.5rem;
+}
+
+.relation-item {
+  padding: 0.5rem;
+  cursor: pointer;
+  font-size: 0.75rem;
+}
+
+.relation-item:hover {
+  background: var(--gray-100);
+}
+
+.relation-item.selected {
+  background: var(--primary-color);
+  color: white;
+}
+
+.relation-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+#add-new-relation-btn {
+  background: var(--primary-color);
+  color: white;
+  padding: 0.5rem;
+  border-radius: var(--border-radius);
+  font-size: 0.75rem;
+  transition: var(--transition);
+}
+
+#add-new-relation-btn:hover {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+}
+
+
+
+/* Модалка управления группами */
+.group-form-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 0.5rem;
+  overflow-y: auto;
+}
+
+.group-form-content {
+  background: var(--card-background);
+  border-radius: var(--border-radius-lg);
+  max-width: 500px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-xl);
+  padding: 1rem;
+}
+
+.group-form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.5rem;
+}
+
+.group-form-header h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.group-form-close {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  color: var(--gray-400);
+  border-radius: var(--border-radius);
+  transition: var(--transition);
+}
+
+.group-form-close:hover {
+  background: var(--gray-100);
+  color: var(--gray-600);
+}
+
+.group-form-body {
+  padding: 0.5rem;
+}
+
+.group-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.group-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: var(--gray-50);
+  border-radius: var(--border-radius);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.group-checkbox input {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.group-checkbox .group-name {
+  color: var(--text-color);
+  font-weight: 500;
+}
+
+.group-checkbox:hover {
+  background: var(--gray-100);
+}
+
+.group-checkbox input:checked+.group-name {
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+.group-form-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border-color);
+}
+
+#group-save-btn,
+#group-cancel-btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.75rem;
+}
+
+/* Модалка нового абонемента */
+.subscription-form-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 0.5rem;
+  overflow-y: auto;
+}
+
+.subscription-form-content {
+  background: var(--card-background);
+  border-radius: var(--border-radius-lg);
+  max-width: 600px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-xl);
+  padding: 1rem;
+}
+
+.subscription-form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.5rem;
+}
+
+.subscription-form-header h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.subscription-form-close {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  color: var(--gray-400);
+  border-radius: var(--border-radius);
+  transition: var(--transition);
+}
+
+.subscription-form-close:hover {
+  background: var(--gray-100);
+  color: var(--gray-600);
+}
+
+.subscription-form-body {
+  padding: 0.5rem;
+}
+
+.subscription-form-body .form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.subscription-form-body .form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.subscription-form-body .form-group label {
+  font-weight: 500;
+  color: var(--gray-700);
+  margin-bottom: 0.25rem;
+  font-size: 0.75rem;
+}
+
+.subscription-form-body .form-group label.required::after {
+  content: " *";
+  color: var(--danger-color);
+}
+
+.subscription-form-body .form-group input,
+.subscription-form-body .form-group select {
+  padding: 0.3rem;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--border-radius);
+  font-size: 0.75rem;
+  background: var(--card-background);
+  color: var(--text-color);
+  transition: var(--transition);
+}
+
+.subscription-form-body .form-group input:focus,
+.subscription-form-body .form-group select:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px var(--primary-light);
+  outline: none;
+}
+
+.subscription-form-body .form-group input.error {
+  border-color: var(--danger-color);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.days-of-week-selector {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.day-button {
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--border-radius);
+  background: var(--gray-50);
+  color: var(--gray-700);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.day-button:hover {
+  background: var(--gray-100);
+}
+
+.day-button.selected {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--gray-700);
+}
+
+.checkbox-label input {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.field-hint {
+  font-size: 0.625rem;
+  color: var(--gray-500);
+  margin-top: 0.25rem;
+}
+
+.subscription-form-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border-color);
+}
+
+#subscription-save-btn,
+#subscription-cancel-btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.75rem;
+}
+
+/* Модалка продления абонемента */
+.renew-subscription-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 0.5rem;
+  overflow-y: auto;
+}
+
+.renew-subscription-content {
+  background: var(--card-background);
+  border-radius: var(--border-radius-lg);
+  max-width: 600px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-xl);
+  padding: 1rem;
+}
+
+.renew-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.5rem;
+}
+
+.renew-header h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.renew-close {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  color: var(--gray-400);
+  border-radius: var(--border-radius);
+  transition: var(--transition);
+}
+
+.renew-close:hover {
+  background: var(--gray-100);
+  color: var(--gray-600);
+}
+
+.renew-body {
+  padding: 0.5rem;
+}
+
+.current-subscription-info {
+  background: var(--gray-50);
+  padding: 0.5rem;
+  border-radius: var(--border-radius);
+  margin-bottom: 1rem;
+}
+
+.current-subscription-info h3 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--gray-800);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.current-subscription-info .info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.5rem;
+}
+
+.current-subscription-info .info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.current-subscription-info .label {
+  font-weight: 500;
+  color: var(--gray-600);
+  font-size: 0.75rem;
+}
+
+.current-subscription-info .value {
+  color: var(--text-color);
+  font-size: 0.75rem;
+  text-align: right;
+}
+
+.current-subscription-info .value.low-classes {
+  color: var(--danger-color);
+  font-weight: 500;
+}
+
+.renewal-form {
+  padding: 0.5rem;
+  background: var(--gray-50);
+  border-radius: var(--border-radius);
+}
+
+.renewal-form h3 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--gray-800);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.renewal-form .form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.renewal-form .form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.renewal-form .form-group label {
+  font-weight: 500;
+  color: var(--gray-700);
+  margin-bottom: 0.25rem;
+  font-size: 0.75rem;
+}
+
+.renewal-form .form-group label.required::after {
+  content: " *";
+  color: var(--danger-color);
+}
+
+.renewal-form .form-group input,
+.renewal-form .form-group select {
+  padding: 0.3rem;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--border-radius);
+  font-size: 0.75rem;
+  background: var(--card-background);
+  color: var(--text-color);
+  transition: var(--transition);
+}
+
+.renewal-form .form-group input:focus,
+.renewal-form .form-group select:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px var(--primary-light);
+  outline: none;
+}
+
+.renewal-form .form-group input.error {
+  border-color: var(--danger-color);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.renewal-form .days-of-week-selector {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.renewal-form .day-button {
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--border-radius);
+  background: var(--gray-50);
+  color: var(--gray-700);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.renewal-form .day-button:hover {
+  background: var(--gray-100);
+}
+
+.renewal-form .day-button.selected {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
+.renewal-form .checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--gray-700);
+}
+
+.renewal-form .checkbox-label input {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.renewal-form .field-hint {
+  font-size: 0.625rem;
+  color: var(--gray-500);
+  margin-top: 0.25rem;
+}
+
+.renewal-history-section {
+  margin-top: 1rem;
+}
+
+.renewal-history-section h4 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--gray-800);
+}
+
+.renewal-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.renewal-item {
+  font-size: 0.75rem;
+  color: var(--gray-600);
+}
+
+.renew-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border-color);
+}
+
+#renew-save-btn,
+#renew-cancel-btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.75rem;
 }
 
 .client-form-content .client-form-footer {

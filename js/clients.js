@@ -721,7 +721,7 @@ export function loadClients() {
                     <datalist id="relation-list">
                       ${commonRelations.map(rel => `<option value="${rel}">`).join('')}
                     </datalist>
-                    <button type="button" class="relation-dictionary-btn btn-secondary">...</button>
+                    <button type="button" class="relation-dictionary-btn">...</button>
                   </div>
                 </td>
               </tr>
@@ -812,7 +812,7 @@ export function loadClients() {
                     <datalist id="diagnosis-list">
                       ${commonDiagnoses.map(diag => `<option value="${diag}">`).join('')}
                     </datalist>
-                    <button type="button" class="diagnosis-dictionary-btn btn-secondary">...</button>
+                    <button type="button" class="diagnosis-dictionary-btn">...</button>
                   </div>
                 </td>
                 <td><input type="text" class="diagnosis-notes" value="${d.notes || ''}"></td>
