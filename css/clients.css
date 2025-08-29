@@ -1321,10 +1321,10 @@ img[class*='icon'] {
   justify-content: center;
   z-index: 1000;
   padding: 0.5rem;
-  overflow-y :auto;
+  overflow-y: auto;
 }
 
-.relation-dictionary-content{
+.relation-dictionary-content {
   background: var(--card-background);
   padding: 10px;
   border-radius: var(--border-radius-lg);
@@ -1369,6 +1369,103 @@ img[class*='icon'] {
   margin-bottom: 0.5rem;
 }
 
+
+/* Секция истории абонементов */
+.subscription-history-section {
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  padding: 12px;
+  background: #ffffff;
+  max-width: 500px;
+}
+
+.subscription-history-section h3 {
+  margin: 0 0 8px 0;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #374151;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* Маленькая таблица */
+.subscription-history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.7rem;
+  table-layout: fixed;
+}
+
+.subscription-history-table th {
+  padding: 4px 3px;
+  text-align: left;
+  font-weight: 500;
+  color: #6b7280;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e5e7eb;
+  width: 16.66%;
+}
+
+.subscription-history-table td {
+  padding: 4px 3px;
+  border-bottom: 1px solid #f3f4f6;
+  color: #374151;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subscription-row:hover {
+  background: #f8f9fa;
+}
+
+.subscription-row.active {
+  background: #f0f9ff;
+}
+
+.subscription-row.inactive td {
+  color: #9ca3af;
+}
+
+/* Мелкие статусы */
+.status-active {
+  background: #065f46;
+  color: white;
+  padding: 0px 3px;
+  border-radius: 2px;
+  font-size: 0.6rem;
+  font-weight: 500;
+}
+
+.status-inactive {
+  background: #7f1d1d;
+  color: white;
+  padding: 0px 3px;
+  border-radius: 2px;
+  font-size: 0.6rem;
+  font-weight: 500;
+}
+
+.renewal-count {
+  background: #1e40af;
+  color: white;
+  padding: 0px 3px;
+  border-radius: 2px;
+  font-size: 0.6rem;
+  font-weight: 500;
+  cursor: help;
+}
+
+.no-data {
+  text-align: center;
+  color: #9ca3af;
+  font-style: italic;
+  padding: 16px;
+  font-size: 0.75rem;
+}
+
+
 .relations-list {
   max-height: 200px;
   overflow-y: auto;
@@ -1381,6 +1478,12 @@ img[class*='icon'] {
   padding: 0.5rem;
   cursor: pointer;
   font-size: 0.75rem;
+}
+
+.subscription-history-table {
+  border: 1px solid var(--border-color);
+  padding: 0.3rem;
+  border-radius: var(--border-radius);
 }
 
 .relation-item:hover {
