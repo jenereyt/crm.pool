@@ -13,45 +13,35 @@ export function getSubscriptionTemplates() {
 }
 
 export function getActiveSubscriptions() {
-  return getClients()
-    .filter(client => client.subscription)
-    .map(client => ({
-      id: `sub_${client.id}_${client.subscription.subscriptionNumber}`,
-      clientId: client.id,
-      templateId: client.subscription.templateId,
-      startDate: client.subscription.startDate,
-      endDate: client.subscription.endDate,
-      classesPerWeek: client.subscription.classesPerWeek || 0,
-      daysOfWeek: client.subscription.daysOfWeek || [],
-      classTime: client.subscription.classTime || '09:00',
-      group: client.subscription.group || '',
-      remainingClasses: client.subscription.remainingClasses !== undefined ? client.subscription.remainingClasses : Infinity,
-      isPaid: client.subscription.isPaid !== undefined ? client.subscription.isPaid : true,
-      renewalHistory: client.subscription.renewalHistory || [],
-      subscriptionNumber: client.subscription.subscriptionNumber || `SUB-${String(client.id).replace('client', '').padStart(3, '0')}`
-    }))
-    .filter(sub => sub.isPaid && new Date(sub.endDate) >= new Date());
+  const activeSubs = [];
+  getClients().forEach(client => {
+    client.subscriptions.forEach(sub => {
+      if (sub.isPaid && new Date(sub.endDate) >= new Date()) {
+        activeSubs.push({
+          id: `sub_${client.id}_${sub.subscriptionNumber}`,
+          clientId: client.id,
+          ...sub
+        });
+      }
+    });
+  });
+  return activeSubs;
 }
 
 export function getInactiveSubscriptions() {
-  return getClients()
-    .filter(client => client.subscription)
-    .map(client => ({
-      id: `sub_${client.id}_${client.subscription.subscriptionNumber}`,
-      clientId: client.id,
-      templateId: client.subscription.templateId,
-      startDate: client.subscription.startDate,
-      endDate: client.subscription.endDate,
-      classesPerWeek: client.subscription.classesPerWeek || 0,
-      daysOfWeek: client.subscription.daysOfWeek || [],
-      classTime: client.subscription.classTime || '09:00',
-      group: client.subscription.group || '',
-      remainingClasses: client.subscription.remainingClasses !== undefined ? client.subscription.remainingClasses : Infinity,
-      isPaid: client.subscription.isPaid !== undefined ? client.subscription.isPaid : true,
-      renewalHistory: client.subscription.renewalHistory || [],
-      subscriptionNumber: client.subscription.subscriptionNumber || `SUB-${String(client.id).replace('client', '').padStart(3, '0')}`
-    }))
-    .filter(sub => !sub.isPaid || new Date(sub.endDate) < new Date());
+  const inactiveSubs = [];
+  getClients().forEach(client => {
+    client.subscriptions.forEach(sub => {
+      if (!sub.isPaid || new Date(sub.endDate) < new Date()) {
+        inactiveSubs.push({
+          id: `sub_${client.id}_${sub.subscriptionNumber}`,
+          clientId: client.id,
+          ...sub
+        });
+      }
+    });
+  });
+  return inactiveSubs;
 }
 
 export function loadSubscriptions() {
@@ -73,7 +63,7 @@ export function loadSubscriptions() {
   filterBar.className = 'filter-bar';
   filterBar.innerHTML = `
     <input type="text" id="subscription-filter" class="filter-input" placeholder="Поиск по клиенту">
-    <button class="subscription-add-btn" id="subscription-add-btn">Добавить шаблон</button>
+    <button class="subscription-add btn" id="subscription-add-btn">Добавить шаблон</button>
   `;
   mainContent.appendChild(filterBar);
 
@@ -102,9 +92,9 @@ export function loadSubscriptions() {
   subscriptionHeader.textContent = 'Абонементы';
   subscriptionSection.appendChild(subscriptionHeader);
 
-  const subscriptionList = document.createElement('div');
-  subscriptionList.className = 'subscription-list';
-  subscriptionSection.appendChild(subscriptionList);
+  const subscriptionTable = document.createElement('div');
+  subscriptionTable.className = 'subscription-table';
+  subscriptionSection.appendChild(subscriptionTable);
   mainContent.appendChild(subscriptionSection);
 
   const clients = getClients();
@@ -126,32 +116,64 @@ export function loadSubscriptions() {
       `).join('');
   }
 
-  function renderSubscriptions(tab = 'active') {
-    const filter = document.getElementById('subscription-filter').value.toLowerCase();
-    const subscriptions = tab === 'active' ? getActiveSubscriptions() : getInactiveSubscriptions();
-    subscriptionList.innerHTML = subscriptions
-      .filter(sub => {
-        const client = clients.find(c => c.id === sub.clientId);
-        return client && client.name.toLowerCase().includes(filter);
-      })
-      .map(sub => {
-        const client = clients.find(c => c.id === sub.clientId);
-        const template = subscriptionTemplates.find(t => t.id === sub.templateId);
-        return `
-          <div class="subscription-container" data-id="${sub.id}">
-            <div class="subscription-info">
-              <h3>${client ? client.name : 'Неизвестный клиент'} (#${sub.subscriptionNumber})</h3>
-              <p>Тип: ${template ? template.type : 'Неизвестный шаблон'}</p>
-              <p>Статус: ${tab === 'active' ? 'Активный' : 'Неактивный'}</p>
-            </div>
-            <div class="subscription-actions">
-              <button class="subscription-action-icon edit" data-id="${sub.id}" title="Редактировать"><img src="./images/icon-edit.svg" alt="Редактировать"></button>
-              <button class="subscription-action-icon delete" data-id="${sub.id}" title="Удалить"><img src="./images/trash.svg" alt="Удалить"></button>
-            </div>
-          </div>
-        `;
-      }).join('');
-  }
+function renderSubscriptions(tab = 'active') {
+  const filter = document.getElementById('subscription-filter').value.toLowerCase();
+  const subscriptions = tab === 'active' ? getActiveSubscriptions() : getInactiveSubscriptions();
+  const subscriptionTable = document.querySelector('.subscription-table');
+  subscriptionTable.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Клиент</th>
+          <th>Номер</th>
+          <th>Тип</th>
+          <th>Период</th>
+          <th>Занятий</th>
+          <th>В неделю</th>
+          <th>Дни</th>
+          <th>Время</th>
+          <th>Группа</th>
+          <th>Статус</th>
+          <th>Действия</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${subscriptions
+          .filter(sub => {
+            const client = clients.find(c => c.id === sub.clientId);
+            return client && `${client.surname} ${client.name} ${client.patronymic || ''}`.toLowerCase().includes(filter);
+          })
+          .map(sub => {
+            const client = clients.find(c => c.id === sub.clientId);
+            const template = subscriptionTemplates.find(t => t.id === sub.templateId);
+            const fullName = `${client.surname} ${client.name} ${client.patronymic || ''}`;
+            return `
+              <tr class="subscription-row" data-id="${sub.id}">
+                <td>${fullName}</td>
+                <td>#${sub.subscriptionNumber}</td>
+                <td>${template ? template.type : 'Неизвестный'}</td>
+                <td>${sub.startDate} — ${sub.endDate}</td>
+                <td>${sub.remainingClasses === Infinity ? '∞' : sub.remainingClasses}</td>
+                <td>${sub.classesPerWeek}</td>
+                <td>${sub.daysOfWeek.join(', ') || 'Не указаны'}</td>
+                <td>${sub.classTime}</td>
+                <td>${sub.group || 'Не указана'}</td>
+                <td class="status-${tab === 'active' ? 'active' : 'inactivee'}">
+                  ${tab === 'active' ? 'Активный' : 'Неактивный'}
+                </td>
+                <td>
+                  <div class="subscription-actions">
+                    <button class="subscription-action-icon edit" data-id="${sub.id}" title="Редактировать"><img src="./images/icon-edit.svg" alt="Редактировать"></button>
+                    <button class="subscription-action-icon delete" data-id="${sub.id}" title="Удалить"><img src="./images/trash.svg" alt="Удалить"></button>
+                  </div>
+                </td>
+              </tr>
+            `;
+          }).join('')}
+      </tbody>
+    </table>
+  `;
+}
 
   renderTemplates();
   renderSubscriptions('active');
@@ -180,7 +202,7 @@ export function loadSubscriptions() {
   templateList.addEventListener('click', (e) => {
     const actionIcon = e.target.closest('.template-action-icon');
     if (!actionIcon) return;
-    const templateId = actionIcon.getAttribute('data-id');
+    const templateId = actionIcon.closest('.template-container').getAttribute('data-id');
     if (actionIcon.classList.contains('delete')) {
       if (confirm('Удалить шаблон абонемента?')) {
         subscriptionTemplates = subscriptionTemplates.filter(t => t.id !== templateId);
@@ -196,49 +218,48 @@ export function loadSubscriptions() {
     }
   });
 
-  subscriptionList.addEventListener('click', (e) => {
-    const subContainer = e.target.closest('.subscription-container');
-    if (!subContainer) return;
-    const subId = subContainer.getAttribute('data-id');
-    const sub = getActiveSubscriptions().concat(getInactiveSubscriptions()).find(s => s.id === subId);
+  subscriptionTable.addEventListener('click', (e) => {
+    const subRow = e.target.closest('.subscription-row');
+    if (!subRow) return;
+
+    // Проверяем, есть ли выделенный текст
+    const selection = window.getSelection();
+    if (selection.toString().length > 0) {
+      return;
+    }
+
+    const subId = subRow.getAttribute('data-id');
+    const [_, clientId, subscriptionNumber] = subId.split('_');
+    const client = getClientById(clientId);
+    const sub = client.subscriptions.find(s => s.subscriptionNumber === subscriptionNumber);
     if (!sub) return;
 
     const actionIcon = e.target.closest('.subscription-action-icon');
     if (actionIcon) {
       if (actionIcon.classList.contains('delete')) {
         if (confirm('Удалить абонемент?')) {
-          const client = getClientById(sub.clientId);
-          if (client) {
-            client.subscription = null;
-            updateClient(client.id, client);
-            renderSubscriptions(document.querySelector('.tab-button.active').getAttribute('data-tab'));
-          }
+          client.subscriptions = client.subscriptions.filter(s => s.subscriptionNumber !== subscriptionNumber);
+          updateClient(client.id, client);
+          renderSubscriptions(document.querySelector('.tab-button.active').getAttribute('data-tab'));
         }
       } else if (actionIcon.classList.contains('edit')) {
-        showSubscriptionForm('Редактировать абонемент', sub, clients, groups, (data) => {
-          const client = getClientById(data.clientId);
-          if (client) {
-            const template = subscriptionTemplates.find(t => t.id === data.templateId);
-            client.subscription = {
-              templateId: data.templateId,
-              startDate: data.startDate,
-              endDate: data.endDate,
-              classesPerWeek: data.classesPerWeek,
-              daysOfWeek: data.daysOfWeek,
-              classTime: data.classTime,
-              group: data.group,
-              remainingClasses: template ? template.remainingClasses : Infinity,
-              isPaid: data.isPaid,
-              renewalHistory: data.renewalHistory || client.subscription?.renewalHistory || [],
-              subscriptionNumber: data.subscriptionNumber || client.subscription?.subscriptionNumber || `SUB-${String(client.id).replace('client', '').padStart(3, '0')}`
-            };
+        showSubscriptionForm('Редактировать абонемент', { ...sub, clientId: client.id }, clients, groups, (data) => {
+          const template = subscriptionTemplates.find(t => t.id === data.templateId);
+          const updatedSub = {
+            ...data,
+            remainingClasses: template ? template.remainingClasses : data.remainingClasses || Infinity,
+            subscriptionNumber: sub.subscriptionNumber
+          };
+          const index = client.subscriptions.findIndex(s => s.subscriptionNumber === sub.subscriptionNumber);
+          if (index !== -1) {
+            client.subscriptions[index] = updatedSub;
             updateClient(client.id, client);
             renderSubscriptions(document.querySelector('.tab-button.active').getAttribute('data-tab'));
           }
         });
       }
     } else {
-      showSubscriptionDetails(sub);
+      showSubscriptionDetails({ ...sub, clientId: client.id });
     }
   });
 
@@ -265,7 +286,10 @@ export function loadSubscriptions() {
     mainContent.appendChild(modal);
 
     modal.addEventListener('click', (e) => {
-      if (e.target === modal) modal.remove();
+      const selection = window.getSelection();
+      if (e.target === modal && selection.toString().length === 0) {
+        modal.remove();
+      }
     });
 
     document.getElementById('template-save-btn').addEventListener('click', () => {
@@ -293,19 +317,22 @@ export function loadSubscriptions() {
     modal.className = 'subscription-details-modal';
     modal.innerHTML = `
       <div class="subscription-details-content">
-        <h2>Абонемент для ${client ? client.name : 'Неизвестный клиент'} (#${sub.subscriptionNumber})</h2>
+        <h2>Абонемент для ${client ? `${client.surname} ${client.name}` : 'Неизвестный клиент'} (#${sub.subscriptionNumber})</h2>
         <p>Тип: ${template ? template.type : 'Неизвестный шаблон'}</p>
         <p>Дата начала: ${sub.startDate}</p>
         <p>Дата окончания: ${sub.endDate}</p>
         <p>Осталось занятий: ${sub.remainingClasses === Infinity ? 'Безлимит' : sub.remainingClasses}</p>
         <p>Занятий в неделю: ${sub.classesPerWeek || 'Не указано'}</p>
-        <p>Дни недели: ${sub.daysOfWeek?.length ? sub.daysOfWeek.join(', ') : 'Разовое'}</p>
+        <p>Дни недели: ${sub.daysOfWeek.join(', ') || 'Не указаны'}</p>
         <p>Время: ${sub.classTime || 'Не указано'}</p>
         <p>Группа: ${sub.group || 'Не указана'}</p>
         <p>Статус: ${sub.isPaid && new Date(sub.endDate) >= new Date() ? 'Активный' : 'Неактивный'}</p>
-        <p>История продлений: ${sub.renewalHistory.length ? sub.renewalHistory.map(entry => new Date(entry.date || entry).toISOString().split('T')[0]).join(', ') : 'Нет'}</p>
+        <p>История продлений: ${sub.renewalHistory.length ? sub.renewalHistory.map(entry => {
+          const date = new Date(entry.date || entry).toLocaleDateString('ru-RU');
+          return entry.fromTemplate ? `${date}: ${entry.fromTemplate} → ${entry.toTemplate}` : date;
+        }).join(', ') : 'Нет'}</p>
         <div class="subscription-details-actions">
-          <button id="subscription-renew-btn" title="Продлить абонемент на 30 дней с выбранным шаблоном">Продлить</button>
+          <button id="subscription-renew-btn">Продлить</button>
           <button id="subscription-close-btn">Закрыть</button>
         </div>
       </div>
@@ -313,14 +340,17 @@ export function loadSubscriptions() {
     mainContent.appendChild(modal);
 
     modal.addEventListener('click', (e) => {
-      if (e.target === modal) modal.remove();
+      const selection = window.getSelection();
+      if (e.target === modal && selection.toString().length === 0) {
+        modal.remove();
+      }
     });
 
     document.getElementById('subscription-renew-btn').addEventListener('click', () => {
       showRenewSubscriptionForm('Продление абонемента', client, sub, (data) => {
-        const client = getClientById(sub.clientId);
-        if (client) {
-          client.subscription = { ...client.subscription, ...data };
+        const index = client.subscriptions.findIndex(s => s.subscriptionNumber === sub.subscriptionNumber);
+        if (index !== -1) {
+          client.subscriptions[index] = { ...client.subscriptions[index], ...data };
           updateClient(client.id, client);
           modal.remove();
           renderSubscriptions(document.querySelector('.tab-button.active').getAttribute('data-tab'));
@@ -337,160 +367,234 @@ export function loadSubscriptions() {
     const subscriptionTemplate = subscriptionTemplates.find(t => t.id === sub.templateId);
     const defaultEndDate = new Date(Math.max(new Date(), new Date(sub.endDate)));
     defaultEndDate.setDate(defaultEndDate.getDate() + 30);
+
     const modal = document.createElement('div');
     modal.className = 'renew-subscription-modal';
     modal.innerHTML = `
-      <div class="renew-subscription-modal-content">
-        <h2>${title}</h2>
-        <div class="renew-subscription-info">
-          <h3>Текущий абонемент</h3>
-          <p>Клиент: ${client.name}</p>
-          <p>Номер абонемента: #${sub.subscriptionNumber}</p>
-          <p>Тип: ${subscriptionTemplate ? subscriptionTemplate.type : 'Неизвестный шаблон'}</p>
-          <p>Дата начала: ${sub.startDate}</p>
-          <p>Дата окончания: ${sub.endDate}</p>
-          <p>Осталось занятий: ${sub.remainingClasses === Infinity ? 'Безлимит' : sub.remainingClasses}</p>
-          <p>Статус: ${sub.isPaid && new Date(sub.endDate) >= new Date() ? 'Активный' : 'Неактивный'}</p>
-          <p>История продлений: ${sub.renewalHistory.length ? sub.renewalHistory.map(entry => new Date(entry.date || entry).toISOString().split('T')[0]).join(', ') : 'Нет'}</p>
+      <div class="renew-subscription-content">
+        <div class="renew-header">
+          <h2>${title}</h2>
+          <button type="button" class="renew-close">×</button>
         </div>
-        <h3>Параметры продления</h3>
-        <div class="client-form-field">
-          <label for="renew-template">Шаблон абонемента <span class="tooltip" title="Выберите новый шаблон или оставьте текущий">ℹ️</span></label>
-          <select id="renew-template" required>
-            <option value="${sub.templateId}">${subscriptionTemplate ? subscriptionTemplate.type : 'Текущий шаблон'}</option>
-            ${subscriptionTemplates.filter(t => t.id !== sub.templateId).map(t => `<option value="${t.id}">${t.type}</option>`).join('')}
-          </select>
+        <div class="renew-body">
+          <div class="current-subscription-info">
+            <h3><img src="images/icon-subscription-info.svg" alt="Текущий абонемент" class="icon"> Текущий абонемент</h3>
+            <div class="info-grid">
+              <div class="info-item">
+                <span class="label">Клиент:</span>
+                <span class="value">${client.surname} ${client.name}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">Номер абонемента:</span>
+                <span class="value">#${sub.subscriptionNumber}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">Тип:</span>
+                <span class="value">${subscriptionTemplate ? subscriptionTemplate.type : 'Неизвестный'}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">Период:</span>
+                <span class="value">${sub.startDate} — ${sub.endDate}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">Осталось занятий:</span>
+                <span class="value ${sub.remainingClasses <= 3 && sub.remainingClasses !== Infinity ? 'low-classes' : ''}">
+                  ${sub.remainingClasses === Infinity ? '∞' : sub.remainingClasses}
+                </span>
+              </div>
+              <div class="info-item">
+                <span class="label">Статус:</span>
+                <span class="value status-${sub.isPaid && new Date(sub.endDate) >= new Date() ? 'active' : 'inactive'}">
+                  ${sub.isPaid && new Date(sub.endDate) >= new Date() ? 'Активный' : 'Неактивный'}
+                </span>
+              </div>
+            </div>
+            ${sub.renewalHistory && sub.renewalHistory.length ? `
+              <div class="renewal-history-section">
+                <h4>История продлений:</h4>
+                <div class="renewal-list">
+                  ${sub.renewalHistory.map(entry => {
+                    const date = new Date(entry.date || entry).toLocaleDateString('ru-RU');
+                    return entry.fromTemplate ?
+                      `<span class="renewal-item">${date}: ${entry.fromTemplate} → ${entry.toTemplate}</span>` :
+                      `<span class="renewal-item">${date}</span>`;
+                  }).join('')}
+                </div>
+              </div>
+            ` : ''}
+          </div>
+          <div class="renewal-form">
+            <h3><img src="images/icon-renew.svg" alt="Параметры продления" class="icon"> Параметры продления</h3>
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="renew-template" class="required">Тип абонемента</label>
+                <select id="renew-template" required>
+                  <option value="${sub.templateId}">${subscriptionTemplate ? subscriptionTemplate.type : 'Текущий'}</option>
+                  ${subscriptionTemplates.filter(t => t.id !== sub.templateId).map(t => `<option value="${t.id}">${t.type}</option>`).join('')}
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="renew-end-date" class="required">Новая дата окончания</label>
+                <input type="date" id="renew-end-date" value="${defaultEndDate.toISOString().split('T')[0]}" required>
+              </div>
+              <div class="form-group">
+                <label class="checkbox-label">
+                  <input type="checkbox" id="renew-is-paid" ${sub.isPaid ? 'checked' : ''}>
+                  <span class="checkmark"></span>
+                  Абонемент оплачен
+                </label>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="client-form-field">
-          <label for="renew-end-date">Новая дата окончания <span class="tooltip" title="Дата окончания абонемента после продления (по умолчанию +30 дней)">ℹ️</span></label>
-          <input type="date" id="renew-end-date" value="${defaultEndDate.toISOString().split('T')[0]}" required>
-        </div>
-        <div class="client-form-field">
-          <label for="renew-is-paid">Оплачен <span class="tooltip" title="Отметьте, если продление оплачено (влияет на статус активности)">ℹ️</span></label>
-          <input type="checkbox" id="renew-is-paid" checked>
-        </div>
-        <div class="renew-subscription-modal-actions">
-          <button id="renew-save-btn">Продлить</button>
-          <button id="renew-cancel-btn">Отмена</button>
+        <div class="renew-footer">
+          <button type="button" id="renew-cancel-btn" class="btn-secondary">Отмена</button>
+          <button type="button" id="renew-save-btn" class="btn-primary">Продлить</button>
         </div>
       </div>
     `;
     mainContent.appendChild(modal);
 
+    const closeModal = () => modal.remove();
     modal.addEventListener('click', (e) => {
-      if (e.target === modal) {
-        modal.remove();
+      const selection = window.getSelection();
+      if (e.target === modal && selection.toString().length === 0) {
+        closeModal();
       }
     });
+    modal.querySelector('.renew-close').addEventListener('click', closeModal);
+    modal.querySelector('#renew-cancel-btn').addEventListener('click', closeModal);
 
-    document.getElementById('renew-save-btn').addEventListener('click', () => {
-      const templateId = document.getElementById('renew-template').value;
-      const endDate = document.getElementById('renew-end-date').value;
-      const isPaid = document.getElementById('renew-is-paid').checked;
+    modal.querySelector('#renew-save-btn').addEventListener('click', () => {
+      const templateId = modal.querySelector('#renew-template').value;
+      const endDate = modal.querySelector('#renew-end-date').value;
+      const isPaid = modal.querySelector('#renew-is-paid').checked;
 
-      if (templateId && endDate) {
-        const start = new Date(sub.startDate);
-        const end = new Date(endDate);
-        if (end > start) {
-          const template = subscriptionTemplates.find(t => t.id === templateId);
-          const renewalHistory = sub.renewalHistory || [];
-          const renewalEntry = { date: new Date().toISOString() };
-          if (templateId !== sub.templateId) {
-            const oldTemplate = subscriptionTemplates.find(t => t.id === sub.templateId);
-            renewalEntry.fromTemplate = oldTemplate ? oldTemplate.type : 'Неизвестный шаблон';
-            renewalEntry.toTemplate = template ? template.type : 'Неизвестный шаблон';
-          }
-          renewalHistory.push(renewalEntry);
-          callback({
-            templateId,
-            endDate,
-            remainingClasses: template ? template.remainingClasses : sub.remainingClasses,
-            isPaid,
-            renewalHistory,
-            subscriptionNumber: sub.subscriptionNumber
-          });
-          modal.remove();
-        } else {
-          alert('Дата окончания должна быть позже даты начала абонемента!');
-        }
-      } else {
-        alert('Заполните все обязательные поля!');
+      if (!templateId || !endDate) {
+        showToast('Заполните все обязательные поля!', 'error');
+        return;
       }
-    });
 
-    document.getElementById('renew-cancel-btn').addEventListener('click', () => {
-      modal.remove();
+      const newEnd = new Date(endDate);
+      const currentEnd = new Date(sub.endDate);
+      if (newEnd <= currentEnd) {
+        showToast('Новая дата окончания должна быть позже текущей!', 'error');
+        return;
+      }
+
+      const newTemplate = subscriptionTemplates.find(t => t.id === templateId);
+      const renewalHistory = [...sub.renewalHistory];
+      renewalHistory.push({
+        date: new Date().toISOString(),
+        fromTemplate: subscriptionTemplate ? subscriptionTemplate.type : 'Неизвестный',
+        toTemplate: newTemplate ? newTemplate.type : 'Неизвестный'
+      });
+
+      callback({
+        templateId,
+        endDate,
+        isPaid,
+        remainingClasses: newTemplate ? newTemplate.remainingClasses : sub.remainingClasses,
+        renewalHistory
+      });
+      closeModal();
     });
   }
 
   function showSubscriptionForm(title, sub, clients, groups, callback) {
     const modal = document.createElement('div');
-    modal.className = 'subscription-modal';
+    modal.className = 'subscription-form-modal';
     modal.innerHTML = `
-      <div class="subscription-modal-content">
-        <h2>${title}</h2>
-        <div class="client-form-field">
-          <label for="subscription-client">Клиент</label>
-          <select id="subscription-client" required>
-            <option value="">Выберите клиента</option>
-            ${clients.map(c => `<option value="${c.id}" ${sub.clientId === c.id ? 'selected' : ''}>${c.name}${c.blacklisted ? ' (В чёрном списке)' : ''}</option>`).join('')}
-          </select>
+      <div class="subscription-form-content">
+        <div class="subscription-form-header">
+          <h2>${title}</h2>
+          <button type="button" class="subscription-form-close">×</button>
         </div>
-        <div class="client-form-field">
-          <label for="subscription-template">Шаблон абонемента</label>
-          <select id="subscription-template" required>
-            <option value="">Выберите шаблон</option>
-            ${subscriptionTemplates.map(template => `<option value="${template.id}" ${sub.templateId === template.id ? 'selected' : ''}>${template.type}</option>`).join('')}
-          </select>
-        </div>
-        <div class="client-form-field">
-          <label for="subscription-classes-per-week">Занятий в неделю</label>
-          <input type="number" id="subscription-classes-per-week" value="${sub.classesPerWeek || ''}" required>
-        </div>
-        <div class="days-of-week">
-          <label>Дни недели:</label>
-          <div class="days-of-week-buttons">
-            ${['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map(day => `
-              <button type="button" class="day-button${sub.daysOfWeek?.includes(day) ? ' selected' : ''}" data-day="${day}">${day}</button>
-            `).join('')}
+        <div class="subscription-form-body">
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="subscription-client" class="required">Клиент</label>
+              <select id="subscription-client" required>
+                <option value="">Выберите клиента</option>
+                ${clients.map(c => `<option value="${c.id}" ${sub.clientId === c.id ? 'selected' : ''}>${c.surname} ${c.name}</option>`).join('')}
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="subscription-template" class="required">Тип абонемента</label>
+              <select id="subscription-template" required>
+                <option value="">Выберите тип абонемента</option>
+                ${subscriptionTemplates.map(template => `
+                  <option value="${template.id}" ${sub.templateId === template.id ? 'selected' : ''}>
+                    ${template.type}
+                  </option>
+                `).join('')}
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="subscription-classes-per-week" class="required">Занятий в неделю</label>
+              <input type="number" id="subscription-classes-per-week" 
+                    value="${sub.classesPerWeek || 0}" 
+                    min="0" max="7" required>
+            </div>
+            <div class="form-group">
+              <label for="subscription-class-time" class="required">Время занятия</label>
+              <input type="time" id="subscription-class-time" 
+                    value="${sub.classTime || '09:00'}" required>
+            </div>
+            <div class="form-group">
+              <label for="subscription-start-date" class="required">Дата начала</label>
+              <input type="date" id="subscription-start-date" 
+                    value="${sub.startDate || ''}" required>
+            </div>
+            <div class="form-group">
+              <label for="subscription-end-date" class="required">Дата окончания</label>
+              <input type="date" id="subscription-end-date" 
+                    value="${sub.endDate || ''}" required>
+            </div>
+            <div class="form-group full-width">
+              <label>Дни недели занятий</label>
+              <div class="days-of-week-selector">
+                ${['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map(day => `
+                  <button type="button" class="day-button${sub.daysOfWeek && sub.daysOfWeek.includes(day) ? ' selected' : ''}" 
+                          data-day="${day}">${day}</button>
+                `).join('')}
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="subscription-group">Группа (опционально)</label>
+              <select id="subscription-group">
+                <option value="">Без привязки к группе</option>
+                ${groups.map(group => `
+                  <option value="${group}" ${sub.group === group ? 'selected' : ''}>${group}</option>
+                `).join('')}
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="checkbox-label">
+                <input type="checkbox" id="subscription-is-paid" ${sub.isPaid !== false ? 'checked' : ''}>
+                <span class="checkmark"></span>
+                Абонемент оплачен
+              </label>
+              <small class="field-hint">Влияет на активность абонемента</small>
+            </div>
           </div>
         </div>
-        <div class="client-form-field">
-          <label for="subscription-start-date">Дата начала</label>
-          <input type="date" id="subscription-start-date" value="${sub.startDate || ''}" required>
-        </div>
-        <div class="client-form-field">
-          <label for="subscription-end-date">Дата окончания</label>
-          <input type="date" id="subscription-end-date" value="${sub.endDate || ''}" required>
-        </div>
-        <div class="client-form-field">
-          <label for="subscription-class-time">Время занятия</label>
-          <input type="time" id="subscription-class-time" value="${sub.classTime || '09:00'}" required>
-        </div>
-        <div class="client-form-field">
-          <label for="subscription-group">Группа (опционально)</label>
-          <select id="subscription-group">
-            <option value="">Выберите группу</option>
-            ${groups.map(group => `<option value="${group}" ${sub.group === group ? 'selected' : ''}>${group}</option>`).join('')}
-          </select>
-        </div>
-        <div class="client-form-field">
-          <label for="subscription-is-paid">Оплачен <span class="tooltip" title="Отметьте, если абонемент оплачен (влияет на статус активности)">ℹ️</span></label>
-          <input type="checkbox" id="subscription-is-paid" ${sub.isPaid !== false ? 'checked' : ''}>
-        </div>
-        <div class="subscription-modal-actions">
-          <button id="subscription-save-btn">Сохранить</button>
-          <button id="subscription-cancel-btn">Отмена</button>
+        <div class="subscription-form-footer">
+          <button type="button" id="subscription-cancel-btn" class="btn-secondary">Отмена</button>
+          <button type="button" id="subscription-save-btn" class="btn-primary">Сохранить</button>
         </div>
       </div>
     `;
     mainContent.appendChild(modal);
 
+    const closeModal = () => modal.remove();
     modal.addEventListener('click', (e) => {
-      if (e.target === modal) {
-        modal.remove();
+      const selection = window.getSelection();
+      if (e.target === modal && selection.toString().length === 0) {
+        closeModal();
       }
     });
+    modal.querySelector('.subscription-form-close').addEventListener('click', closeModal);
 
     const dayButtons = modal.querySelectorAll('.day-button');
     dayButtons.forEach(button => {
@@ -499,116 +603,66 @@ export function loadSubscriptions() {
       });
     });
 
-    document.getElementById('subscription-save-btn').addEventListener('click', () => {
-      const clientId = document.getElementById('subscription-client').value;
-      const templateId = document.getElementById('subscription-template').value;
-      const classesPerWeek = parseInt(document.getElementById('subscription-classes-per-week').value);
-      const daysOfWeek = Array.from(modal.querySelectorAll('.day-button.selected')).map(button => button.getAttribute('data-day'));
-      const startDate = document.getElementById('subscription-start-date').value;
-      const endDate = document.getElementById('subscription-end-date').value;
-      const classTime = document.getElementById('subscription-class-time').value;
-      const group = document.getElementById('subscription-group').value;
-      const isPaid = document.getElementById('subscription-is-paid').checked;
+    const startDateInput = modal.querySelector('#subscription-start-date');
+    const endDateInput = modal.querySelector('#subscription-end-date');
 
-      if (clientId && templateId && !isNaN(classesPerWeek) && startDate && endDate && classTime) {
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-        if (end > start) {
-          const client = getClientById(clientId);
-          const template = subscriptionTemplates.find(t => t.id === templateId);
-          if (client) {
-            const subscriptionNumber = sub.subscriptionNumber || `SUB-${String(clientId).replace('client', '').padStart(3, '0')}`;
-            client.subscription = {
-              templateId,
-              startDate,
-              endDate,
-              classesPerWeek,
-              daysOfWeek,
-              classTime,
-              group,
-              remainingClasses: template ? template.remainingClasses : Infinity,
-              isPaid,
-              renewalHistory: sub.renewalHistory || [],
-              subscriptionNumber
-            };
-
-            const classesToAdd = [];
-            let totalClasses = client.subscription.remainingClasses === Infinity ? Infinity : client.subscription.remainingClasses;
-            const weeks = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24 * 7));
-            if (totalClasses !== Infinity) {
-              totalClasses = Math.min(totalClasses, classesPerWeek * weeks);
-            } else {
-              totalClasses = classesPerWeek * weeks;
-            }
-
-            const startHour = classTime.split(':')[0];
-            const endHour = (parseInt(startHour) + 1).toString().padStart(2, '0');
-            const endTime = `${endHour}:00`;
-
-            if (daysOfWeek.length > 0) {
-              const startObj = new Date(startDate);
-              const endObj = new Date(endDate);
-              for (let d = new Date(startObj); d <= endObj; d.setDate(d.getDate() + 1)) {
-                const dayName = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'][d.getDay()];
-                if (daysOfWeek.includes(dayName) && (totalClasses === Infinity || totalClasses > 0)) {
-                  const clientsList = group ? getClients().filter(c => c.groups.includes(group)).map(c => c.name) : [client.name];
-                  classesToAdd.push({
-                    id: `class${Date.now() + classesToAdd.length}`,
-                    name: template ? template.type : 'Занятие по абонементу',
-                    roomId: 'room1',
-                    type: group ? 'group' : 'individual',
-                    trainer: 'Не указан',
-                    group: group || '',
-                    clients: clientsList,
-                    date: new Date(d).toISOString().split('T')[0],
-                    startTime: classTime,
-                    endTime,
-                    attendance: clientsList.reduce((acc, cl) => ({ ...acc, [cl]: 'Пришёл' }), {}),
-                    daysOfWeek
-                  });
-                  if (totalClasses !== Infinity) totalClasses--;
-                }
-              }
-            } else {
-              const clientsList = group ? getClients().filter(c => c.groups.includes(group)).map(c => c.name) : [client.name];
-              classesToAdd.push({
-                id: `class${Date.now()}`,
-                name: template ? template.type : 'Занятие по абонементу',
-                roomId: 'room1',
-                type: group ? 'group' : 'individual',
-                trainer: 'Не указан',
-                group: group || '',
-                clients: clientsList,
-                date: startDate,
-                startTime: classTime,
-                endTime,
-                attendance: clientsList.reduce((acc, cl) => ({ ...acc, [cl]: 'Пришёл' }), {}),
-                daysOfWeek: []
-              });
-            }
-
-            classesToAdd.forEach(cls => scheduleData.push(cls));
-            updateClient(client.id, client);
-          }
-
-          callback({
-            clientId, templateId, startDate, endDate, classesPerWeek, daysOfWeek, classTime, group, isPaid, renewalHistory: sub.renewalHistory || [], subscriptionNumber
-          });
-          modal.remove();
-        } else {
-          alert('Дата окончания должна быть позже даты начала!');
-        }
-      } else {
-        alert('Заполните все обязательные поля!');
+    startDateInput.addEventListener('change', () => {
+      if (startDateInput.value && !endDateInput.value) {
+        const startDate = new Date(startDateInput.value);
+        startDate.setDate(startDate.getDate() + 30);
+        endDateInput.value = startDate.toISOString().split('T')[0];
       }
     });
 
-    document.getElementById('subscription-cancel-btn').addEventListener('click', () => {
-      modal.remove();
-    });
-  }
+    modal.querySelector('#subscription-save-btn').addEventListener('click', () => {
+      const clientId = modal.querySelector('#subscription-client').value;
+      const templateId = modal.querySelector('#subscription-template').value;
+      const classesPerWeek = parseInt(modal.querySelector('#subscription-classes-per-week').value);
+      const daysOfWeek = Array.from(modal.querySelectorAll('.day-button.selected')).map(b => b.dataset.day);
+      const startDate = startDateInput.value;
+      const endDate = endDateInput.value;
+      const classTime = modal.querySelector('#subscription-class-time').value;
+      const group = modal.querySelector('#subscription-group').value;
+      const isPaid = modal.querySelector('#subscription-is-paid').checked;
 
-  function formatDate(date) {
-    return date.toISOString().split('T')[0];
+      if (!clientId || !templateId || isNaN(classesPerWeek) || !startDate || !endDate || !classTime) {
+        alert('Заполните все обязательные поля!');
+        return;
+      }
+
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      if (end <= start) {
+        alert('Дата окончания должна быть позже даты начала!');
+        return;
+      }
+
+      if (classesPerWeek > 0 && daysOfWeek.length === 0) {
+        alert('Выберите дни недели для занятий!');
+        return;
+      }
+
+      const client = getClientById(clientId);
+      const template = subscriptionTemplates.find(t => t.id === templateId);
+      const subscriptionNumber = sub.subscriptionNumber || `SUB-${(client.subscriptions.length + 1).toString().padStart(3, '0')}`;
+
+      callback({
+        templateId,
+        startDate,
+        endDate,
+        classesPerWeek,
+        daysOfWeek,
+        classTime,
+        group,
+        remainingClasses: template ? template.remainingClasses : Infinity,
+        isPaid,
+        renewalHistory: sub.renewalHistory || [],
+        subscriptionNumber
+      });
+
+      closeModal();
+    });
+
+    modal.querySelector('#subscription-cancel-btn').addEventListener('click', closeModal);
   }
 }
