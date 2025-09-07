@@ -1,7 +1,7 @@
 import { getSubscriptionTemplates } from './subscriptions.js';
 import { getGroups } from './groups.js';
 
-let clientsData = [
+export let clientsData = [
   {
     id: 'client1',
     surname: 'Иванов',
@@ -218,7 +218,6 @@ let clientsData = [
     createdAt: '2025-05-20T15:00:00Z'
   }
 ];
-
 let commonDiagnoses = ['Сколиоз', 'Кифоз', 'Лордоз', 'Остеохондроз', 'Артрит', 'Астма', 'Диабет', 'Нет', 'Гипертония', 'Аллергия'];
 let commonRelations = ['Бабушка', 'Брат', 'Дедушка', 'Другая степень родства', 'Мать', 'Мачеха', 'Отец', 'Отчим', 'Сестра', 'Тетя', 'Дядя'];
 
@@ -287,139 +286,481 @@ function setupModalClose(modal, closeModal) {
 export function showClientForm(title, client, callback) {
   const modal = document.createElement('div');
   modal.className = 'client-form-modal';
-  const fullName = client ? `${client.surname || ''} ${client.name || ''} ${client.patronymic || ''}`.trim() : '';
+  let parents = client.parents ? [...client.parents.map(p => ({
+    fullName: p.fullName || '',
+    phone: p.phone || '',
+    relation: p.relation || ''
+  }))] : [];
+  let diagnoses = client.diagnosis ? [...client.diagnosis] : [];
+  const isEdit = !!client.id;
+
+  function calculateAge(birthDate) {
+    if (!birthDate) return null;
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age;
+  }
+
+  function isAdult(birthDate) {
+    const age = calculateAge(birthDate);
+    return age !== null && age >= 18;
+  }
+
+  function renderParents(container) {
+    container.innerHTML = `
+      <div class="parents-controls">
+        <button type="button" id="add-parent-btn" class="btn-primary add-parent-btn">Добавить</button>
+        <button type="button" id="delete-parent-btn" class="btn-danger delete-parent-btn">Удалить</button>
+      </div>
+      <table class="parents-table">
+        <thead>
+          <tr>
+            <th>ФИО</th>
+            <th>Телефон</th>
+            <th>Кем приходится</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${parents.length ? parents.map((p, index) => `
+            <tr class="parent-row" data-index="${index}">
+              <td><input type="text" class="parent-fullname" value="${p.fullName}" required></td>
+              <td><input type="tel" class="parent-phone" value="${p.phone}" required></td>
+              <td>
+                <div class="input-with-button">
+                  <input type="text" list="relation-list" class="parent-relation" value="${p.relation}" required>
+                  <datalist id="relation-list">
+                    ${commonRelations.map(rel => `<option value="${rel}">`).join('')}
+                  </datalist>
+                  <button type="button" class="relation-dictionary-btn">...</button>
+                </div>
+              </td>
+            </tr>
+          `).join('') : `
+            <tr>
+              <td colspan="3" class="no-parents">Нет добавленных родителей/опекунов</td>
+            </tr>
+          `}
+        </tbody>
+      </table>
+    `;
+
+    const addBtn = container.querySelector('#add-parent-btn');
+    addBtn.addEventListener('click', () => {
+      parents.push({ fullName: '', phone: '', relation: '' });
+      renderParents(container);
+    });
+
+    const deleteBtn = container.querySelector('#delete-parent-btn');
+    deleteBtn.addEventListener('click', () => {
+      showToast('Выберите строку для удаления', 'info');
+      const rows = container.querySelectorAll('.parent-row');
+      rows.forEach(row => {
+        row.style.cursor = 'pointer';
+        const deleteHandler = () => {
+          const index = parseInt(row.dataset.index);
+          showConfirmDialog(
+            'Удалить родителя?',
+            'Вы уверены, что хотите удалить этого родителя/опекуна? Это действие нельзя отменить.',
+            () => {
+              parents.splice(index, 1);
+              renderParents(container);
+              showToast('Родитель удален', 'success');
+            }
+          );
+          rows.forEach(r => {
+            r.removeEventListener('click', deleteHandler);
+            r.style.cursor = 'default';
+          });
+        };
+        row.addEventListener('click', deleteHandler, { once: true });
+      });
+    });
+
+    parents.forEach((_, index) => {
+      const row = container.querySelector(`.parent-row[data-index="${index}"]`);
+      if (!row) return;
+
+      const fullnameInput = row.querySelector('.parent-fullname');
+      const phoneInput = row.querySelector('.parent-phone');
+      const relationInput = row.querySelector('.parent-relation');
+      const dictionaryBtn = row.querySelector('.relation-dictionary-btn');
+
+      fullnameInput.addEventListener('input', (e) => parents[index].fullName = e.target.value);
+      phoneInput.addEventListener('input', (e) => parents[index].phone = e.target.value);
+      relationInput.addEventListener('input', (e) => parents[index].relation = e.target.value);
+
+      dictionaryBtn.addEventListener('click', () => {
+        showRelationDictionary((selectedRelation) => {
+          if (selectedRelation) {
+            relationInput.value = selectedRelation;
+            parents[index].relation = selectedRelation;
+          }
+        });
+      });
+    });
+  }
+
+  function renderDiagnoses(container) {
+    container.innerHTML = `
+      <div class="diagnoses-controls">
+        <button type="button" id="add-diagnosis-btn" class="btn-primary add-diagnosis-btn">Добавить</button>
+        <button type="button" id="delete-diagnosis-btn" class="btn-danger delete-diagnosis-btn">Удалить</button>
+      </div>
+      <table class="diagnoses-table">
+        <thead>
+          <tr>
+            <th>Диагноз</th>
+            <th>Описание</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${diagnoses.length ? diagnoses.map((d, index) => `
+            <tr class="diagnosis-row" data-index="${index}">
+              <td>
+                <div class="input-with-button">
+                  <input type="text" list="diagnosis-list" class="diagnosis-name" value="${d.name}" required>
+                  <datalist id="diagnosis-list">
+                    ${commonDiagnoses.map(diag => `<option value="${diag}">`).join('')}
+                  </datalist>
+                  <button type="button" class="diagnosis-dictionary-btn">...</button>
+                </div>
+              </td>
+              <td><input type="text" class="diagnosis-notes" value="${d.notes || ''}"></td>
+            </tr>
+          `).join('') : `
+            <tr>
+              <td colspan="2" class="no-diagnoses">Нет добавленных диагнозов</td>
+            </tr>
+          `}
+        </tbody>
+      </table>
+    `;
+
+    const addBtn = container.querySelector('#add-diagnosis-btn');
+    addBtn.addEventListener('click', () => {
+      diagnoses.push({ name: '', notes: '' });
+      renderDiagnoses(container);
+    });
+
+    const deleteBtn = container.querySelector('#delete-diagnosis-btn');
+    deleteBtn.addEventListener('click', () => {
+      showToast('Выберите строку для удаления', 'info');
+      const rows = container.querySelectorAll('.diagnosis-row');
+      rows.forEach(row => {
+        row.style.cursor = 'pointer';
+        const deleteHandler = () => {
+          const index = parseInt(row.dataset.index);
+          showConfirmDialog(
+            'Удалить диагноз?',
+            'Вы уверены, что хотите удалить этот диагноз? Это действие нельзя отменить.',
+            () => {
+              diagnoses.splice(index, 1);
+              renderDiagnoses(container);
+              showToast('Диагноз удален', 'success');
+            }
+          );
+          rows.forEach(r => {
+            r.removeEventListener('click', deleteHandler);
+            r.style.cursor = 'default';
+          });
+        };
+        row.addEventListener('click', deleteHandler, { once: true });
+      });
+    });
+
+    diagnoses.forEach((_, index) => {
+      const row = container.querySelector(`.diagnosis-row[data-index="${index}"]`);
+      if (!row) return;
+
+      const nameInput = row.querySelector('.diagnosis-name');
+      const notesInput = row.querySelector('.diagnosis-notes');
+      const dictionaryBtn = row.querySelector('.diagnosis-dictionary-btn');
+
+      nameInput.addEventListener('input', (e) => diagnoses[index].name = e.target.value);
+      notesInput.addEventListener('input', (e) => diagnoses[index].notes = e.target.value);
+
+      dictionaryBtn.addEventListener('click', () => {
+        showDiagnosisDictionary((selectedDiagnosis) => {
+          if (selectedDiagnosis) {
+            nameInput.value = selectedDiagnosis;
+            diagnoses[index].name = selectedDiagnosis;
+          }
+        });
+      });
+    });
+  }
+
   modal.innerHTML = `
     <div class="client-form-content">
       <div class="client-form-header">
         <h2>${title}</h2>
         <button type="button" class="client-form-close">×</button>
       </div>
-      <div class="client-form-body">
-        <div class="form-group">
-          <label for="client-surname" class="required">Фамилия</label>
-          <input type="text" id="client-surname" value="${client?.surname || ''}" required>
-        </div>
-        <div class="form-group">
-          <label for="client-name" class="required">Имя</label>
-          <input type="text" id="client-name" value="${client?.name || ''}" required>
-        </div>
-        <div class="form-group">
-          <label for="client-patronymic">Отчество</label>
-          <input type="text" id="client-patronymic" value="${client?.patronymic || ''}">
-        </div>
-        <div class="form-group">
-          <label for="client-phone" class="required">Телефон</label>
-          <input type="tel" id="client-phone" value="${client?.phone || ''}" pattern="\\+7\\s\\(\\d{3}\\)\\s\\d{3}-\\d{2}-\\d{2}" placeholder="+7 (XXX) XXX-XX-XX" required>
-        </div>
-        <div class="form-group">
-          <label for="client-birth-date" class="required">Дата рождения</label>
-          <input type="date" id="client-birth-date" value="${client?.birthDate || ''}" required>
-        </div>
-        <div class="form-group">
-          <label for="client-gender" class="required">Пол</label>
-          <select id="client-gender" required>
-            <option value="">Выберите пол</option>
-            <option value="male" ${client?.gender === 'male' ? 'selected' : ''}>Мужской</option>
-            <option value="female" ${client?.gender === 'female' ? 'selected' : ''}>Женский</option>
-          </select>
-        </div>
-        <div class="form-group full-width">
-          <label for="client-diagnosis">Диагноз</label>
-          <select id="client-diagnosis">
-            <option value="">Выберите диагноз</option>
-            ${commonDiagnoses.map(d => `<option value="${d}" ${client?.diagnosis?.[0]?.name === d ? 'selected' : ''}>${d}</option>`).join('')}
-          </select>
-          <textarea id="client-diagnosis-notes" placeholder="Примечания к диагнозу">${client?.diagnosis?.[0]?.notes || ''}</textarea>
-        </div>
-        <div class="form-group full-width">
-          <label for="client-features">Особенности</label>
-          <textarea id="client-features" placeholder="Особенности клиента">${client?.features || ''}</textarea>
-        </div>
-        <div class="form-group">
-          <label class="checkbox-label">
-            <input type="checkbox" id="client-blacklisted" ${client?.blacklisted ? 'checked' : ''}>
-            <span class="checkmark"></span>
-            В чёрном списке
-          </label>
-        </div>
-        <div class="form-group full-width">
-          <label>Родители (опционально)</label>
-          <div id="client-parents">
-            ${client?.parents?.map((p, i) => `
-              <div class="parent-group" data-index="${i}">
-                <input type="text" class="parent-fullname" placeholder="ФИО родителя" value="${p.fullName}">
-                <input type="tel" class="parent-phone" placeholder="Телефон" value="${p.phone}" pattern="\\+7\\s\\(\\d{3}\\)\\s\\d{3}-\\d{2}-\\d{2}">
-                <select class="parent-relation">
-                  <option value="">Степень родства</option>
-                  ${commonRelations.map(r => `<option value="${r}" ${p.relation === r ? 'selected' : ''}>${r}</option>`).join('')}
-                </select>
-                <button type="button" class="remove-parent-btn">Удалить</button>
-              </div>
-            `).join('') || ''}
+      
+      <div class="client-form-tabs">
+        <button type="button" class="tab-button active" data-tab="personal">Личные данные</button>
+        <button type="button" class="tab-button" data-tab="parents">Родители/опекуны</button>
+        <button type="button" class="tab-button" data-tab="medical">Медицинская информация</button>
+      </div>
+      
+      <div class="client-form-tab-content active" id="client-tab-personal">
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="client-surname" class="required">Фамилия</label>
+            <input type="text" id="client-surname" value="${client.surname || ''}" required>
+            <span class="field-error" id="surname-error"></span>
           </div>
-          <button type="button" id="add-parent-btn" class="btn-secondary">Добавить родителя</button>
+          <div class="form-group">
+            <label for="client-name" class="required">Имя</label>
+            <input type="text" id="client-name" value="${client.name || ''}" required>
+            <span class="field-error" id="name-error"></span>
+          </div>
+          <div class="form-group">
+            <label for="client-patronymic">Отчество</label>
+            <input type="text" id="client-patronymic" value="${client.patronymic || ''}">
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="client-birthdate" class="required">Дата рождения</label>
+            <input type="date" id="client-birthdate" value="${client.birthDate || ''}" required>
+            <span class="field-error" id="birthdate-error"></span>
+          </div>
+          <div class="form-group">
+            <label for="client-gender" class="required">Пол</label>
+            <select id="client-gender" required>
+              <option value="">Выберите пол</option>
+              <option value="male" ${client.gender === 'male' ? 'selected' : ''}>Мужской</option>
+              <option value="female" ${client.gender === 'female' ? 'selected' : ''}>Женский</option>
+            </select>
+            <span class="field-error" id="gender-error"></span>
+          </div>
+          <div class="form-group">
+            <label for="client-phone">Телефон</label>
+            <input type="tel" id="client-phone" value="${client.phone || ''}" placeholder="+7 (999) 123-45-67">
+            <span class="field-error" id="phone-error"></span>
+          </div>
+        </div>
+        <div class="client-photo-section">
+          <div class="photo-upload-area">
+            <div class="for-flex flex-end">
+              <button type="button" class="photo-remove-btn" id="photo-remove-btn" ${!client.photo ? 'style="display: none;"' : ''}>
+                X
+              </button>
+            </div>
+            <div id="client-photo-preview" class="client-photo-preview ${!client.photo ? 'placeholder' : ''}">
+              ${client.photo ?
+      `<img src="${client.photo}" alt="${client.surname || 'Клиент'}">` :
+      `<img src="images/icon-photo.svg" alt="Загрузить фото" class="upload-icon">`
+    }
+            </div>
+            <input type="file" id="client-photo" accept="image/*" style="display: none;">
+          </div>
         </div>
       </div>
+
+      <div class="client-form-tab-content" id="client-tab-parents">
+        <div id="parents-container"></div>
+      </div>
+
+      <div class="client-form-tab-content" id="client-tab-medical">
+        <div id="diagnoses-container"></div>
+        <div class="form-group full-width">
+          <label for="client-features">Примечания</label>
+          <input type="text" id="client-features" value="${client.features || ''}" placeholder="Дополнительная информация о клиенте, особенности занятий...">
+        </div>
+      </div>
+
       <div class="client-form-footer">
         <button type="button" id="client-cancel-btn" class="btn-secondary">Отмена</button>
         <button type="button" id="client-save-btn" class="btn-primary">Сохранить</button>
       </div>
     </div>
   `;
+
   document.getElementById('main-content').appendChild(modal);
+
+  const tabButtons = modal.querySelectorAll('.client-form-tabs .tab-button');
+  const tabContents = modal.querySelectorAll('.client-form-tab-content');
+
+  tabButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      tabButtons.forEach(btn => btn.classList.remove('active'));
+      tabContents.forEach(content => content.classList.remove('active'));
+      button.classList.add('active');
+      modal.querySelector(`#client-tab-${button.dataset.tab}`).classList.add('active');
+    });
+  });
 
   const closeModal = () => modal.remove();
   setupModalClose(modal, closeModal);
+
+  // Добавляем обработчик для кнопки крестика
   modal.querySelector('.client-form-close').addEventListener('click', closeModal);
-  modal.querySelector('#client-cancel-btn').addEventListener('click', closeModal);
 
-  modal.querySelector('#add-parent-btn').addEventListener('click', () => {
-    const parentGroup = document.createElement('div');
-    parentGroup.className = 'parent-group';
-    parentGroup.innerHTML = `
-      <input type="text" class="parent-fullname" placeholder="ФИО родителя">
-      <input type="tel" class="parent-phone" placeholder="Телефон" pattern="\\+7\\s\\(\\d{3}\\)\\s\\d{3}-\\d{2}-\\d{2}">
-      <select class="parent-relation">
-        <option value="">Степень родства</option>
-        ${commonRelations.map(r => `<option value="${r}">${r}</option>`).join('')}
-      </select>
-      <button type="button" class="remove-parent-btn">Удалить</button>
+  const photoInput = document.getElementById('client-photo');
+  const photoPreview = document.getElementById('client-photo-preview');
+  const photoRemoveBtn = document.getElementById('photo-remove-btn');
+
+  photoPreview.addEventListener('click', () => {
+    if (photoPreview.classList.contains('placeholder')) {
+      photoInput.click();
+    } else {
+      showPhotoZoomModal(photoPreview.querySelector('img').src);
+    }
+  });
+
+  photoInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        showToast('Размер файла не должен превышать 5MB', 'error');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const img = document.createElement('img');
+        img.src = ev.target.result;
+        img.alt = 'Предпросмотр';
+        img.style.width = '100%';
+        img.style.height = '100%';
+        img.style.objectFit = 'cover';
+        img.style.borderRadius = '8px';
+
+        photoPreview.innerHTML = '';
+        photoPreview.appendChild(img);
+        photoPreview.classList.remove('placeholder');
+        photoRemoveBtn.style.display = 'block';
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+
+  photoRemoveBtn.addEventListener('click', () => {
+    photoPreview.innerHTML = `
+      <img src="images/icon-photo.svg" alt="Загрузить фото" class="upload-icon">
+      <span>Файл не выбран</span>
     `;
-    modal.querySelector('#client-parents').appendChild(parentGroup);
+    photoPreview.classList.add('placeholder');
+    photoInput.value = '';
+    photoRemoveBtn.style.display = 'none';
   });
 
-  modal.addEventListener('click', (e) => {
-    if (e.target.classList.contains('remove-parent-btn')) {
-      e.target.closest('.parent-group').remove();
-    }
-  });
+  const parentsContainer = modal.querySelector('#parents-container');
+  renderParents(parentsContainer);
 
-  modal.querySelector('#client-save-btn').addEventListener('click', () => {
-    const surname = modal.querySelector('#client-surname').value.trim();
-    const name = modal.querySelector('#client-name').value.trim();
-    const patronymic = modal.querySelector('#client-patronymic').value.trim();
-    const phone = modal.querySelector('#client-phone').value.trim();
-    const birthDate = modal.querySelector('#client-birth-date').value;
-    const gender = modal.querySelector('#client-gender').value;
-    const diagnosisName = modal.querySelector('#client-diagnosis').value;
-    const diagnosisNotes = modal.querySelector('#client-diagnosis-notes').value.trim();
-    const features = modal.querySelector('#client-features').value.trim();
-    const blacklisted = modal.querySelector('#client-blacklisted').checked;
-    const parents = Array.from(modal.querySelectorAll('.parent-group')).map(group => ({
-      fullName: group.querySelector('.parent-fullname').value.trim(),
-      phone: group.querySelector('.parent-phone').value.trim(),
-      relation: group.querySelector('.parent-relation').value
-    })).filter(p => p.fullName && p.phone && p.relation);
+  const diagnosesContainer = modal.querySelector('#diagnoses-container');
+  renderDiagnoses(diagnosesContainer);
 
-    if (!surname || !name || !phone || !birthDate || !gender) {
-      alert('Заполните все обязательные поля!');
-      return;
+  function validateForm() {
+    let isValid = true;
+
+    document.querySelectorAll('.field-error').forEach(el => el.textContent = '');
+    document.querySelectorAll('.form-group input, .form-group select').forEach(el => el.classList.remove('error'));
+
+    const surname = document.getElementById('client-surname').value.trim();
+    if (!surname) {
+      document.getElementById('surname-error').textContent = 'Фамилия обязательна';
+      document.getElementById('client-surname').classList.add('error');
+      isValid = false;
     }
 
-    if (!phone.match(/\+7\s\(\d{3}\)\s\d{3}-\d{2}-\d{2}/)) {
-      alert('Телефон должен быть в формате +7 (XXX) XXX-XX-XX');
-      return;
+    const name = document.getElementById('client-name').value.trim();
+    if (!name) {
+      document.getElementById('name-error').textContent = 'Имя обязательно';
+      document.getElementById('client-name').classList.add('error');
+      isValid = false;
     }
+
+    const phone = document.getElementById('client-phone').value.trim();
+
+    const birthDate = document.getElementById('client-birthdate').value;
+    if (!birthDate) {
+      document.getElementById('birthdate-error').textContent = 'Дата рождения обязательна';
+      document.getElementById('client-birthdate').classList.add('error');
+      isValid = false;
+    }
+
+    const gender = document.getElementById('client-gender').value;
+    if (!gender) {
+      document.getElementById('gender-error').textContent = 'Пол обязателен';
+      document.getElementById('client-gender').classList.add('error');
+      isValid = false;
+    }
+
+    // Проверка на наличие родителей для несовершеннолетних с информативным уведомлением
+    if (!isAdult(birthDate) && parents.length === 0) {
+      showToast('Клиент несовершеннолетний: перейдите на вкладку "Родители/опекуны" и добавьте хотя бы одного родителя.', 'info');
+      isValid = false;
+    }
+
+    parents.forEach((p, index) => {
+      const row = modal.querySelector(`.parent-row[data-index="${index}"]`);
+      if (!row) return;
+
+      const fullnameInput = row.querySelector('.parent-fullname');
+      const phoneInput = row.querySelector('.parent-phone');
+      const relationInput = row.querySelector('.parent-relation');
+
+      if (!fullnameInput.value.trim()) {
+        fullnameInput.classList.add('error');
+        isValid = false;
+      }
+      if (!phoneInput.value.trim()) {
+        phoneInput.classList.add('error');
+        isValid = false;
+      }
+      if (!relationInput.value.trim()) {
+        relationInput.classList.add('error');
+        isValid = false;
+      }
+    });
+
+    diagnoses.forEach((d, index) => {
+      const row = modal.querySelector(`.diagnosis-row[data-index="${index}"]`);
+      if (!row) return;
+
+      const nameInput = row.querySelector('.diagnosis-name');
+
+      if (!nameInput.value.trim()) {
+        nameInput.classList.add('error');
+        isValid = false;
+      }
+    });
+
+    return isValid;
+  }
+
+  document.getElementById('client-save-btn').addEventListener('click', () => {
+    if (!validateForm()) return;
+
+    const surname = document.getElementById('client-surname').value.trim();
+    const name = document.getElementById('client-name').value.trim();
+    const patronymic = document.getElementById('client-patronymic').value.trim();
+    const phone = document.getElementById('client-phone').value.trim();
+    const birthDate = document.getElementById('client-birthdate').value;
+    const gender = document.getElementById('client-gender').value;
+    const features = document.getElementById('client-features').value.trim();
+
+    let photo = '';
+    const photoImg = photoPreview.querySelector('img:not(.upload-icon)');
+    if (photoImg) {
+      photo = photoImg.src;
+    }
+
+    const updatedParents = parents.filter(p => p.fullName.trim() !== '').map(p => ({
+      fullName: p.fullName.trim(),
+      phone: p.phone,
+      relation: p.relation
+    }));
+
+    const updatedDiagnoses = diagnoses.filter(d => d.name.trim() !== '');
 
     callback({
       surname,
@@ -428,14 +769,18 @@ export function showClientForm(title, client, callback) {
       phone,
       birthDate,
       gender,
-      diagnosis: [{ name: diagnosisName || 'Нет', notes: diagnosisNotes }],
+      parents: updatedParents,
+      diagnosis: updatedDiagnoses,
       features,
-      blacklisted,
-      parents
+      photo,
+      groups: []
     });
-
     closeModal();
   });
+
+  document.getElementById('client-cancel-btn').addEventListener('click', closeModal);
+
+  setTimeout(() => document.getElementById('client-surname').focus(), 100);
 }
 
 export function loadClients() {
@@ -730,1086 +1075,797 @@ export function loadClients() {
         );
       }
     } else {
-      showClientDetails(client);
+      const selection = window.getSelection();
+      if (selection.toString().length === 0) {
+        showClientDetails(client);
+      }
     }
   });
+}
 
-  function showToast(message, type = 'info') {
-    const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
-    toast.innerHTML = `
-        <div class="toast-content">
-          <span class="toast-icon">${type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️'}</span>
-          <span class="toast-message">${message}</span>
+export function showToast(message, type = 'info') {
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  toast.innerHTML = `
+      <div class="toast-content">
+        <span class="toast-icon">${type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️'}</span>
+        <span class="toast-message">${message}</span>
+      </div>
+    `;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.classList.add('show'), 100);
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => document.body.removeChild(toast), 300);
+  }, 3000);
+}
+
+export function showConfirmDialog(title, message, onConfirm) {
+  const modal = document.createElement('div');
+  modal.className = 'confirm-modal';
+  modal.innerHTML = `
+      <div class="confirm-modal-content">
+        <div class="confirm-header">
+          <h3>${title}</h3>
         </div>
-      `;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.classList.add('show'), 100);
-    setTimeout(() => {
-      toast.classList.remove('show');
-      setTimeout(() => document.body.removeChild(toast), 300);
-    }, 3000);
-  }
-
-  function showConfirmDialog(title, message, onConfirm) {
-    const modal = document.createElement('div');
-    modal.className = 'confirm-modal';
-    modal.innerHTML = `
-        <div class="confirm-modal-content">
-          <div class="confirm-header">
-            <h3>${title}</h3>
-          </div>
-          <div class="confirm-body">
-            <p>${message}</p>
-          </div>
-          <div class="confirm-actions">
-            <button type="button" class="confirm-btn-cancel btn-secondary">Отмена</button>
-            <button type="button" class="confirm-btn-ok btn-primary">Удалить</button>
-          </div>
+        <div class="confirm-body">
+          <p>${message}</p>
         </div>
-      `;
-    document.getElementById('main-content').appendChild(modal);
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) modal.remove();
-    });
-    modal.querySelector('.confirm-btn-cancel').addEventListener('click', () => modal.remove());
-    modal.querySelector('.confirm-btn-ok').addEventListener('click', () => {
-      onConfirm();
-      modal.remove();
-    });
-  }
-
-  function showPhotoZoomModal(photoSrc) {
-    if (!photoSrc || photoSrc.includes('default-icon.svg')) return;
-    const modal = document.createElement('div');
-    modal.className = 'photo-zoom-modal';
-    modal.innerHTML = `
-        <div class="photo-zoom-content">
-          <img src="${photoSrc}" class="photo-zoom-image" alt="Увеличенное фото">
-          <button type="button" class="photo-zoom-close btn-secondary">Закрыть</button>
+        <div class="confirm-actions">
+          <button type="button" class="confirm-btn-cancel btn-secondary">Отмена</button>
+          <button type="button" class="confirm-btn-ok btn-primary">Удалить</button>
         </div>
-      `;
-    document.getElementById('main-content').appendChild(modal);
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) modal.remove();
-    });
-    modal.querySelector('.photo-zoom-close').addEventListener('click', () => modal.remove());
-  }
+      </div>
+    `;
+  document.getElementById('main-content').appendChild(modal);
+  setupModalClose(modal, () => modal.remove());
+  modal.querySelector('.confirm-btn-cancel').addEventListener('click', () => modal.remove());
+  modal.querySelector('.confirm-btn-ok').addEventListener('click', () => {
+    onConfirm();
+    modal.remove();
+  });
+}
 
-  function showClientDetails(client) {
-    const fullName = `${client.surname} ${client.name} ${client.patronymic || ''}`;
-    const modal = document.createElement('div');
-    modal.className = 'client-details-modal';
-    modal.innerHTML = `
-        <div class="client-details-content">
-          <div class="details-header">
-            <div class="client-avatar-large">
-              ${client.photo ?
-        `<img src="${client.photo}" class="client-photo-large" alt="${fullName}">` :
-        `<div class="client-photo-placeholder-large">${client.name.charAt(0).toUpperCase()}</div>`
-      }
-            </div>
-            <div class="client-title">
-              <h2>${fullName}${client.blacklisted ? ' (В чёрном списке)' : ''}</h2>
-              <span class="client-id">ID: ${client.id}</span>
-            </div>
+export function showPhotoZoomModal(photoSrc) {
+  if (!photoSrc || photoSrc.includes('default-icon.svg')) return;
+  const modal = document.createElement('div');
+  modal.className = 'photo-zoom-modal';
+  modal.innerHTML = `
+      <div class="photo-zoom-content">
+        <img src="${photoSrc}" class="photo-zoom-image" alt="Увеличенное фото">
+        <button type="button" class="photo-zoom-close btn-secondary">Закрыть</button>
+      </div>
+    `;
+  document.getElementById('main-content').appendChild(modal);
+  setupModalClose(modal, () => modal.remove());
+  modal.querySelector('.photo-zoom-close').addEventListener('click', () => modal.remove());
+}
+
+export function showClientDetails(client) {
+  const fullName = `${client.surname} ${client.name} ${client.patronymic || ''}`;
+  const modal = document.createElement('div');
+  modal.className = 'client-details-modal';
+  modal.innerHTML = `
+      <div class="client-details-content">
+        <div class="details-header">
+          <div class="client-avatar-large">
+            ${client.photo ?
+      `<img src="${client.photo}" class="client-photo-large" alt="${fullName}">` :
+      `<div class="client-photo-placeholder-large">${client.name.charAt(0).toUpperCase()}</div>`
+    }
           </div>
-          
-          <div class="tabs">
-            <button type="button" class="tab-button active" data-tab="main">Основная информация</button>
-            <button type="button" class="tab-button" data-tab="groups-subs">Группы и абонементы</button>
+          <div class="client-title">
+            <h2>${fullName}${client.blacklisted ? ' (В чёрном списке)' : ''}</h2>
+            <span class="client-id">ID: ${client.id}</span>
           </div>
-          
-          <div class="tab-content active" id="tab-main">
-            <div class="details-grid">
-              <div class="detail-section">
-                <h4>Контактная информация</h4>
-                <div class="detail-item">
-                  <span class="detail-label">Телефон:</span>
-                  <span class="detail-value">${client.phone}</span>
-                </div>
-                <div class="detail-item">
-                  <span class="detail-label">Дата рождения:</span>
-                  <span class="detail-value">${client.birthDate || 'Не указана'}</span>
-                </div>
-                <div class="detail-item">
-                  <span class="detail-label">Пол:</span>
-                  <span class="detail-value">${client.gender === 'male' ? 'Мужской' : client.gender === 'female' ? 'Женский' : 'Не указан'}</span>
-                </div>
-                ${client.parents.length > 0 ? `
-                  <div class="detail-item">
-                    <span class="detail-label">Родители/опекуны:</span>
-                    <div class="detail-value">
-                      ${client.parents.map(p => `${p.fullName} (${p.phone})${p.relation ? ` - ${p.relation}` : ''}`).join('<br>')}
-                    </div>
-                  </div>
-                ` : ''}
-              </div>
-              
-              <div class="detail-section">
-                <h4>Медицинская информация</h4>
-                <div class="detail-item">
-                  <span class="detail-label">Диагнозы:</span>
-                  <div class="detail-value ${client.diagnosis && client.diagnosis.some(d => d.name !== 'Нет') ? 'has-diagnosis' : ''}">
-                    ${client.diagnosis && client.diagnosis.length > 0 ?
-        client.diagnosis.map(d => `${d.name}${d.notes ? ` (${d.notes})` : ''}`).join('<br>') : 'Нет'}
-                  </div>
-                </div>
-                ${client.features ? `
-                  <div class="detail-item">
-                    <span class="detail-label">Особенности:</span>
-                    <span class="detail-value">${client.features}</span>
-                  </div>
-                ` : ''}
-              </div>
-              
-              <div class="detail-section">
-                <h4>Активность</h4>
-                <div class="detail-item">
-                  <span class="detail-label">Дата регистрации:</span>
-                  <span class="detail-value">${formatDate(client.createdAt)}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <div class="tab-content" id="tab-groups-subs">
-            <div class="details-grid">
-              <div class="detail-section">
-                <h4>Группы</h4>
-                <div class="detail-item">
-                  <span class="detail-label">Текущие группы:</span>
-                  <div class="groups-list">
-                    ${Array.isArray(client.groups) && client.groups.length ?
-        client.groups.map(group => `<span class="group-tag">${group}</span>`).join('') :
-        '<span class="no-data">Не назначены</span>'
-      }
-                  </div>
-                </div>
-                ${client.groupHistory.length ? `
-                  <div class="detail-item">
-                    <span class="detail-label">История групп:</span>
-                    <div class="renewal-history">
-                      ${client.groupHistory.map(entry => `
-                        <span class="renewal-entry">${formatDate(entry.date)}: ${entry.action === 'added' ? 'Добавлен в' : 'Удален из'} ${entry.group}</span>
-                      `).join('')}
-                    </div>
-                  </div>
-                ` : ''}
-              </div>
-              
-              <div class="detail-section">
-                <h4>Абонементы</h4>
-                ${client.subscriptions.length ? client.subscriptions.filter(s => s.isPaid && new Date(s.endDate) >= new Date()).map((sub, index) => {
-        const template = getSubscriptionTemplates().find(t => t.id === sub.templateId);
-        return `
-                    <div class="subscription-item" data-sub-index="${index}">
-                      <div class="detail-item">
-                        <span class="detail-label">Номер:</span>
-                        <span class="detail-value">#${sub.subscriptionNumber}</span>
-                      </div>
-                      <div class="detail-item">
-                        <span class="detail-label">Тип:</span>
-                        <span class="detail-value">${template ? template.type : 'Неизвестный'}</span>
-                      </div>
-                      <div class="detail-item">
-                        <span class="detail-label">Период:</span>
-                        <span class="detail-value">${sub.startDate} — ${sub.endDate}</span>
-                      </div>
-                      <div class="detail-item">
-                        <span class="detail-label">Осталось занятий:</span>
-                        <span class="detail-value">${sub.remainingClasses === Infinity ? 'Безлимит' : sub.remainingClasses}</span>
-                      </div>
-                    </div>
-                  `;
-      }).join('') : `
-                  <div class="detail-item">
-                    <span class="no-data">Абонементы не оформлены</span>
-                  </div>
-                `}
-              </div>
-            </div>
-          </div>
-          
-          <div class="client-details-actions">
-            <button type="button" id="client-edit-details-btn" class="btn-secondary">Редактировать</button>
-            <button type="button" id="client-close-btn" class="btn-secondary">Закрыть</button>
-          </div>
-        </div>
-      `;
-
-    document.getElementById('main-content').appendChild(modal);
-
-    const tabButtons = modal.querySelectorAll('.tab-button');
-    const tabContents = modal.querySelectorAll('.tab-content');
-
-    tabButtons.forEach(button => {
-      button.addEventListener('click', () => {
-        tabButtons.forEach(btn => btn.classList.remove('active'));
-        tabContents.forEach(content => content.classList.remove('active'));
-        button.classList.add('active');
-        modal.querySelector(`#tab-${button.dataset.tab}`).classList.add('active');
-      });
-    });
-
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) modal.remove();
-    });
-
-    const photo = modal.querySelector('.client-photo-large, .client-photo-placeholder-large');
-    if (client.photo) {
-      photo.addEventListener('click', () => {
-        showPhotoZoomModal(client.photo);
-      });
-    }
-
-    const editBtn = document.getElementById('client-edit-details-btn');
-    if (editBtn) {
-      editBtn.addEventListener('click', () => {
-        modal.remove();
-        showClientForm('Редактировать клиента', client, (data) => {
-          updateClient(client.id, data);
-          renderClients();
-          showToast('Данные клиента обновлены', 'success');
-        });
-      });
-    }
-
-    document.getElementById('client-close-btn').addEventListener('click', () => modal.remove());
-  }
-
-  function showClientForm(title, client, callback) {
-    const modal = document.createElement('div');
-    modal.className = 'client-form-modal';
-    let parents = client.parents ? [...client.parents.map(p => ({
-      fullName: p.fullName || '',
-      phone: p.phone || '',
-      relation: p.relation || ''
-    }))] : [];
-    let diagnoses = client.diagnosis ? [...client.diagnosis] : [];
-    const isEdit = !!client.id;
-
-    function calculateAge(birthDate) {
-      if (!birthDate) return null;
-      const today = new Date();
-      const birth = new Date(birthDate);
-      let age = today.getFullYear() - birth.getFullYear();
-      const m = today.getMonth() - birth.getMonth();
-      if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
-        age--;
-      }
-      return age;
-    }
-
-    function isAdult(birthDate) {
-      const age = calculateAge(birthDate);
-      return age !== null && age >= 18;
-    }
-
-    function renderParents(container) {
-      container.innerHTML = `
-        <div class="parents-controls">
-          <button type="button" id="add-parent-btn" class="btn-primary add-parent-btn">Добавить</button>
-          <button type="button" id="delete-parent-btn" class="btn-danger delete-parent-btn">Удалить</button>
-        </div>
-        <table class="parents-table">
-          <thead>
-            <tr>
-              <th>ФИО</th>
-              <th>Телефон</th>
-              <th>Кем приходится</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${parents.length ? parents.map((p, index) => `
-              <tr class="parent-row" data-index="${index}">
-                <td><input type="text" class="parent-fullname" value="${p.fullName}" required></td>
-                <td><input type="tel" class="parent-phone" value="${p.phone}" required></td>
-                <td>
-                  <div class="input-with-button">
-                    <input type="text" list="relation-list" class="parent-relation" value="${p.relation}" required>
-                    <datalist id="relation-list">
-                      ${commonRelations.map(rel => `<option value="${rel}">`).join('')}
-                    </datalist>
-                    <button type="button" class="relation-dictionary-btn">...</button>
-                  </div>
-                </td>
-              </tr>
-            `).join('') : `
-              <tr>
-                <td colspan="3" class="no-parents">Нет добавленных родителей/опекунов</td>
-              </tr>
-            `}
-          </tbody>
-        </table>
-      `;
-
-      const addBtn = container.querySelector('#add-parent-btn');
-      addBtn.addEventListener('click', () => {
-        parents.push({ fullName: '', phone: '', relation: '' });
-        renderParents(container);
-      });
-
-      const deleteBtn = container.querySelector('#delete-parent-btn');
-      deleteBtn.addEventListener('click', () => {
-        showToast('Выберите строку для удаления', 'info');
-        const rows = container.querySelectorAll('.parent-row');
-        rows.forEach(row => {
-          row.style.cursor = 'pointer';
-          const deleteHandler = () => {
-            const index = parseInt(row.dataset.index);
-            showConfirmDialog(
-              'Удалить родителя?',
-              'Вы уверены, что хотите удалить этого родителя/опекуна? Это действие нельзя отменить.',
-              () => {
-                parents.splice(index, 1);
-                renderParents(container);
-                showToast('Родитель удален', 'success');
-              }
-            );
-            rows.forEach(r => {
-              r.removeEventListener('click', deleteHandler);
-              r.style.cursor = 'default';
-            });
-          };
-          row.addEventListener('click', deleteHandler, { once: true });
-        });
-      });
-
-      parents.forEach((_, index) => {
-        const row = container.querySelector(`.parent-row[data-index="${index}"]`);
-        if (!row) return;
-
-        const fullnameInput = row.querySelector('.parent-fullname');
-        const phoneInput = row.querySelector('.parent-phone');
-        const relationInput = row.querySelector('.parent-relation');
-        const dictionaryBtn = row.querySelector('.relation-dictionary-btn');
-
-        fullnameInput.addEventListener('input', (e) => parents[index].fullName = e.target.value);
-        phoneInput.addEventListener('input', (e) => parents[index].phone = e.target.value);
-        relationInput.addEventListener('input', (e) => parents[index].relation = e.target.value);
-
-        dictionaryBtn.addEventListener('click', () => {
-          showRelationDictionary((selectedRelation) => {
-            if (selectedRelation) {
-              relationInput.value = selectedRelation;
-              parents[index].relation = selectedRelation;
-            }
-          });
-        });
-      });
-    }
-
-    function renderDiagnoses(container) {
-      container.innerHTML = `
-        <div class="diagnoses-controls">
-          <button type="button" id="add-diagnosis-btn" class="btn-primary add-diagnosis-btn">Добавить</button>
-          <button type="button" id="delete-diagnosis-btn" class="btn-danger delete-diagnosis-btn">Удалить</button>
-        </div>
-        <table class="diagnoses-table">
-          <thead>
-            <tr>
-              <th>Диагноз</th>
-              <th>Описание</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${diagnoses.length ? diagnoses.map((d, index) => `
-              <tr class="diagnosis-row" data-index="${index}">
-                <td>
-                  <div class="input-with-button">
-                    <input type="text" list="diagnosis-list" class="diagnosis-name" value="${d.name}" required>
-                    <datalist id="diagnosis-list">
-                      ${commonDiagnoses.map(diag => `<option value="${diag}">`).join('')}
-                    </datalist>
-                    <button type="button" class="diagnosis-dictionary-btn">...</button>
-                  </div>
-                </td>
-                <td><input type="text" class="diagnosis-notes" value="${d.notes || ''}"></td>
-              </tr>
-            `).join('') : `
-              <tr>
-                <td colspan="2" class="no-diagnoses">Нет добавленных диагнозов</td>
-              </tr>
-            `}
-          </tbody>
-        </table>
-      `;
-
-      const addBtn = container.querySelector('#add-diagnosis-btn');
-      addBtn.addEventListener('click', () => {
-        diagnoses.push({ name: '', notes: '' });
-        renderDiagnoses(container);
-      });
-
-      const deleteBtn = container.querySelector('#delete-diagnosis-btn');
-      deleteBtn.addEventListener('click', () => {
-        showToast('Выберите строку для удаления', 'info');
-        const rows = container.querySelectorAll('.diagnosis-row');
-        rows.forEach(row => {
-          row.style.cursor = 'pointer';
-          const deleteHandler = () => {
-            const index = parseInt(row.dataset.index);
-            showConfirmDialog(
-              'Удалить диагноз?',
-              'Вы уверены, что хотите удалить этот диагноз? Это действие нельзя отменить.',
-              () => {
-                diagnoses.splice(index, 1);
-                renderDiagnoses(container);
-                showToast('Диагноз удален', 'success');
-              }
-            );
-            rows.forEach(r => {
-              r.removeEventListener('click', deleteHandler);
-              r.style.cursor = 'default';
-            });
-          };
-          row.addEventListener('click', deleteHandler, { once: true });
-        });
-      });
-
-      diagnoses.forEach((_, index) => {
-        const row = container.querySelector(`.diagnosis-row[data-index="${index}"]`);
-        if (!row) return;
-
-        const nameInput = row.querySelector('.diagnosis-name');
-        const notesInput = row.querySelector('.diagnosis-notes');
-        const dictionaryBtn = row.querySelector('.diagnosis-dictionary-btn');
-
-        nameInput.addEventListener('input', (e) => diagnoses[index].name = e.target.value);
-        notesInput.addEventListener('input', (e) => diagnoses[index].notes = e.target.value);
-
-        dictionaryBtn.addEventListener('click', () => {
-          showDiagnosisDictionary((selectedDiagnosis) => {
-            if (selectedDiagnosis) {
-              nameInput.value = selectedDiagnosis;
-              diagnoses[index].name = selectedDiagnosis;
-            }
-          });
-        });
-      });
-    }
-
-    modal.innerHTML = `
-      <div class="client-form-content">
-        <div class="client-form-header">
-          <h2>${title}</h2>
-          <button type="button" class="client-form-close">×</button>
         </div>
         
-        <div class="client-form-tabs">
-          <button type="button" class="tab-button active" data-tab="personal">Личные данные</button>
-          <button type="button" class="tab-button" data-tab="parents">Родители/опекуны</button>
-          <button type="button" class="tab-button" data-tab="medical">Медицинская информация</button>
+        <div class="tabs">
+          <button type="button" class="tab-button active" data-tab="main">Основная информация</button>
+          <button type="button" class="tab-button" data-tab="groups-subs">Группы и абонементы</button>
         </div>
         
-        <div class="client-form-tab-content active" id="client-tab-personal">
-          <div class="form-grid">
-            <div class="form-group">
-              <label for="client-surname" class="required">Фамилия</label>
-              <input type="text" id="client-surname" value="${client.surname || ''}" required>
-              <span class="field-error" id="surname-error"></span>
-            </div>
-            <div class="form-group">
-              <label for="client-name" class="required">Имя</label>
-              <input type="text" id="client-name" value="${client.name || ''}" required>
-              <span class="field-error" id="name-error"></span>
-            </div>
-            <div class="form-group">
-              <label for="client-patronymic">Отчество</label>
-              <input type="text" id="client-patronymic" value="${client.patronymic || ''}">
-            </div>
-          </div>
-          <div class="form-grid">
-            <div class="form-group">
-              <label for="client-birthdate" class="required">Дата рождения</label>
-              <input type="date" id="client-birthdate" value="${client.birthDate || ''}" required>
-              <span class="field-error" id="birthdate-error"></span>
-            </div>
-            <div class="form-group">
-              <label for="client-gender" class="required">Пол</label>
-              <select id="client-gender" required>
-                <option value="">Выберите пол</option>
-                <option value="male" ${client.gender === 'male' ? 'selected' : ''}>Мужской</option>
-                <option value="female" ${client.gender === 'female' ? 'selected' : ''}>Женский</option>
-              </select>
-              <span class="field-error" id="gender-error"></span>
-            </div>
-            <div class="form-group">
-              <label for="client-phone">Телефон</label>
-              <input type="tel" id="client-phone" value="${client.phone || ''}" placeholder="+7 (999) 123-45-67">
-              <span class="field-error" id="phone-error"></span>
-            </div>
-          </div>
-          <div class="client-photo-section">
-            <div class="photo-upload-area">
-              <div class="for-flex flex-end">
-                <button type="button" class="photo-remove-btn" id="photo-remove-btn" ${!client.photo ? 'style="display: none;"' : ''}>
-                  X
-                </button>
+        <div class="tab-content active" id="tab-main">
+          <div class="details-grid">
+            <div class="detail-section">
+              <h4>Контактная информация</h4>
+              <div class="detail-item">
+                <span class="detail-label">Телефон:</span>
+                <span class="detail-value">${client.phone}</span>
               </div>
-              <div id="client-photo-preview" class="client-photo-preview ${!client.photo ? 'placeholder' : ''}">
-                ${client.photo ?
-        `<img src="${client.photo}" alt="${client.surname || 'Клиент'}">` :
-        `<img src="images/icon-photo.svg" alt="Загрузить фото" class="upload-icon">`
-      }
+              <div class="detail-item">
+                <span class="detail-label">Дата рождения:</span>
+                <span class="detail-value">${client.birthDate || 'Не указана'}</span>
               </div>
-              <input type="file" id="client-photo" accept="image/*" style="display: none;">
+              <div class="detail-item">
+                <span class="detail-label">Пол:</span>
+                <span class="detail-value">${client.gender === 'male' ? 'Мужской' : client.gender === 'female' ? 'Женский' : 'Не указан'}</span>
+              </div>
+              ${client.parents.length > 0 ? `
+                <div class="detail-item">
+                  <span class="detail-label">Родители/опекуны:</span>
+                  <div class="detail-value">
+                    ${client.parents.map(p => `${p.fullName} (${p.phone})${p.relation ? ` - ${p.relation}` : ''}`).join('<br>')}
+                  </div>
+                </div>
+              ` : ''}
+            </div>
+            
+            <div class="detail-section">
+              <h4>Медицинская информация</h4>
+              <div class="detail-item">
+                <span class="detail-label">Диагнозы:</span>
+                <div class="detail-value ${client.diagnosis && client.diagnosis.some(d => d.name !== 'Нет') ? 'has-diagnosis' : ''}">
+                  ${client.diagnosis && client.diagnosis.length > 0 ?
+      client.diagnosis.map(d => `${d.name}${d.notes ? ` (${d.notes})` : ''}`).join('<br>') : 'Нет'}
+                </div>
+              </div>
+              ${client.features ? `
+                <div class="detail-item">
+                  <span class="detail-label">Особенности:</span>
+                  <span class="detail-value">${client.features}</span>
+                </div>
+              ` : ''}
+            </div>
+            
+            <div class="detail-section">
+              <h4>Активность</h4>
+              <div class="detail-item">
+                <span class="detail-label">Дата регистрации:</span>
+                <span class="detail-value">${formatDate(client.createdAt)}</span>
+              </div>
             </div>
           </div>
         </div>
-
-        <div class="client-form-tab-content" id="client-tab-parents">
-          <div id="parents-container"></div>
-        </div>
-
-        <div class="client-form-tab-content" id="client-tab-medical">
-          <div id="diagnoses-container"></div>
-          <div class="form-group full-width">
-            <label for="client-features">Примечания</label>
-            <input type="text" id="client-features" value="${client.features || ''}" placeholder="Дополнительная информация о клиенте, особенности занятий...">
-          </div>
-        </div>
-
-        <div class="client-form-footer">
-          <button type="button" id="client-cancel-btn" class="btn-secondary">Отмена</button>
-          <button type="button" id="client-save-btn" class="btn-primary">Сохранить</button>
-        </div>
-      </div>
-    `;
-
-    document.getElementById('main-content').appendChild(modal);
-
-    const tabButtons = modal.querySelectorAll('.client-form-tabs .tab-button');
-    const tabContents = modal.querySelectorAll('.client-form-tab-content');
-
-    tabButtons.forEach(button => {
-      button.addEventListener('click', () => {
-        tabButtons.forEach(btn => btn.classList.remove('active'));
-        tabContents.forEach(content => content.classList.remove('active'));
-        button.classList.add('active');
-        modal.querySelector(`#client-tab-${button.dataset.tab}`).classList.add('active');
-      });
-    });
-
-    const closeModal = () => modal.remove();
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) closeModal();
-    });
-    modal.querySelector('.client-form-close').addEventListener('click', closeModal);
-
-    const photoInput = document.getElementById('client-photo');
-    const photoPreview = document.getElementById('client-photo-preview');
-    const photoRemoveBtn = document.getElementById('photo-remove-btn');
-
-    photoPreview.addEventListener('click', () => {
-      if (photoPreview.classList.contains('placeholder')) {
-        photoInput.click();
-      } else {
-        showPhotoZoomModal(photoPreview.querySelector('img').src);
-      }
-    });
-
-    photoInput.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (file) {
-        if (file.size > 5 * 1024 * 1024) {
-          showToast('Размер файла не должен превышать 5MB', 'error');
-          return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-          const img = document.createElement('img');
-          img.src = ev.target.result;
-          img.alt = 'Предпросмотр';
-          img.style.width = '100%';
-          img.style.height = '100%';
-          img.style.objectFit = 'cover';
-          img.style.borderRadius = '8px';
-
-          photoPreview.innerHTML = '';
-          photoPreview.appendChild(img);
-          photoPreview.classList.remove('placeholder');
-          photoRemoveBtn.style.display = 'block';
-        };
-        reader.readAsDataURL(file);
-      }
-    });
-
-    photoRemoveBtn.addEventListener('click', () => {
-      photoPreview.innerHTML = `
-        <img src="images/icon-photo.svg" alt="Загрузить фото" class="upload-icon">
-        <span>Файл не выбран</span>
-      `;
-      photoPreview.classList.add('placeholder');
-      photoInput.value = '';
-      photoRemoveBtn.style.display = 'none';
-    });
-
-    const parentsContainer = modal.querySelector('#parents-container');
-    renderParents(parentsContainer);
-
-    const diagnosesContainer = modal.querySelector('#diagnoses-container');
-    renderDiagnoses(diagnosesContainer);
-
-    function validateForm() {
-      let isValid = true;
-
-      document.querySelectorAll('.field-error').forEach(el => el.textContent = '');
-      document.querySelectorAll('.form-group input, .form-group select').forEach(el => el.classList.remove('error'));
-
-      const surname = document.getElementById('client-surname').value.trim();
-      if (!surname) {
-        document.getElementById('surname-error').textContent = 'Фамилия обязательна';
-        document.getElementById('client-surname').classList.add('error');
-        isValid = false;
-      }
-
-      const name = document.getElementById('client-name').value.trim();
-      if (!name) {
-        document.getElementById('name-error').textContent = 'Имя обязательно';
-        document.getElementById('client-name').classList.add('error');
-        isValid = false;
-      }
-
-      const phone = document.getElementById('client-phone').value.trim();
-
-      const birthDate = document.getElementById('client-birthdate').value;
-      if (!birthDate) {
-        document.getElementById('birthdate-error').textContent = 'Дата рождения обязательна';
-        document.getElementById('client-birthdate').classList.add('error');
-        isValid = false;
-      }
-
-      const gender = document.getElementById('client-gender').value;
-      if (!gender) {
-        document.getElementById('gender-error').textContent = 'Пол обязателен';
-        document.getElementById('client-gender').classList.add('error');
-        isValid = false;
-      }
-
-      if (!isAdult(birthDate) && parents.length === 0) {
-        showToast('Для несовершеннолетних обязателен хотя бы один родитель/опекун', 'error');
-        tabButtons[1].click();
-        isValid = false;
-      }
-
-      parents.forEach((p, index) => {
-        const row = modal.querySelector(`.parent-row[data-index="${index}"]`);
-        if (!row) return;
-
-        const fullnameInput = row.querySelector('.parent-fullname');
-        const phoneInput = row.querySelector('.parent-phone');
-        const relationInput = row.querySelector('.parent-relation');
-
-        if (!fullnameInput.value.trim()) {
-          fullnameInput.classList.add('error');
-          isValid = false;
-        }
-        if (!phoneInput.value.trim()) {
-          phoneInput.classList.add('error');
-          isValid = false;
-        }
-        if (!relationInput.value.trim()) {
-          relationInput.classList.add('error');
-          isValid = false;
-        }
-      });
-
-      diagnoses.forEach((d, index) => {
-        const row = modal.querySelector(`.diagnosis-row[data-index="${index}"]`);
-        if (!row) return;
-
-        const nameInput = row.querySelector('.diagnosis-name');
-
-        if (!nameInput.value.trim()) {
-          nameInput.classList.add('error');
-          isValid = false;
-        }
-      });
-
-      return isValid;
+        
+        <div class="tab-content" id="tab-groups-subs">
+          <div class="details-grid">
+            <div class="detail-section">
+              <h4>Группы</h4>
+              <div class="detail-item">
+                <span class="detail-label">Текущие группы:</span>
+                <div class="groups-list">
+                  ${Array.isArray(client.groups) && client.groups.length ?
+      client.groups.map(group => `<span class="group-tag">${group}</span>`).join('') :
+      '<span class="no-data">Не назначены</span>'
     }
-
-    document.getElementById('client-save-btn').addEventListener('click', () => {
-      if (!validateForm()) return;
-
-      const surname = document.getElementById('client-surname').value.trim();
-      const name = document.getElementById('client-name').value.trim();
-      const patronymic = document.getElementById('client-patronymic').value.trim();
-      const phone = document.getElementById('client-phone').value.trim();
-      const birthDate = document.getElementById('client-birthdate').value;
-      const gender = document.getElementById('client-gender').value;
-      const features = document.getElementById('client-features').value.trim();
-
-      let photo = '';
-      const photoImg = photoPreview.querySelector('img:not(.upload-icon)');
-      if (photoImg) {
-        photo = photoImg.src;
-      }
-
-      const updatedParents = parents.filter(p => p.fullName.trim() !== '').map(p => ({
-        fullName: p.fullName.trim(),
-        phone: p.phone,
-        relation: p.relation
-      }));
-
-      const updatedDiagnoses = diagnoses.filter(d => d.name.trim() !== '');
-
-      callback({
-        surname,
-        name,
-        patronymic,
-        phone,
-        birthDate,
-        gender,
-        parents: updatedParents,
-        diagnosis: updatedDiagnoses,
-        features,
-        photo,
-        groups: []
-      });
-      closeModal();
-    });
-
-    document.getElementById('client-cancel-btn').addEventListener('click', closeModal);
-
-    setTimeout(() => document.getElementById('client-surname').focus(), 100);
-
-    const birthInput = document.getElementById('client-birthdate');
-    birthInput.addEventListener('change', () => {
-      if (!isAdult(birthInput.value) && parents.length === 0) {
-        tabButtons[1].click();
-        showToast('Клиент несовершеннолетний: заполните данные родителей/опекунов', 'info');
-      }
-    });
-
-    if (isEdit && !isAdult(client.birthDate)) {
-      if (parents.length === 0) {
-        tabButtons[1].click();
-      }
-    }
-  }
-
-  function showDiagnosisDictionary(callback) {
-    const modal = document.createElement('div');
-    modal.className = 'diagnosis-dictionary-modal';
-    let selectedDiagnosis = null;
-
-    function renderDiagnosesList(filter = '') {
-      const list = modal.querySelector('.diagnoses-list');
-      const filteredDiagnoses = commonDiagnoses.filter(d => d.toLowerCase().includes(filter.toLowerCase()));
-      list.innerHTML = filteredDiagnoses.map(d => `
-        <div class="diagnosis-item ${selectedDiagnosis === d ? 'selected' : ''}" data-diagnosis="${d}">
-          ${d}
-        </div>
-      `).join('');
-
-      list.querySelectorAll('.diagnosis-item').forEach(item => {
-        item.addEventListener('click', () => {
-          selectedDiagnosis = item.dataset.diagnosis;
-          renderDiagnosesList(filter);
-        });
-      });
-    }
-
-    modal.innerHTML = `
-      <div class="diagnosis-dictionary-content">
-        <div class="diagnosis-header">
-          <h2>Справочник диагнозов</h2>
-          <button type="button" class="diagnosis-close">×</button>
-        </div>
-        <div class="diagnosis-body">
-          <input type="text" id="diagnosis-search" placeholder="Поиск диагноза...">
-          <div class="diagnoses-list"></div>
-          <button type="button" id="add-new-diagnosis-btn" class="btn-primary">Создать новый</button>
-        </div>
-        <div class="diagnosis-footer">
-          <button type="button" id="diagnosis-cancel-btn" class="btn-secondary">Отмена</button>
-          <button type="button" id="diagnosis-select-btn" class="btn-primary">Выбрать</button>
-        </div>
-      </div>
-    `;
-
-    document.getElementById('main-content').appendChild(modal);
-
-    const closeModal = () => {
-      modal.remove();
-      callback(null);
-    };
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) closeModal();
-    });
-    modal.querySelector('.diagnosis-close').addEventListener('click', closeModal);
-    modal.querySelector('#diagnosis-cancel-btn').addEventListener('click', closeModal);
-
-    modal.querySelector('#diagnosis-select-btn').addEventListener('click', () => {
-      if (selectedDiagnosis) {
-        modal.remove();
-        callback(selectedDiagnosis);
-      } else {
-        showToast('Выберите диагноз', 'error');
-      }
-    });
-
-    modal.querySelector('#add-new-diagnosis-btn').addEventListener('click', () => {
-      const newDiagnosis = prompt('Введите новый диагноз:');
-      if (newDiagnosis && newDiagnosis.trim() && !commonDiagnoses.includes(newDiagnosis.trim())) {
-        commonDiagnoses.push(newDiagnosis.trim());
-        renderDiagnosesList(modal.querySelector('#diagnosis-search').value);
-        showToast('Новый диагноз добавлен', 'success');
-      }
-    });
-
-    const searchInput = modal.querySelector('#diagnosis-search');
-    searchInput.addEventListener('input', (e) => {
-      renderDiagnosesList(e.target.value);
-    });
-
-    renderDiagnosesList();
-  }
-
-  function showRelationDictionary(callback) {
-    const modal = document.createElement('div');
-    modal.className = 'relation-dictionary-modal';
-    let selectedRelation = null;
-
-    function renderRelationsList(filter = '') {
-      const list = modal.querySelector('.relations-list');
-      const filteredRelations = commonRelations.filter(r => r.toLowerCase().includes(filter.toLowerCase()));
-      list.innerHTML = filteredRelations.map(r => `
-        <div class="relation-item ${selectedRelation === r ? 'selected' : ''}" data-relation="${r}">
-          ${r}
-        </div>
-      `).join('');
-
-      list.querySelectorAll('.relation-item').forEach(item => {
-        item.addEventListener('click', () => {
-          selectedRelation = item.dataset.relation;
-          renderRelationsList(filter);
-        });
-      });
-    }
-
-    modal.innerHTML = `
-      <div class="relation-dictionary-content">
-        <div class="relation-header">
-          <h2>Справочник отношений</h2>
-          <button type="button" class="relation-close">×</button>
-        </div>
-        <div class="relation-body">
-          <input type="text" id="relation-search" placeholder="Поиск отношения...">
-          <div class="relations-list"></div>
-          <button type="button" id="add-new-relation-btn" class="btn-primary">Создать новое</button>
-        </div>
-        <div class="relation-footer">
-          <button type="button" id="relation-cancel-btn" class="btn-secondary">Отмена</button>
-          <button type="button" id="relation-select-btn" class="btn-primary">Выбрать</button>
-        </div>
-      </div>
-    `;
-
-    document.getElementById('main-content').appendChild(modal);
-
-    const closeModal = () => {
-      modal.remove();
-      callback(null);
-    };
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) closeModal();
-    });
-    modal.querySelector('.relation-close').addEventListener('click', closeModal);
-    modal.querySelector('#relation-cancel-btn').addEventListener('click', closeModal);
-
-    modal.querySelector('#relation-select-btn').addEventListener('click', () => {
-      if (selectedRelation) {
-        modal.remove();
-        callback(selectedRelation);
-      } else {
-        showToast('Выберите отношение', 'error');
-      }
-    });
-
-    modal.querySelector('#add-new-relation-btn').addEventListener('click', () => {
-      const newRelation = prompt('Введите новое отношение:');
-      if (newRelation && newRelation.trim() && !commonRelations.includes(newRelation.trim())) {
-        commonRelations.push(newRelation.trim());
-        renderRelationsList(modal.querySelector('#relation-search').value);
-        showToast('Новое отношение добавлено', 'success');
-      }
-    });
-
-    const searchInput = modal.querySelector('#relation-search');
-    searchInput.addEventListener('input', (e) => {
-      renderRelationsList(e.target.value);
-    });
-
-    renderRelationsList();
-  }
-
-  function showSubscriptionManagement(client) {
-    const fullName = `${client.surname} ${client.name} ${client.patronymic || ''}`;
-    const modal = document.createElement('div');
-    modal.className = 'subscription-management-modal';
-    modal.innerHTML = `
-    <div class="subscription-management-content">
-      <div class="subscription-management-header">
-        <h2>Абонементы: ${fullName}</h2>
-        <button type="button" class="subscription-management-close">×</button>
-      </div>
-      
-      <div class="subscription-management-body">
-        <div class="subscription-history-section">
-          <h3>История</h3>
-          <table class="subscription-history-table">
-            <thead>
-              <tr>
-                <th>№</th>
-                <th>Тип</th>
-                <th>Статус</th>
-                <th>Период</th>
-                <th>Занятий</th>
-                <th>Продления</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${client.subscriptions.length ? client.subscriptions.map((sub, index) => {
+                </div>
+              </div>
+              ${client.groupHistory.length ? `
+                <div class="detail-item">
+                  <span class="detail-label">История групп:</span>
+                  <div class="renewal-history">
+                    ${client.groupHistory.map(entry => `
+                      <span class="renewal-entry">${formatDate(entry.date)}: ${entry.action === 'added' ? 'Добавлен в' : 'Удален из'} ${entry.group}</span>
+                    `).join('')}
+                  </div>
+                </div>
+              ` : ''}
+            </div>
+            
+            <div class="detail-section">
+              <h4>Абонементы</h4>
+              ${client.subscriptions.length ? client.subscriptions.filter(s => s.isPaid && new Date(s.endDate) >= new Date()).map((sub, index) => {
       const template = getSubscriptionTemplates().find(t => t.id === sub.templateId);
-      const isActive = sub.isPaid && new Date(sub.endDate) >= new Date();
       return `
-                <tr class="subscription-row ${isActive ? 'active' : 'inactive'}">
-                  <td>#${sub.subscriptionNumber}</td>
-                  <td>${template ? template.type : 'Неизвестный'}</td>
-                  <td><span class="status-${isActive ? 'active' : 'inactive'}">${isActive ? 'Акт.' : 'Неакт.'}</span></td>
-                  <td>${sub.startDate} — ${sub.endDate}</td>
-                  <td>${sub.remainingClasses === Infinity ? '∞' : sub.remainingClasses}</td>
-                  <td>
-                    ${sub.renewalHistory?.length ?
-          `<span class="renewal-count" title="${sub.renewalHistory.map(entry => {
-            const date = new Date(entry.date || entry).toLocaleDateString('ru-RU');
-            return entry.fromTemplate ? `${date}: ${entry.fromTemplate} → ${entry.toTemplate}` : date;
-          }).join('\n')}">${sub.renewalHistory.length}</span>`
-          : '—'}
-                  </td>
-                </tr>
-              `;
+                  <div class="subscription-item" data-sub-index="${index}">
+                    <div class="detail-item">
+                      <span class="detail-label">Номер:</span>
+                      <span class="detail-value">#${sub.subscriptionNumber}</span>
+                    </div>
+                    <div class="detail-item">
+                      <span class="detail-label">Тип:</span>
+                      <span class="detail-value">${template ? template.type : 'Неизвестный'}</span>
+                    </div>
+                    <div class="detail-item">
+                      <span class="detail-label">Период:</span>
+                      <span class="detail-value">${sub.startDate} — ${sub.endDate}</span>
+                    </div>
+                    <div class="detail-item">
+                      <span class="detail-label">Осталось занятий:</span>
+                      <span class="detail-value">${sub.remainingClasses === Infinity ? 'Безлимит' : sub.remainingClasses}</span>
+                    </div>
+                  </div>
+                `;
     }).join('') : `
-              <tr>
-                <td colspan="6" class="no-data">Нет абонементов</td>
-              </tr>
-            `}
-            </tbody>
-          </table>
+                <div class="detail-item">
+                  <span class="no-data">Абонементы не оформлены</span>
+                </div>
+              `}
+            </div>
+          </div>
         </div>
         
-        <div class="active-subscription-section">
-          <h3>Текущий</h3>
-          ${client.subscriptions.find(s => s.isPaid && new Date(s.endDate) >= new Date()) ? (() => {
-        const sub = client.subscriptions.find(s => s.isPaid && new Date(s.endDate) >= new Date());
-        const template = getSubscriptionTemplates().find(t => t.id === sub.templateId);
-        return `
-            <div class="subscription-item active-sub">
-              <div class="detail-item">
-                <span class="detail-label">№:</span>
-                <span class="detail-value">#${sub.subscriptionNumber}</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">Тип:</span>
-                <span class="detail-value">${template ? template.type : 'Неизвестный'}</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">Период:</span>
-                <span class="detail-value">${sub.startDate} — ${sub.endDate}</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">Занятий:</span>
-                <span class="detail-value">${sub.remainingClasses === Infinity ? '∞' : sub.remainingClasses}</span>
-              </div>
-              <button type="button" class="btn-primary renew-sub-btn" data-sub-index="${client.subscriptions.indexOf(sub)}">Продлить</button>
-            </div>
-          `;
-      })() : `
-          <div class="detail-item">
-            <span class="no-data">Нет активного абонемента</span>
-          </div>
-        `}
-        <button type="button" class="btn-primary new-sub-btn">Новый</button>
+        <div class="client-details-actions">
+          <button type="button" id="client-edit-details-btn" class="btn-secondary">Редактировать</button>
+          <button type="button" id="client-close-btn" class="btn-secondary">Закрыть</button>
         </div>
+      </div>
+    `;
+
+  document.getElementById('main-content').appendChild(modal);
+
+  const tabButtons = modal.querySelectorAll('.tab-button');
+  const tabContents = modal.querySelectorAll('.tab-content');
+
+  tabButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      tabButtons.forEach(btn => btn.classList.remove('active'));
+      tabContents.forEach(content => content.classList.remove('active'));
+      button.classList.add('active');
+      modal.querySelector(`#tab-${button.dataset.tab}`).classList.add('active');
+    });
+  });
+
+  setupModalClose(modal, () => modal.remove());
+
+  const photo = modal.querySelector('.client-photo-large, .client-photo-placeholder-large');
+  if (client.photo) {
+    photo.addEventListener('click', () => {
+      showPhotoZoomModal(client.photo);
+    });
+  }
+
+  const editBtn = document.getElementById('client-edit-details-btn');
+  if (editBtn) {
+    editBtn.addEventListener('click', () => {
+      modal.remove();
+      showClientForm('Редактировать клиента', client, (data) => {
+        updateClient(client.id, data);
+        // renderClients() needs to be called if available; assuming it's in scope or global
+        if (typeof renderClients === 'function') renderClients();
+        showToast('Данные клиента обновлены', 'success');
+      });
+    });
+  }
+
+  document.getElementById('client-close-btn').addEventListener('click', () => modal.remove());
+}
+
+export function formatDate(dateString) {
+  if (!dateString) return 'Никогда';
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffTime = Math.abs(now - date);
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 1) return 'Сегодня';
+  if (diffDays === 2) return 'Вчера';
+  if (diffDays <= 7) return `${diffDays - 1} дн. назад`;
+  if (diffDays <= 30) return `${Math.floor(diffDays / 7)} нед. назад`;
+  return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+export function showDiagnosisDictionary(callback) {
+  const modal = document.createElement('div');
+  modal.className = 'diagnosis-dictionary-modal';
+  let selectedDiagnosis = null;
+
+  function renderDiagnosesList(filter = '') {
+    const list = modal.querySelector('.diagnoses-list');
+    const filteredDiagnoses = commonDiagnoses.filter(d => d.toLowerCase().includes(filter.toLowerCase()));
+    list.innerHTML = filteredDiagnoses.map(d => `
+      <div class="diagnosis-item ${selectedDiagnosis === d ? 'selected' : ''}" data-diagnosis="${d}">
+        ${d}
+      </div>
+    `).join('');
+
+    list.querySelectorAll('.diagnosis-item').forEach(item => {
+      item.addEventListener('click', () => {
+        selectedDiagnosis = item.dataset.diagnosis;
+        renderDiagnosesList(filter);
+      });
+    });
+  }
+
+  modal.innerHTML = `
+    <div class="diagnosis-dictionary-content">
+      <div class="diagnosis-header">
+        <h2>Справочник диагнозов</h2>
+        <button type="button" class="diagnosis-close">×</button>
+      </div>
+      <div class="diagnosis-body">
+        <input type="text" id="diagnosis-search" placeholder="Поиск диагноза...">
+        <div class="diagnoses-list"></div>
+        <button type="button" id="add-new-diagnosis-btn" class="btn-primary">Создать новый</button>
+      </div>
+      <div class="diagnosis-footer">
+        <button type="button" id="diagnosis-cancel-btn" class="btn-secondary">Отмена</button>
+        <button type="button" id="diagnosis-select-btn" class="btn-primary">Выбрать</button>
       </div>
     </div>
   `;
 
-    document.getElementById('main-content').appendChild(modal);
+  document.getElementById('main-content').appendChild(modal);
 
-    const closeModal = () => modal.remove();
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) closeModal();
-    });
-    modal.querySelector('.subscription-management-close').addEventListener('click', closeModal);
+  const closeModal = () => {
+    modal.remove();
+    callback(null);
+  };
+  setupModalClose(modal, closeModal);
 
-    modal.querySelectorAll('.renew-sub-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const index = parseInt(btn.dataset.subIndex);
-        const sub = client.subscriptions[index];
-        showRenewSubscriptionForm('Продление абонемента', client, sub, (data) => {
-          client.subscriptions[index] = { ...sub, ...data };
-          updateClient(client.id, client);
-          modal.remove();
-          renderClients();
-          showToast('Абонемент продлён', 'success');
-        });
-      });
-    });
+  modal.querySelector('.diagnosis-close').addEventListener('click', closeModal);
+  modal.querySelector('#diagnosis-cancel-btn').addEventListener('click', closeModal);
 
-    modal.querySelector('.new-sub-btn').addEventListener('click', () => {
-      const newSub = {
-        templateId: '',
-        startDate: '',
-        endDate: '',
-        classesPerWeek: 0,
-        daysOfWeek: [],
-        classTime: '09:00',
-        group: '',
-        remainingClasses: 0,
-        isPaid: true,
-        renewalHistory: [],
-        subscriptionNumber: `SUB-${String(client.subscriptions.length + 1).padStart(3, '0')}`,
-        clientId: client.id
-      };
-      showSubscriptionForm('Новый абонемент', newSub, [client], getGroups(), (data) => {
-        const template = getSubscriptionTemplates().find(t => t.id === data.templateId);
-        client.subscriptions.push({
-          ...data,
-          remainingClasses: template ? template.remainingClasses : data.remainingClasses || 0
-        });
-        updateClient(client.id, client);
-        modal.remove();
-        renderClients();
-        showToast('Новый абонемент создан', 'success');
+  modal.querySelector('#diagnosis-select-btn').addEventListener('click', () => {
+    if (selectedDiagnosis) {
+      modal.remove();
+      callback(selectedDiagnosis);
+    } else {
+      showToast('Выберите диагноз', 'error');
+    }
+  });
+
+  modal.querySelector('#add-new-diagnosis-btn').addEventListener('click', () => {
+    const newDiagnosis = prompt('Введите новый диагноз:');
+    if (newDiagnosis && newDiagnosis.trim() && !commonDiagnoses.includes(newDiagnosis.trim())) {
+      commonDiagnoses.push(newDiagnosis.trim());
+      renderDiagnosesList(modal.querySelector('#diagnosis-search').value);
+      showToast('Новый диагноз добавлен', 'success');
+    }
+  });
+
+  const searchInput = modal.querySelector('#diagnosis-search');
+  searchInput.addEventListener('input', (e) => {
+    renderDiagnosesList(e.target.value);
+  });
+
+  renderDiagnosesList();
+}
+
+export function showRelationDictionary(callback) {
+  const modal = document.createElement('div');
+  modal.className = 'relation-dictionary-modal';
+  let selectedRelation = null;
+
+  function renderRelationsList(filter = '') {
+    const list = modal.querySelector('.relations-list');
+    const filteredRelations = commonRelations.filter(r => r.toLowerCase().includes(filter.toLowerCase()));
+    list.innerHTML = filteredRelations.map(r => `
+      <div class="relation-item ${selectedRelation === r ? 'selected' : ''}" data-relation="${r}">
+        ${r}
+      </div>
+    `).join('');
+
+    list.querySelectorAll('.relation-item').forEach(item => {
+      item.addEventListener('click', () => {
+        selectedRelation = item.dataset.relation;
+        renderRelationsList(filter);
       });
     });
   }
-  function showSubscriptionForm(title, sub, clients, groups, callback) {
-    const modal = document.createElement('div');
-    modal.className = 'subscription-form-modal';
-    modal.innerHTML = `
-    <div class="subscription-form-content">
-      <div class="subscription-form-header">
-        <h2>${title}</h2>
-        <button type="button" class="subscription-form-close">×</button>
+
+  modal.innerHTML = `
+    <div class="relation-dictionary-content">
+      <div class="relation-header">
+        <h2>Справочник отношений</h2>
+        <button type="button" class="relation-close">×</button>
       </div>
-      <div class="subscription-form-body">
+      <div class="relation-body">
+        <input type="text" id="relation-search" placeholder="Поиск отношения...">
+        <div class="relations-list"></div>
+        <button type="button" id="add-new-relation-btn" class="btn-primary">Создать новое</button>
+      </div>
+      <div class="relation-footer">
+        <button type="button" id="relation-cancel-btn" class="btn-secondary">Отмена</button>
+        <button type="button" id="relation-select-btn" class="btn-primary">Выбрать</button>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('main-content').appendChild(modal);
+
+  const closeModal = () => {
+    modal.remove();
+    callback(null);
+  };
+  setupModalClose(modal, closeModal);
+
+  modal.querySelector('.relation-close').addEventListener('click', closeModal);
+  modal.querySelector('#relation-cancel-btn').addEventListener('click', closeModal);
+
+  modal.querySelector('#relation-select-btn').addEventListener('click', () => {
+    if (selectedRelation) {
+      modal.remove();
+      callback(selectedRelation);
+    } else {
+      showToast('Выберите отношение', 'error');
+    }
+  });
+
+  modal.querySelector('#add-new-relation-btn').addEventListener('click', () => {
+    const newRelation = prompt('Введите новое отношение:');
+    if (newRelation && newRelation.trim() && !commonRelations.includes(newRelation.trim())) {
+      commonRelations.push(newRelation.trim());
+      renderRelationsList(modal.querySelector('#relation-search').value);
+      showToast('Новое отношение добавлено', 'success');
+    }
+  });
+
+  const searchInput = modal.querySelector('#relation-search');
+  searchInput.addEventListener('input', (e) => {
+    renderRelationsList(e.target.value);
+  });
+
+  renderRelationsList();
+}
+
+export function showSubscriptionManagement(client) {
+  const fullName = `${client.surname} ${client.name} ${client.patronymic || ''}`;
+  const modal = document.createElement('div');
+  modal.className = 'subscription-management-modal';
+  modal.innerHTML = `
+  <div class="subscription-management-content">
+    <div class="subscription-management-header">
+      <h2>Абонементы: ${fullName}</h2>
+      <button type="button" class="subscription-management-close">×</button>
+    </div>
+    
+    <div class="subscription-management-body">
+      <div class="subscription-history-section">
+        <h3>История</h3>
+        <table class="subscription-history-table">
+          <thead>
+            <tr>
+              <th>№</th>
+              <th>Тип</th>
+              <th>Статус</th>
+              <th>Период</th>
+              <th>Занятий</th>
+              <th>Продления</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${client.subscriptions.length ? client.subscriptions.map((sub, index) => {
+    const template = getSubscriptionTemplates().find(t => t.id === sub.templateId);
+    const isActive = sub.isPaid && new Date(sub.endDate) >= new Date();
+    return `
+              <tr class="subscription-row ${isActive ? 'active' : 'inactive'}">
+                <td>#${sub.subscriptionNumber}</td>
+                <td>${template ? template.type : 'Неизвестный'}</td>
+                <td><span class="status-${isActive ? 'active' : 'inactive'}">${isActive ? 'Акт.' : 'Неакт.'}</span></td>
+                <td>${sub.startDate} — ${sub.endDate}</td>
+                <td>${sub.remainingClasses === Infinity ? '∞' : sub.remainingClasses}</td>
+                <td>
+                  ${sub.renewalHistory?.length ?
+        `<span class="renewal-count" title="${sub.renewalHistory.map(entry => {
+          const date = new Date(entry.date || entry).toLocaleDateString('ru-RU');
+          return entry.fromTemplate ? `${date}: ${entry.fromTemplate} → ${entry.toTemplate}` : date;
+        }).join('\n')}">${sub.renewalHistory.length}</span>`
+        : '—'}
+                </td>
+              </tr>
+            `;
+  }).join('') : `
+            <tr>
+              <td colspan="6" class="no-data">Нет абонементов</td>
+            </tr>
+          `}
+          </tbody>
+        </table>
+      </div>
+      
+      <div class="active-subscription-section">
+        <h3>Текущий</h3>
+        ${client.subscriptions.find(s => s.isPaid && new Date(s.endDate) >= new Date()) ? (() => {
+      const sub = client.subscriptions.find(s => s.isPaid && new Date(s.endDate) >= new Date());
+      const template = getSubscriptionTemplates().find(t => t.id === sub.templateId);
+      return `
+          <div class="subscription-item active-sub">
+            <div class="detail-item">
+              <span class="detail-label">№:</span>
+              <span class="detail-value">#${sub.subscriptionNumber}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Тип:</span>
+              <span class="detail-value">${template ? template.type : 'Неизвестный'}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Период:</span>
+              <span class="detail-value">${sub.startDate} — ${sub.endDate}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Занятий:</span>
+              <span class="detail-value">${sub.remainingClasses === Infinity ? '∞' : sub.remainingClasses}</span>
+            </div>
+            <button type="button" class="btn-primary renew-sub-btn" data-sub-index="${client.subscriptions.indexOf(sub)}">Продлить</button>
+          </div>
+        `;
+    })() : `
+        <div class="detail-item">
+          <span class="no-data">Нет активного абонемента</span>
+        </div>
+      `}
+      <button type="button" class="btn-primary new-sub-btn">Новый</button>
+      </div>
+    </div>
+  </div>
+`;
+
+  document.getElementById('main-content').appendChild(modal);
+
+  const closeModal = () => modal.remove();
+  setupModalClose(modal, closeModal);
+
+  modal.querySelector('.subscription-management-close').addEventListener('click', closeModal);
+
+  modal.querySelectorAll('.renew-sub-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const index = parseInt(btn.dataset.subIndex);
+      const sub = client.subscriptions[index];
+      showRenewSubscriptionForm('Продление абонемента', client, sub, (data) => {
+        client.subscriptions[index] = { ...sub, ...data };
+        updateClient(client.id, client);
+        modal.remove();
+        // renderClients() needs to be called if available
+        if (typeof renderClients === 'function') renderClients();
+        showToast('Абонемент продлён', 'success');
+      });
+    });
+  });
+
+  modal.querySelector('.new-sub-btn').addEventListener('click', () => {
+    const newSub = {
+      templateId: '',
+      startDate: '',
+      endDate: '',
+      classesPerWeek: 0,
+      daysOfWeek: [],
+      classTime: '09:00',
+      group: '',
+      remainingClasses: 0,
+      isPaid: true,
+      renewalHistory: [],
+      subscriptionNumber: `SUB-${String(client.subscriptions.length + 1).padStart(3, '0')}`,
+      clientId: client.id
+    };
+    showSubscriptionForm('Новый абонемент', newSub, [client], getGroups(), (data) => {
+      const template = getSubscriptionTemplates().find(t => t.id === data.templateId);
+      client.subscriptions.push({
+        ...data,
+        remainingClasses: template ? template.remainingClasses : data.remainingClasses || 0
+      });
+      updateClient(client.id, client);
+      modal.remove();
+      // renderClients() needs to be called if available
+      if (typeof renderClients === 'function') renderClients();
+      showToast('Новый абонемент создан', 'success');
+    });
+  });
+}
+
+export function showSubscriptionForm(title, sub, clients, groups, callback) {
+  const modal = document.createElement('div');
+  modal.className = 'subscription-form-modal';
+  modal.innerHTML = `
+  <div class="subscription-form-content">
+    <div class="subscription-form-header">
+      <h2>${title}</h2>
+      <button type="button" class="subscription-form-close">×</button>
+    </div>
+    <div class="subscription-form-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="subscription-client" class="required">Клиент</label>
+          <select id="subscription-client" required disabled>
+            <option value="${sub.clientId}">${clients.find(c => c.id === sub.clientId).name}</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="subscription-template" class="required">Тип абонемента</label>
+          <select id="subscription-template" required>
+            <option value="">Выберите тип абонемента</option>
+            ${getSubscriptionTemplates().map(template => `
+              <option value="${template.id}" ${sub.templateId === template.id ? 'selected' : ''}>
+                ${template.type}
+              </option>
+            `).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="subscription-classes-per-week" class="required">Занятий в неделю</label>
+          <input type="number" id="subscription-classes-per-week" 
+                value="${sub.classesPerWeek || ''}" 
+                min="0" max="7" required>
+        </div>
+        <div class="form-group">
+          <label for="subscription-class-time" class="required">Время занятия</label>
+          <input type="time" id="subscription-class-time" 
+                value="${sub.classTime || '09:00'}" required>
+        </div>
+        <div class="form-group">
+          <label for="subscription-start-date" class="required">Дата начала</label>
+          <input type="date" id="subscription-start-date" 
+                value="${sub.startDate || ''}" required>
+        </div>
+        <div class="form-group">
+          <label for="subscription-end-date" class="required">Дата окончания</label>
+          <input type="date" id="subscription-end-date" 
+                value="${sub.endDate || ''}" required>
+        </div>
+        <div class="form-group full-width">
+          <label>Дни недели занятий</label>
+          <div class="days-of-week-selector">
+            ${['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map(day => `
+              <button type="button" class="day-button${sub.daysOfWeek?.includes(day) ? ' selected' : ''}" 
+                      data-day="${day}">${day}</button>
+            `).join('')}
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="subscription-group">Группа (опционально)</label>
+          <select id="subscription-group">
+            <option value="">Без привязки к группе</option>
+            ${groups.map(group => `
+              <option value="${group}" ${sub.group === group ? 'selected' : ''}>${group}</option>
+            `).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="subscription-is-paid" ${sub.isPaid !== false ? 'checked' : ''}>
+            <span class="checkmark"></span>
+            Абонемент оплачен
+          </label>
+          <small class="field-hint">Влияет на активность абонемента</small>
+        </div>
+      </div>
+    </div>
+    <div class="subscription-form-footer">
+      <button type="button" id="subscription-cancel-btn" class="btn-secondary">Отмена</button>
+      <button type="button" id="subscription-save-btn" class="btn-primary">Сохранить</button>
+    </div>
+  </div>
+`;
+
+  document.getElementById('main-content').appendChild(modal);
+
+  const closeModal = () => modal.remove();
+  setupModalClose(modal, closeModal);
+
+  modal.querySelector('.subscription-form-close').addEventListener('click', closeModal);
+
+  const dayButtons = modal.querySelectorAll('.day-button');
+  dayButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      button.classList.toggle('selected');
+    });
+  });
+
+  const startDateInput = document.getElementById('subscription-start-date');
+  const endDateInput = document.getElementById('subscription-end-date');
+
+  startDateInput.addEventListener('change', () => {
+    if (startDateInput.value && !endDateInput.value) {
+      const startDate = new Date(startDateInput.value);
+      startDate.setDate(startDate.getDate() + 30);
+      endDateInput.value = startDate.toISOString().split('T')[0];
+    }
+  });
+
+  document.getElementById('subscription-save-btn').addEventListener('click', () => {
+    const clientId = sub.clientId;
+    const templateId = document.getElementById('subscription-template').value;
+    const classesPerWeek = parseInt(document.getElementById('subscription-classes-per-week').value);
+    const daysOfWeek = Array.from(modal.querySelectorAll('.day-button.selected'))
+      .map(button => button.getAttribute('data-day'));
+    const startDate = document.getElementById('subscription-start-date').value;
+    const endDate = document.getElementById('subscription-end-date').value;
+    const classTime = document.getElementById('subscription-class-time').value;
+    const group = document.getElementById('subscription-group').value;
+    const isPaid = document.getElementById('subscription-is-paid').checked;
+
+    if (!templateId || isNaN(classesPerWeek) || !startDate || !endDate || !classTime) {
+      showToast('Заполните все обязательные поля!', 'error');
+      return;
+    }
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (end <= start) {
+      showToast('Дата окончания должна быть позже даты начала!', 'error');
+      return;
+    }
+
+    if (classesPerWeek > 0 && daysOfWeek.length === 0) {
+      showToast('Выберите дни недели для занятий!', 'error');
+      return;
+    }
+
+    callback({
+      clientId,
+      templateId,
+      startDate,
+      endDate,
+      classesPerWeek,
+      daysOfWeek,
+      classTime,
+      group,
+      isPaid,
+      renewalHistory: sub.renewalHistory || [],
+      subscriptionNumber: sub.subscriptionNumber
+    });
+
+    closeModal();
+
+    const subscriptionManagementModal = document.querySelector('.subscription-management-modal');
+    if (subscriptionManagementModal) {
+      const client = clients.find(c => c.id === sub.clientId);
+      subscriptionManagementModal.remove();
+      showSubscriptionManagement(client);
+    }
+  });
+
+  document.getElementById('subscription-cancel-btn').addEventListener('click', closeModal);
+}
+
+export function showRenewSubscriptionForm(title, client, sub, callback) {
+  const subscriptionTemplate = getSubscriptionTemplates().find(t => t.id === sub.templateId);
+  const defaultEndDate = new Date(Math.max(new Date(), new Date(sub.endDate)));
+  defaultEndDate.setDate(defaultEndDate.getDate() + 30);
+
+  const modal = document.createElement('div');
+  modal.className = 'renew-subscription-modal';
+  modal.innerHTML = `
+  <div class="renew-subscription-content">
+    <div class="renew-header">
+      <h2>${title}</h2>
+      <button type="button" class="renew-close">×</button>
+    </div>
+    <div class="renew-body">
+      <div class="current-subscription-info">
+        <h3><img src="images/icon-subscription-info.svg" alt="Текущий абонемент" class="icon"> Текущий абонемент</h3>
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="label">Клиент:</span>
+            <span class="value">${client.surname} ${client.name}</span>
+          </div>
+          <div class="info-item">
+            <span class="label">Номер абонемента:</span>
+            <span class="value">#${sub.subscriptionNumber}</span>
+          </div>
+          <div class="info-item">
+            <span class="label">Тип:</span>
+            <span class="value">${subscriptionTemplate ? subscriptionTemplate.type : 'Неизвестный'}</span>
+          </div>
+          <div class="info-item">
+            <span class="label">Период:</span>
+            <span class="value">${sub.startDate} — ${sub.endDate}</span>
+          </div>
+          <div class="info-item">
+            <span class="label">Осталось занятий:</span>
+            <span class="value ${sub.remainingClasses <= 3 && sub.remainingClasses !== Infinity ? 'low-classes' : ''}">
+              ${sub.remainingClasses === Infinity ? '∞' : sub.remainingClasses}
+            </span>
+          </div>
+          <div class="info-item">
+            <span class="label">Статус:</span>
+            <span class="value status-${sub.isPaid && new Date(sub.endDate) >= new Date() ? 'active' : 'inactive'}">
+              ${sub.isPaid && new Date(sub.endDate) >= new Date() ? 'Активный' : 'Неактивный'}
+            </span>
+          </div>
+        </div>
+        ${sub.renewalHistory && sub.renewalHistory.length ? `
+          <div class="renewal-history-section">
+            <h4>История продлений:</h4>
+            <div class="renewal-list">
+              ${sub.renewalHistory.map(entry => {
+    const date = new Date(entry.date || entry).toLocaleDateString('ru-RU');
+    return entry.fromTemplate ?
+      `<span class="renewal-item">${date}: ${entry.fromTemplate} → ${entry.toTemplate}</span>` :
+      `<span class="renewal-item">${date}</span>`;
+  }).join('')}
+            </div>
+          </div>
+        ` : ''}
+      </div>
+      
+      <div class="renew-form-section">
+        <h3><img src="images/icon-renew.svg" alt="Продление" class="icon"> Продление</h3>
         <div class="form-grid">
           <div class="form-group">
-            <label for="subscription-client" class="required">Клиент</label>
-            <select id="subscription-client" required disabled>
-              <option value="${sub.clientId}">${clients.find(c => c.id === sub.clientId).name}</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="subscription-template" class="required">Тип абонемента</label>
-            <select id="subscription-template" required>
+            <label for="renew-template" class="required">Тип абонемента</label>
+            <select id="renew-template" required>
               <option value="">Выберите тип абонемента</option>
               ${getSubscriptionTemplates().map(template => `
                 <option value="${template.id}" ${sub.templateId === template.id ? 'selected' : ''}>
@@ -1819,25 +1875,25 @@ export function loadClients() {
             </select>
           </div>
           <div class="form-group">
-            <label for="subscription-classes-per-week" class="required">Занятий в неделю</label>
-            <input type="number" id="subscription-classes-per-week" 
+            <label for="renew-classes-per-week" class="required">Занятий в неделю</label>
+            <input type="number" id="renew-classes-per-week" 
                   value="${sub.classesPerWeek || ''}" 
                   min="0" max="7" required>
           </div>
           <div class="form-group">
-            <label for="subscription-class-time" class="required">Время занятия</label>
-            <input type="time" id="subscription-class-time" 
+            <label for="renew-class-time" class="required">Время занятия</label>
+            <input type="time" id="renew-class-time" 
                   value="${sub.classTime || '09:00'}" required>
           </div>
           <div class="form-group">
-            <label for="subscription-start-date" class="required">Дата начала</label>
-            <input type="date" id="subscription-start-date" 
+            <label for="renew-start-date" class="required">Дата начала</label>
+            <input type="date" id="renew-start-date" 
                   value="${sub.startDate || ''}" required>
           </div>
           <div class="form-group">
-            <label for="subscription-end-date" class="required">Дата окончания</label>
-            <input type="date" id="subscription-end-date" 
-                  value="${sub.endDate || ''}" required>
+            <label for="renew-end-date" class="required">Дата окончания</label>
+            <input type="date" id="renew-end-date" 
+                  value="${defaultEndDate.toISOString().split('T')[0]}" required>
           </div>
           <div class="form-group full-width">
             <label>Дни недели занятий</label>
@@ -1849,407 +1905,182 @@ export function loadClients() {
             </div>
           </div>
           <div class="form-group">
-            <label for="subscription-group">Группа (опционально)</label>
-            <select id="subscription-group">
+            <label for="renew-group">Группа (опционально)</label>
+            <select id="renew-group">
               <option value="">Без привязки к группе</option>
-              ${groups.map(group => `
+              ${getGroups().map(group => `
                 <option value="${group}" ${sub.group === group ? 'selected' : ''}>${group}</option>
               `).join('')}
             </select>
           </div>
           <div class="form-group">
             <label class="checkbox-label">
-              <input type="checkbox" id="subscription-is-paid" ${sub.isPaid !== false ? 'checked' : ''}>
+              <input type="checkbox" id="renew-is-paid" ${sub.isPaid !== false ? 'checked' : ''}>
               <span class="checkmark"></span>
               Абонемент оплачен
             </label>
-            <small class="field-hint">Влияет на активность абонемента</small>
           </div>
         </div>
-      </div>
-      <div class="subscription-form-footer">
-        <button type="button" id="subscription-cancel-btn" class="btn-secondary">Отмена</button>
-        <button type="button" id="subscription-save-btn" class="btn-primary">Сохранить</button>
       </div>
     </div>
-  `;
-
-    document.getElementById('main-content').appendChild(modal);
-
-    const closeModal = () => modal.remove();
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) closeModal();
-    });
-    modal.querySelector('.subscription-form-close').addEventListener('click', closeModal);
-
-    const dayButtons = modal.querySelectorAll('.day-button');
-    dayButtons.forEach(button => {
-      button.addEventListener('click', () => {
-        button.classList.toggle('selected');
-      });
-    });
-
-    const startDateInput = document.getElementById('subscription-start-date');
-    const endDateInput = document.getElementById('subscription-end-date');
-
-    startDateInput.addEventListener('change', () => {
-      if (startDateInput.value && !endDateInput.value) {
-        const startDate = new Date(startDateInput.value);
-        startDate.setDate(startDate.getDate() + 30);
-        endDateInput.value = startDate.toISOString().split('T')[0];
-      }
-    });
-
-    document.getElementById('subscription-save-btn').addEventListener('click', () => {
-      const clientId = sub.clientId;
-      const templateId = document.getElementById('subscription-template').value;
-      const classesPerWeek = parseInt(document.getElementById('subscription-classes-per-week').value);
-      const daysOfWeek = Array.from(modal.querySelectorAll('.day-button.selected'))
-        .map(button => button.getAttribute('data-day'));
-      const startDate = document.getElementById('subscription-start-date').value;
-      const endDate = document.getElementById('subscription-end-date').value;
-      const classTime = document.getElementById('subscription-class-time').value;
-      const group = document.getElementById('subscription-group').value;
-      const isPaid = document.getElementById('subscription-is-paid').checked;
-
-      if (!templateId || isNaN(classesPerWeek) || !startDate || !endDate || !classTime) {
-        showToast('Заполните все обязательные поля!', 'error');
-        return;
-      }
-
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      if (end <= start) {
-        showToast('Дата окончания должна быть позже даты начала!', 'error');
-        return;
-      }
-
-      if (classesPerWeek > 0 && daysOfWeek.length === 0) {
-        showToast('Выберите дни недели для занятий!', 'error');
-        return;
-      }
-
-      callback({
-        clientId,
-        templateId,
-        startDate,
-        endDate,
-        classesPerWeek,
-        daysOfWeek,
-        classTime,
-        group,
-        isPaid,
-        renewalHistory: sub.renewalHistory || [],
-        subscriptionNumber: sub.subscriptionNumber
-      });
-
-      closeModal();
-
-      const subscriptionManagementModal = document.querySelector('.subscription-management-modal');
-      if (subscriptionManagementModal) {
-        const client = clients.find(c => c.id === sub.clientId);
-        subscriptionManagementModal.remove();
-        showSubscriptionManagement(client);
-      }
-    });
-
-    document.getElementById('subscription-cancel-btn').addEventListener('click', closeModal);
-  }
-  function showRenewSubscriptionForm(title, client, sub, callback) {
-    const subscriptionTemplate = getSubscriptionTemplates().find(t => t.id === sub.templateId);
-    const defaultEndDate = new Date(Math.max(new Date(), new Date(sub.endDate)));
-    defaultEndDate.setDate(defaultEndDate.getDate() + 30);
-
-    const modal = document.createElement('div');
-    modal.className = 'renew-subscription-modal';
-    modal.innerHTML = `
-    <div class="renew-subscription-content">
-      <div class="renew-header">
-        <h2>${title}</h2>
-        <button type="button" class="renew-close">×</button>
-      </div>
-      <div class="renew-body">
-        <div class="current-subscription-info">
-          <h3><img src="images/icon-subscription-info.svg" alt="Текущий абонемент" class="icon"> Текущий абонемент</h3>
-          <div class="info-grid">
-            <div class="info-item">
-              <span class="label">Клиент:</span>
-              <span class="value">${client.surname} ${client.name}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">Номер абонемента:</span>
-              <span class="value">#${sub.subscriptionNumber}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">Тип:</span>
-              <span class="value">${subscriptionTemplate ? subscriptionTemplate.type : 'Неизвестный'}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">Период:</span>
-              <span class="value">${sub.startDate} — ${sub.endDate}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">Осталось занятий:</span>
-              <span class="value ${sub.remainingClasses <= 3 && sub.remainingClasses !== Infinity ? 'low-classes' : ''}">
-                ${sub.remainingClasses === Infinity ? '∞' : sub.remainingClasses}
-              </span>
-            </div>
-            <div class="info-item">
-              <span class="label">Статус:</span>
-              <span class="value status-${sub.isPaid && new Date(sub.endDate) >= new Date() ? 'active' : 'inactive'}">
-                ${sub.isPaid && new Date(sub.endDate) >= new Date() ? 'Активный' : 'Неактивный'}
-              </span>
-            </div>
-          </div>
-          ${sub.renewalHistory && sub.renewalHistory.length ? `
-            <div class="renewal-history-section">
-              <h4>История продлений:</h4>
-              <div class="renewal-list">
-                ${sub.renewalHistory.map(entry => {
-      const date = new Date(entry.date || entry).toLocaleDateString('ru-RU');
-      return entry.fromTemplate ?
-        `<span class="renewal-item">${date}: ${entry.fromTemplate} → ${entry.toTemplate}</span>` :
-        `<span class="renewal-item">${date}</span>`;
-    }).join('')}
-              </div>
-            </div>
-          ` : ''}
-        </div>
-        
-        <div class="renew-form-section">
-          <h3><img src="images/icon-renew.svg" alt="Продление" class="icon"> Продление</h3>
-          <div class="form-grid">
-            <div class="form-group">
-              <label for="renew-template" class="required">Тип абонемента</label>
-              <select id="renew-template" required>
-                <option value="">Выберите тип абонемента</option>
-                ${getSubscriptionTemplates().map(template => `
-                  <option value="${template.id}" ${sub.templateId === template.id ? 'selected' : ''}>
-                    ${template.type}
-                  </option>
-                `).join('')}
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="renew-classes-per-week" class="required">Занятий в неделю</label>
-              <input type="number" id="renew-classes-per-week" 
-                    value="${sub.classesPerWeek || ''}" 
-                    min="0" max="7" required>
-            </div>
-            <div class="form-group">
-              <label for="renew-class-time" class="required">Время занятия</label>
-              <input type="time" id="renew-class-time" 
-                    value="${sub.classTime || '09:00'}" required>
-            </div>
-            <div class="form-group">
-              <label for="renew-start-date" class="required">Дата начала</label>
-              <input type="date" id="renew-start-date" 
-                    value="${sub.startDate || ''}" required>
-            </div>
-            <div class="form-group">
-              <label for="renew-end-date" class="required">Дата окончания</label>
-              <input type="date" id="renew-end-date" 
-                    value="${defaultEndDate.toISOString().split('T')[0]}" required>
-            </div>
-            <div class="form-group full-width">
-              <label>Дни недели занятий</label>
-              <div class="days-of-week-selector">
-                ${['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map(day => `
-                  <button type="button" class="day-button${sub.daysOfWeek?.includes(day) ? ' selected' : ''}" 
-                          data-day="${day}">${day}</button>
-                `).join('')}
-              </div>
-            </div>
-            <div class="form-group">
-              <label for="renew-group">Группа (опционально)</label>
-              <select id="renew-group">
-                <option value="">Без привязки к группе</option>
-                ${getGroups().map(group => `
-                  <option value="${group}" ${sub.group === group ? 'selected' : ''}>${group}</option>
-                `).join('')}
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="checkbox-label">
-                <input type="checkbox" id="renew-is-paid" ${sub.isPaid !== false ? 'checked' : ''}>
-                <span class="checkmark"></span>
-                Абонемент оплачен
-              </label>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="renew-footer">
-        <button type="button" id="renew-cancel-btn" class="btn-secondary">Отмена</button>
-        <button type="button" id="renew-save-btn" class="btn-primary">Продлить</button>
-      </div>
+    <div class="renew-footer">
+      <button type="button" id="renew-cancel-btn" class="btn-secondary">Отмена</button>
+      <button type="button" id="renew-save-btn" class="btn-primary">Продлить</button>
     </div>
-  `;
+  </div>
+`;
 
-    document.getElementById('main-content').appendChild(modal);
+  document.getElementById('main-content').appendChild(modal);
 
-    const closeModal = () => modal.remove();
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) closeModal();
+  const closeModal = () => modal.remove();
+  setupModalClose(modal, closeModal);
+
+  modal.querySelector('.renew-close').addEventListener('click', closeModal);
+  modal.querySelector('#renew-cancel-btn').addEventListener('click', closeModal);
+
+  const dayButtons = modal.querySelectorAll('.day-button');
+  dayButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      button.classList.toggle('selected');
     });
-    modal.querySelector('.renew-close').addEventListener('click', closeModal);
-    modal.querySelector('#renew-cancel-btn').addEventListener('click', closeModal);
+  });
 
-    const dayButtons = modal.querySelectorAll('.day-button');
-    dayButtons.forEach(button => {
-      button.addEventListener('click', () => {
-        button.classList.toggle('selected');
-      });
-    });
+  const startDateInput = document.getElementById('renew-start-date');
+  const endDateInput = document.getElementById('renew-end-date');
 
-    const startDateInput = document.getElementById('renew-start-date');
-    const endDateInput = document.getElementById('renew-end-date');
+  startDateInput.addEventListener('change', () => {
+    if (startDateInput.value && !endDateInput.value) {
+      const startDate = new Date(startDateInput.value);
+      startDate.setDate(startDate.getDate() + 30);
+      endDateInput.value = startDate.toISOString().split('T')[0];
+    }
+  });
 
-    startDateInput.addEventListener('change', () => {
-      if (startDateInput.value && !endDateInput.value) {
-        const startDate = new Date(startDateInput.value);
-        startDate.setDate(startDate.getDate() + 30);
-        endDateInput.value = startDate.toISOString().split('T')[0];
-      }
-    });
+  document.getElementById('renew-save-btn').addEventListener('click', () => {
+    const templateId = document.getElementById('renew-template').value;
+    const classesPerWeek = parseInt(document.getElementById('renew-classes-per-week').value);
+    const daysOfWeek = Array.from(modal.querySelectorAll('.day-button.selected'))
+      .map(button => button.getAttribute('data-day'));
+    const startDate = document.getElementById('renew-start-date').value;
+    const endDate = document.getElementById('renew-end-date').value;
+    const classTime = document.getElementById('renew-class-time').value;
+    const group = document.getElementById('renew-group').value;
+    const isPaid = document.getElementById('renew-is-paid').checked;
 
-    document.getElementById('renew-save-btn').addEventListener('click', () => {
-      const templateId = document.getElementById('renew-template').value;
-      const classesPerWeek = parseInt(document.getElementById('renew-classes-per-week').value);
-      const daysOfWeek = Array.from(modal.querySelectorAll('.day-button.selected'))
-        .map(button => button.getAttribute('data-day'));
-      const startDate = document.getElementById('renew-start-date').value;
-      const endDate = document.getElementById('renew-end-date').value;
-      const classTime = document.getElementById('renew-class-time').value;
-      const group = document.getElementById('renew-group').value;
-      const isPaid = document.getElementById('renew-is-paid').checked;
-
-      if (!templateId || isNaN(classesPerWeek) || !startDate || !endDate || !classTime) {
-        showToast('Заполните все обязательные поля!', 'error');
-        return;
-      }
-
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      if (end <= start) {
-        showToast('Дата окончания должна быть позже даты начала!', 'error');
-        return;
-      }
-
-      if (classesPerWeek > 0 && daysOfWeek.length === 0) {
-        showToast('Выберите дни недели для занятий!', 'error');
-        return;
-      }
-
-      const oldTemplate = getSubscriptionTemplates().find(t => t.id === sub.templateId);
-      const newTemplate = getSubscriptionTemplates().find(t => t.id === templateId);
-      const renewalHistory = [...(sub.renewalHistory || [])];
-      if (oldTemplate?.type !== newTemplate?.type) {
-        renewalHistory.push({
-          date: new Date().toISOString(),
-          fromTemplate: oldTemplate?.type || 'Неизвестный',
-          toTemplate: newTemplate?.type || 'Неизвестный'
-        });
-      } else {
-        renewalHistory.push({ date: new Date().toISOString() });
-      }
-
-      callback({
-        templateId,
-        startDate,
-        endDate,
-        classesPerWeek,
-        daysOfWeek,
-        classTime,
-        group,
-        isPaid,
-        renewalHistory,
-        subscriptionNumber: sub.subscriptionNumber,
-        remainingClasses: newTemplate ? newTemplate.remainingClasses : sub.remainingClasses
-      });
-
-      closeModal();
-    });
-  }
-
-  function showGroupForm(title, client, groups, callback) {
-    const modal = document.createElement('div');
-    modal.className = 'group-form-modal';
-    let selectedGroups = Array.isArray(client.groups) ? [...client.groups] : [];
-    let groupHistory = Array.isArray(client.groupHistory) ? [...client.groupHistory] : [];
-
-    function renderGroupsList(filter = '') {
-      const list = modal.querySelector('.groups-list');
-      const filteredGroups = groups.filter(g => g.toLowerCase().includes(filter.toLowerCase()));
-      list.innerHTML = filteredGroups.map(group => `
-      <div class="group-item ${selectedGroups.includes(group) ? 'selected' : ''}" data-group="${group}">
-        ${group}
-      </div>
-    `).join('');
-
-      list.querySelectorAll('.group-item').forEach(item => {
-        item.addEventListener('click', () => {
-          const group = item.dataset.group;
-          if (selectedGroups.includes(group)) {
-            selectedGroups = selectedGroups.filter(g => g !== group);
-            groupHistory.push({ date: new Date().toISOString(), action: 'removed', group });
-          } else {
-            selectedGroups.push(group);
-            groupHistory.push({ date: new Date().toISOString(), action: 'added', group });
-          }
-          renderGroupsList(filter);
-        });
-      });
+    if (!templateId || isNaN(classesPerWeek) || !startDate || !endDate || !classTime) {
+      showToast('Заполните все обязательные поля!', 'error');
+      return;
     }
 
-    modal.innerHTML = `
-    <div class="group-form-content">
-      <div class="group-form-header">
-        <h2>${title}</h2>
-        <button type="button" class="group-form-close">×</button>
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (end <= start) {
+      showToast('Дата окончания должна быть позже даты начала!', 'error');
+      return;
+    }
+
+    if (classesPerWeek > 0 && daysOfWeek.length === 0) {
+      showToast('Выберите дни недели для занятий!', 'error');
+      return;
+    }
+
+    const template = getSubscriptionTemplates().find(t => t.id === templateId);
+    const renewalEntry = {
+      date: new Date().toISOString(),
+      fromTemplate: subscriptionTemplate ? subscriptionTemplate.type : 'Неизвестный',
+      toTemplate: template ? template.type : 'Неизвестный'
+    };
+
+    callback({
+      templateId,
+      startDate,
+      endDate,
+      classesPerWeek,
+      daysOfWeek,
+      classTime,
+      group,
+      isPaid,
+      subscriptionNumber: sub.subscriptionNumber,
+      remainingClasses: template ? template.remainingClasses : sub.remainingClasses,
+      renewalHistory: [...(sub.renewalHistory || []), renewalEntry]
+    });
+
+    closeModal();
+  });
+}
+
+export function showGroupForm(title, client, groups, callback) {
+  const modal = document.createElement('div');
+  modal.className = 'group-form-modal';
+  let selectedGroups = [...(client.groups || [])];
+  let groupHistory = [...(client.groupHistory || [])];
+
+  function renderGroups() {
+    const groupList = modal.querySelector('.groups-list');
+    groupList.innerHTML = groups.map(group => `
+    <div class="group-item ${selectedGroups.includes(group) ? 'selected' : ''}" data-group="${group}">
+      ${group}
+    </div>
+  `).join('');
+
+    groupList.querySelectorAll('.group-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const group = item.dataset.group;
+        if (selectedGroups.includes(group)) {
+          selectedGroups = selectedGroups.filter(g => g !== group);
+          groupHistory.push({ date: new Date().toISOString(), action: 'removed', group });
+        } else {
+          selectedGroups.push(group);
+          groupHistory.push({ date: new Date().toISOString(), action: 'added', group });
+        }
+        renderGroups();
+      });
+    });
+  }
+
+  modal.innerHTML = `
+  <div class="group-form-content">
+    <div class="group-form-header">
+      <h2>${title}</h2>
+      <button type="button" class="group-form-close">×</button>
+    </div>
+    <div class="group-form-body">
+      <div class="client-info">
+        <span>Клиент: ${client.surname} ${client.name}</span>
       </div>
-      <div class="group-form-body">
-        <input type="text" id="group-search" placeholder="Поиск группы...">
-        <div class="groups-list"></div>
-        <button type="button" id="add-new-group-btn" class="btn-primary">Создать новую</button>
-      </div>
-      <div class="group-form-footer">
-        <button type="button" id="group-cancel-btn" class="btn-secondary">Отмена</button>
-        <button type="button" id="group-save-btn" class="btn-primary">Сохранить</button>
+      <div class="groups-list"></div>
+      <div class="group-form-controls">
+        <button type="button" id="add-new-group-btn" class="btn-primary">Добавить новую группу</button>
       </div>
     </div>
-  `;
+    <div class="group-form-footer">
+      <button type="button" id="group-cancel-btn" class="btn-secondary">Отмена</button>
+      <button type="button" id="group-save-btn" class="btn-primary">Сохранить</button>
+    </div>
+  </div>
+`;
 
-    document.getElementById('main-content').appendChild(modal);
+  document.getElementById('main-content').appendChild(modal);
 
-    const closeModal = () => modal.remove();
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) closeModal();
-    });
-    modal.querySelector('.group-form-close').addEventListener('click', closeModal);
-    modal.querySelector('#group-cancel-btn').addEventListener('click', closeModal);
+  const closeModal = () => modal.remove();
+  setupModalClose(modal, closeModal);
 
-    modal.querySelector('#group-save-btn').addEventListener('click', () => {
-      callback(selectedGroups, groupHistory);
-      closeModal();
-    });
+  modal.querySelector('.group-form-close').addEventListener('click', closeModal);
+  modal.querySelector('#group-cancel-btn').addEventListener('click', closeModal);
 
-    modal.querySelector('#add-new-group-btn').addEventListener('click', () => {
-      const newGroup = prompt('Введите название новой группы:');
-      if (newGroup && newGroup.trim() && !groups.includes(newGroup.trim())) {
-        groups.push(newGroup.trim());
-        selectedGroups.push(newGroup.trim());
-        groupHistory.push({ date: new Date().toISOString(), action: 'added', group: newGroup.trim() });
-        renderGroupsList(modal.querySelector('#group-search').value);
-        showToast('Новая группа добавлена', 'success');
-      }
-    });
+  modal.querySelector('#add-new-group-btn').addEventListener('click', () => {
+    const newGroup = prompt('Введите название новой группы:');
+    if (newGroup && newGroup.trim() && !groups.includes(newGroup.trim())) {
+      groups.push(newGroup.trim());
+      renderGroups();
+      showToast('Новая группа добавлена', 'success');
+    }
+  });
 
-    const searchInput = modal.querySelector('#group-search');
-    searchInput.addEventListener('input', (e) => {
-      renderGroupsList(e.target.value);
-    });
+  modal.querySelector('#group-save-btn').addEventListener('click', () => {
+    callback(selectedGroups, groupHistory);
+    closeModal();
+  });
 
-    renderGroupsList();
-  }
+  renderGroups();
 }

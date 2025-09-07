@@ -51,10 +51,9 @@ export function loadSubscriptions() {
   const header = document.createElement('header');
   header.className = 'header';
   header.innerHTML = `
-    <h1>Абонементы</h1>
+    <h1><img src="./images/icon-subscriptions.svg" alt=""> Абонементы</h1>
     <div class="user-actions">
       <span>Пользователь</span>
-      <button>Выход</button>
     </div>
   `;
   mainContent.appendChild(header);
@@ -62,7 +61,6 @@ export function loadSubscriptions() {
   const filterBar = document.createElement('div');
   filterBar.className = 'filter-bar';
   filterBar.innerHTML = `
-    <input type="text" id="subscription-filter" class="filter-input" placeholder="Поиск по клиенту">
     <button class="subscription-add btn" id="subscription-add-btn">Добавить шаблон</button>
   `;
   mainContent.appendChild(filterBar);
@@ -81,8 +79,13 @@ export function loadSubscriptions() {
   const tabs = document.createElement('div');
   tabs.className = 'subscription-tabs';
   tabs.innerHTML = `
-    <button class="tab-button active" data-tab="active">Активные</button>
-    <button class="tab-button" data-tab="inactive">Неактивные</button>
+    <div class="tabs-and-filter">
+      <div class="tab-buttons">
+        <button class="tab-button active" data-tab="active">Активные</button>
+        <button class="tab-button" data-tab="inactive">Неактивные</button>
+      </div>
+      <input type="text" id="subscription-filter" class="filter-input" placeholder="Поиск по клиенту">
+    </div>
   `;
   mainContent.appendChild(tabs);
 
@@ -116,11 +119,11 @@ export function loadSubscriptions() {
       `).join('');
   }
 
-function renderSubscriptions(tab = 'active') {
-  const filter = document.getElementById('subscription-filter').value.toLowerCase();
-  const subscriptions = tab === 'active' ? getActiveSubscriptions() : getInactiveSubscriptions();
-  const subscriptionTable = document.querySelector('.subscription-table');
-  subscriptionTable.innerHTML = `
+  function renderSubscriptions(tab = 'active') {
+    const filter = document.getElementById('subscription-filter').value.toLowerCase();
+    const subscriptions = tab === 'active' ? getActiveSubscriptions() : getInactiveSubscriptions();
+    const subscriptionTable = document.querySelector('.subscription-table');
+    subscriptionTable.innerHTML = `
     <table>
       <thead>
         <tr>
@@ -139,15 +142,15 @@ function renderSubscriptions(tab = 'active') {
       </thead>
       <tbody>
         ${subscriptions
-          .filter(sub => {
-            const client = clients.find(c => c.id === sub.clientId);
-            return client && `${client.surname} ${client.name} ${client.patronymic || ''}`.toLowerCase().includes(filter);
-          })
-          .map(sub => {
-            const client = clients.find(c => c.id === sub.clientId);
-            const template = subscriptionTemplates.find(t => t.id === sub.templateId);
-            const fullName = `${client.surname} ${client.name} ${client.patronymic || ''}`;
-            return `
+        .filter(sub => {
+          const client = clients.find(c => c.id === sub.clientId);
+          return client && `${client.surname} ${client.name} ${client.patronymic || ''}`.toLowerCase().includes(filter);
+        })
+        .map(sub => {
+          const client = clients.find(c => c.id === sub.clientId);
+          const template = subscriptionTemplates.find(t => t.id === sub.templateId);
+          const fullName = `${client.surname} ${client.name} ${client.patronymic || ''}`;
+          return `
               <tr class="subscription-row" data-id="${sub.id}">
                 <td>${fullName}</td>
                 <td>#${sub.subscriptionNumber}</td>
@@ -158,7 +161,7 @@ function renderSubscriptions(tab = 'active') {
                 <td>${sub.daysOfWeek.join(', ') || 'Не указаны'}</td>
                 <td>${sub.classTime}</td>
                 <td>${sub.group || 'Не указана'}</td>
-                <td class="status-${tab === 'active' ? 'active' : 'inactivee'}">
+                <td class="status-${tab === 'active' ? 'active' : 'inactive'}">
                   ${tab === 'active' ? 'Активный' : 'Неактивный'}
                 </td>
                 <td>
@@ -169,11 +172,11 @@ function renderSubscriptions(tab = 'active') {
                 </td>
               </tr>
             `;
-          }).join('')}
+        }).join('')}
       </tbody>
     </table>
   `;
-}
+  }
 
   renderTemplates();
   renderSubscriptions('active');
@@ -328,9 +331,9 @@ function renderSubscriptions(tab = 'active') {
         <p>Группа: ${sub.group || 'Не указана'}</p>
         <p>Статус: ${sub.isPaid && new Date(sub.endDate) >= new Date() ? 'Активный' : 'Неактивный'}</p>
         <p>История продлений: ${sub.renewalHistory.length ? sub.renewalHistory.map(entry => {
-          const date = new Date(entry.date || entry).toLocaleDateString('ru-RU');
-          return entry.fromTemplate ? `${date}: ${entry.fromTemplate} → ${entry.toTemplate}` : date;
-        }).join(', ') : 'Нет'}</p>
+      const date = new Date(entry.date || entry).toLocaleDateString('ru-RU');
+      return entry.fromTemplate ? `${date}: ${entry.fromTemplate} → ${entry.toTemplate}` : date;
+    }).join(', ') : 'Нет'}</p>
         <div class="subscription-details-actions">
           <button id="subscription-renew-btn">Продлить</button>
           <button id="subscription-close-btn">Закрыть</button>
@@ -414,11 +417,11 @@ function renderSubscriptions(tab = 'active') {
                 <h4>История продлений:</h4>
                 <div class="renewal-list">
                   ${sub.renewalHistory.map(entry => {
-                    const date = new Date(entry.date || entry).toLocaleDateString('ru-RU');
-                    return entry.fromTemplate ?
-                      `<span class="renewal-item">${date}: ${entry.fromTemplate} → ${entry.toTemplate}</span>` :
-                      `<span class="renewal-item">${date}</span>`;
-                  }).join('')}
+      const date = new Date(entry.date || entry).toLocaleDateString('ru-RU');
+      return entry.fromTemplate ?
+        `<span class="renewal-item">${date}: ${entry.fromTemplate} → ${entry.toTemplate}</span>` :
+        `<span class="renewal-item">${date}</span>`;
+    }).join('')}
                 </div>
               </div>
             ` : ''}
@@ -664,5 +667,15 @@ function renderSubscriptions(tab = 'active') {
     });
 
     modal.querySelector('#subscription-cancel-btn').addEventListener('click', closeModal);
+  }
+
+  // Функция для показа уведомлений (если не определена где-то еще)
+  function showToast(message, type = 'info') {
+    // Простая реализация уведомлений
+    if (typeof window.showToast === 'function') {
+      window.showToast(message, type);
+    } else {
+      alert(message);
+    }
   }
 }

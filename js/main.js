@@ -1,4 +1,4 @@
-import { getClients, showClientForm, addClient } from './clients.js';
+import { getClients, showClientForm, addClient, showClientDetails } from './clients.js';
 import { scheduleData, setupModalClose, getRooms } from './schedule.js';
 
 export function loadHome() {
@@ -25,7 +25,7 @@ export function loadHome() {
     <h2>Клиенты с 1 уроком</h2>
     <span id="low-classes-count" class="badge">0</span>
     <ul id="low-classes-list"></ul>
-    <p>(Кликните для полного списка)</p>
+    <p class="client-list-info">(Кликните для полного списка)</p>
   `;
   contentBlocks.appendChild(block1);
 
@@ -34,7 +34,9 @@ export function loadHome() {
   block2.className = 'content-block';
   block2.innerHTML = `
     <h2>Добавить клиента</h2>
-    <button id="add-client-home">Добавить</button>
+    <button id="add-client-home" class="btn-primary">Добавить</button>
+    <h3>Недавно добавленные</h3>
+    <ul id="recent-clients-list"></ul>
   `;
   contentBlocks.appendChild(block2);
 
@@ -112,23 +114,35 @@ export function loadHome() {
             </table>
           </div>
         </div>
-        <div class="client-form-footer">
-          <button class="btn-secondary" id="close-modal">Закрыть</button>
-        </div>
       </div>
     `;
     mainContent.appendChild(modal);
 
+    // Закрытие модалки только при клике вне её без выделения текста
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal && window.getSelection().toString().length === 0) {
+        modal.remove();
+      }
+    });
+
     modal.querySelector('.client-form-close').addEventListener('click', () => modal.remove());
-    modal.querySelector('#close-modal').addEventListener('click', () => modal.remove());
     setupModalClose(modal, () => modal.remove(), true);
   });
 
-  // Логика для Блока 2: Добавить клиента
+  // Логика для Блока 2: Добавить клиента и недавно добавленные
+  const recentClientsList = block2.querySelector('#recent-clients-list');
+  const updateRecentClients = () => {
+    const sortedClients = getClients().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    recentClientsList.innerHTML = sortedClients.slice(0, 3).map(client => `
+      <li class="recent-client" data-client-id="${client.id}">${client.surname} ${client.name}</li>
+    `).join('');
+  };
+  updateRecentClients();
+
   block2.querySelector('#add-client-home').addEventListener('click', (e) => {
     if (window.getSelection().toString().length > 0) return;
     showClientForm('Добавить клиента', {}, (newClient) => {
-      addClient(newClient);
+      const addedClient = addClient(newClient);
       if (newClient.subscriptions.some(sub => sub.remainingClasses === 1 && sub.isPaid && new Date(sub.endDate) >= today)) {
         lowClassesClients.push(newClient);
         countEl.textContent = lowClassesClients.length;
@@ -136,7 +150,24 @@ export function loadHome() {
           <li>${client.surname} ${client.name}</li>
         `).join('');
       }
+      updateRecentClients();
     });
+  });
+
+  // Обработчик клика по недавно добавленным клиентам
+  recentClientsList.addEventListener('click', (e) => {
+    const clientItem = e.target.closest('.recent-client');
+    if (clientItem && window.getSelection().toString().length === 0) {
+      const clientId = clientItem.getAttribute('data-client-id');
+      const client = getClients().find(c => c.id === clientId);
+      if (client) {
+        import('./clients.js').then(module => {
+          mainContent.innerHTML = '';
+          module.loadClients();
+          module.showClientDetails(client);
+        });
+      }
+    }
   });
 
   // Логика для Блока 4: Расписание на сегодня
