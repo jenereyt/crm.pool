@@ -56,7 +56,7 @@ export function loadRooms() {
                     <img src="images/icon-edit.svg" alt="Редактировать" class="action-icon">
                   </button>
                   <button class="room-delete-btn" data-id="${room.id}">
-                    <img src="images/trash.svg" alt="Удалить" class="action-icon">
+                    <img src="images/icon-delete.svg" alt="Удалить" class="action-icon">
                   </button>
                 </td>
               </tr>
@@ -107,6 +107,12 @@ export function loadRooms() {
       </div>
     `;
     mainContent.appendChild(modal);
+
+    modal.addEventListener('mousedown', (e) => {
+      if (e.target.classList.contains('room-modal') && !window.getSelection().toString()) {
+        modal.remove();
+      }
+    });
 
     document.getElementById('room-save-btn').addEventListener('click', () => {
       const name = document.getElementById('room-name').value.trim();

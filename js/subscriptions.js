@@ -113,7 +113,7 @@ export function loadSubscriptions() {
               <img src="./images/icon-edit.svg" alt="Редактировать">
             </button>
             <button class="template-action-icon delete" data-id="${template.id}" title="Удалить">
-              <img src="./images/icon-delete.svg" alt="Удалить">
+              <img src="./images/trash.svg" alt="Удалить">
             </button>
           </div>
         </div>

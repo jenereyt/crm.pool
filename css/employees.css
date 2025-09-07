@@ -31,7 +31,7 @@
 }
 
 .employee-add-btn {
-  background-color: #28a745;
+  background-color: #007bff;
   color: white;
   border: none;
   padding: 8px 12px;
@@ -40,9 +40,7 @@
   font-size: 0.9em;
 }
 
-.employee-add-btn:hover {
-  background-color: #218838;
-}
+
 
 .employee-table {
   background-color: #ffffff;
@@ -82,8 +80,7 @@ tr:hover {
 
 .employee-edit-btn,
 .employee-delete-btn {
-  background-color: #007bff;
-  color: white;
+  background-color: transparent;
   border: none;
   padding: 6px 10px;
   border-radius: 4px;
@@ -92,17 +89,6 @@ tr:hover {
   margin-right: 5px;
 }
 
-.employee-edit-btn:hover {
-  background-color: #0056b3;
-}
-
-.employee-delete-btn {
-  background-color: #dc3545;
-}
-
-.employee-delete-btn:hover {
-  background-color: #b02a37;
-}
 
 .employee-modal {
   position: fixed;
@@ -157,13 +143,10 @@ tr:hover {
 }
 
 .employee-modal-actions button[id="employee-save-btn"] {
-  background-color: #28a745;
+  background-color: #007bff;
   color: white;
 }
 
-.employee-modal-actions button[id="employee-save-btn"]:hover {
-  background-color: #218838;
-}
 
 .employee-modal-actions button[id="employee-cancel-btn"] {
   background-color: #6c757d;

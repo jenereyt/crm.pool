@@ -613,6 +613,11 @@
   margin: 10px 8px;
 }
 
+.template-modal-actions{
+  display: flex;
+  gap: 5px;
+}
+
 .subscription-add-btn {
   padding: 8px 16px;
   background-color: var(--primary-color);

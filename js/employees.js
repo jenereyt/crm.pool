@@ -56,8 +56,12 @@ export function loadEmployees() {
               <td>${emp.position === 'trainer' ? 'Тренер' : emp.position === 'admin' ? 'Администратор' : 'Менеджер'}</td>
               <td>${emp.phone}</td>
               <td>
-                <button class="employee-edit-btn" data-id="${emp.id}">Редактировать</button>
-                <button class="employee-delete-btn" data-id="${emp.id}">Удалить</button>
+                <button class="employee-edit-btn" data-id="${emp.id}">
+                  <img src="images/icon-edit.svg" alt="Редактировать" class="action-icon">
+                </button>
+                <button class="employee-delete-btn" data-id="${emp.id}">
+                  <img src="images/icon-delete.svg" alt="Удалить" class="action-icon">
+                </button>
               </td>
             </tr>
           `).join('')}
@@ -90,13 +94,13 @@ export function loadEmployees() {
   });
 
   employeeTable.addEventListener('click', (e) => {
-    if (e.target.classList.contains('employee-delete-btn')) {
-      const empId = e.target.getAttribute('data-id');
+    if (e.target.closest('.employee-delete-btn')) {
+      const empId = e.target.closest('.employee-delete-btn').getAttribute('data-id');
       employees = employees.filter(emp => emp.id !== empId);
       renderEmployees();
       filterEmployees();
-    } else if (e.target.classList.contains('employee-edit-btn')) {
-      const empId = e.target.getAttribute('data-id');
+    } else if (e.target.closest('.employee-edit-btn')) {
+      const empId = e.target.closest('.employee-edit-btn').getAttribute('data-id');
       const employee = employees.find(emp => emp.id === empId);
       showEmployeeModal('Редактировать сотрудника', employee, (data) => {
         employee.name = data.name;
@@ -129,6 +133,12 @@ export function loadEmployees() {
       </div>
     `;
     mainContent.appendChild(modal);
+
+    modal.addEventListener('mousedown', (e) => {
+      if (e.target.classList.contains('employee-modal') && !window.getSelection().toString()) {
+        modal.remove();
+      }
+    });
 
     document.getElementById('employee-save-btn').addEventListener('click', () => {
       const name = document.getElementById('employee-name').value.trim();
