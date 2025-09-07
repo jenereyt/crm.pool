@@ -14,14 +14,14 @@ export async function loadClasses() {
   const groups = await getGroups();
   const rooms = await getRooms();
   const clients = await getClients();
+  const subscriptions = await getActiveSubscriptions();
 
   const header = document.createElement('header');
   header.className = 'header';
   header.innerHTML = `
-    <h1>Занятия</h1>
-    <div class="user-actions">
-      <span>Пользователь</span>
-      <button>Выход</button>
+    <div class="header-content">
+      <img src="images/icon-classes.svg" alt="Занятия" class="header-icon">
+      <h1>Занятия</h1>
     </div>
   `;
   mainContent.appendChild(header);
@@ -42,35 +42,66 @@ export async function loadClasses() {
   `;
   mainContent.appendChild(filterBar);
 
-  const classList = document.createElement('div');
-  classList.className = 'class-list';
-  mainContent.appendChild(classList);
+  const classTable = document.createElement('div');
+  classTable.className = 'class-table';
+  mainContent.appendChild(classTable);
+
+  function getClientFullName(client) {
+    const parts = [
+      client.lastName || '',
+      client.firstName || '',
+      client.patronymic || ''
+    ].filter(part => part.trim()).join(' ');
+    return parts.trim() || 'Без имени';
+  }
 
   function renderClasses() {
     const dateFilter = document.getElementById('class-date-filter').value;
     const trainerFilter = document.getElementById('class-trainer-filter').value;
     const groupFilter = document.getElementById('class-group-filter').value;
 
-    classList.innerHTML = scheduleData
+    const filteredClasses = scheduleData
       .filter(cls => (!dateFilter || cls.date === dateFilter) &&
         (!trainerFilter || cls.trainer === trainerFilter) &&
-        (!groupFilter || cls.group === groupFilter))
-      .map(cls => `
-        <div class="class-container" data-id="${cls.id}">
-          <h3>${escapeHtml(cls.name)}</h3>
-          <p>Зал: ${escapeHtml(rooms.find(r => r.id === cls.roomId)?.name || 'Не указан')}</p>
-          <p>Тип: ${cls.type === 'group' ? 'Групповой' : cls.type === 'individual' ? 'Индивидуальный' : 'Специальный'}</p>
-          <p>Тренер: ${escapeHtml(cls.trainer)}</p>
-          <p>Группа: ${escapeHtml(cls.group || 'Нет группы')}</p>
-          <p>Дни недели: ${cls.daysOfWeek?.length ? cls.daysOfWeek.map(d => escapeHtml(d)).join(', ') : 'Разовое'}</p>
-          <p>Дата: ${escapeHtml(cls.date)}</p>
-          <p>Время: ${escapeHtml(cls.startTime)}–${escapeHtml(cls.endTime)}</p>
-          <div class="class-actions">
-            <button class="class-edit-btn" data-id="${cls.id}">Редактировать</button>
-            <button class="class-delete-btn" data-id="${cls.id}">Удалить</button>
-          </div>
-        </div>
-      `).join('');
+        (!groupFilter || cls.group === groupFilter));
+
+    classTable.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>Название</th>
+            <th>Зал</th>
+            <th>Тип</th>
+            <th>Тренер</th>
+            <th>Группа</th>
+            <th>Дата</th>
+            <th>Время</th>
+            <th>Действия</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${filteredClasses.map(cls => `
+            <tr class="class-row" data-id="${cls.id}">
+              <td>${escapeHtml(cls.name)}</td>
+              <td>${escapeHtml(rooms.find(r => r.id === cls.roomId)?.name || 'Не указан')}</td>
+              <td>${cls.type === 'group' ? 'Групповой' : cls.type === 'individual' ? 'Индивидуальный' : 'Специальный'}</td>
+              <td>${escapeHtml(cls.trainer)}</td>
+              <td>${escapeHtml(cls.group || 'Нет группы')}</td>
+              <td>${escapeHtml(cls.date)}</td>
+              <td>${escapeHtml(cls.startTime)}–${escapeHtml(cls.endTime)}</td>
+              <td>
+                <button class="class-edit-btn" data-id="${cls.id}">
+                  <img src="images/icon-edit.svg" alt="Редактировать" class="action-icon">
+                </button>
+                <button class="class-delete-btn" data-id="${cls.id}">
+                  <img src="images/icon-delete.svg" alt="Удалить" class="action-icon">
+                </button>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
   }
 
   renderClasses();
@@ -89,7 +120,7 @@ export async function loadClasses() {
       alert('Нет доступных тренеров. Добавьте тренеров в разделе "Сотрудники".');
       return;
     }
-    showClassForm('Добавить занятие', {}, trainers, groups, rooms, clients, (data) => {
+    showClassForm('Добавить занятие', {}, trainers, groups, rooms, clients, subscriptions, (data) => {
       const classesToAdd = [];
       if (data.daysOfWeek && data.daysOfWeek.length > 0) {
         const startDate = new Date(data.date);
@@ -105,11 +136,14 @@ export async function loadClasses() {
               type: data.type,
               trainer: data.trainer,
               group: data.group,
-              clients: data.clients || [],
+              clientIds: data.clientIds || [],
               date: formatDate(d),
               startTime: data.startTime,
               endTime: data.endTime,
-              attendance: (data.clients || []).reduce((acc, client) => ({ ...acc, [client]: 'Пришёл' }), {}),
+              attendance: (data.clientIds || []).reduce((acc, clientId) => {
+                const client = clients.find(c => c.id === clientId);
+                return client ? { ...acc, [clientId]: 'Пришёл' } : acc;
+              }, {}),
               daysOfWeek: data.daysOfWeek
             });
           }
@@ -122,11 +156,14 @@ export async function loadClasses() {
           type: data.type,
           trainer: data.trainer,
           group: data.group,
-          clients: data.clients || [],
+          clientIds: data.clientIds || [],
           date: data.date,
           startTime: data.startTime,
           endTime: data.endTime,
-          attendance: (data.clients || []).reduce((acc, client) => ({ ...acc, [client]: 'Пришёл' }), {}),
+          attendance: (data.clientIds || []).reduce((acc, clientId) => {
+            const client = clients.find(c => c.id === clientId);
+            return client ? { ...acc, [clientId]: 'Пришёл' } : acc;
+          }, {}),
           daysOfWeek: data.daysOfWeek || []
         });
       }
@@ -136,10 +173,9 @@ export async function loadClasses() {
     });
   });
 
-  // Обработчик кликов на карточках
-  classList.addEventListener('click', async (e) => {
-    if (e.target.classList.contains('class-delete-btn')) {
-      const classId = e.target.getAttribute('data-id');
+  classTable.addEventListener('click', async (e) => {
+    if (e.target.closest('.class-delete-btn')) {
+      const classId = e.target.closest('.class-delete-btn').getAttribute('data-id');
       if (confirm('Удалить занятие?')) {
         scheduleData.splice(scheduleData.findIndex(cls => cls.id === classId), 1);
         renderClasses();
@@ -147,46 +183,44 @@ export async function loadClasses() {
       return;
     }
 
-    if (e.target.classList.contains('class-edit-btn')) {
-      const classId = e.target.getAttribute('data-id');
+    if (e.target.closest('.class-edit-btn')) {
+      const classId = e.target.closest('.class-edit-btn').getAttribute('data-id');
       const cls = scheduleData.find(cls => cls.id === classId);
       if (trainers.length === 0) {
         alert('Нет доступных тренеров. Добавьте тренеров в разделе "Сотрудники".');
         return;
       }
-      showClassForm('Редактировать занятие', cls, trainers, groups, rooms, clients, (data) => {
+      showClassForm('Редактировать занятие', cls, trainers, groups, rooms, clients, subscriptions, (data) => {
         cls.name = data.name;
         cls.roomId = data.roomId;
         cls.type = data.type;
         cls.trainer = data.trainer;
         cls.group = data.group;
-        cls.clients = data.clients;
+        cls.clientIds = data.clientIds;
         cls.date = data.date;
         cls.startTime = data.startTime;
         cls.endTime = data.endTime;
         cls.daysOfWeek = data.daysOfWeek;
-        cls.attendance = data.clients.reduce((acc, client) => ({
-          ...acc,
-          [client]: cls.attendance && cls.attendance[client] ? cls.attendance[client] : 'Пришёл'
-        }), {});
+        cls.attendance = data.clientIds.reduce((acc, clientId) => {
+          const client = clients.find(c => c.id === clientId);
+          return client ? { ...acc, [clientId]: cls.attendance && cls.attendance[clientId] ? cls.attendance[clientId] : 'Пришёл' } : acc;
+        }, {});
         renderClasses();
       });
       return;
     }
 
-    // Открытие журнала при клике на карточку
-    const card = e.target.closest('.class-container');
-    if (card && !e.target.closest('.class-actions')) {
-      const classId = card.getAttribute('data-id');
+    const row = e.target.closest('.class-row');
+    if (row && !e.target.closest('td:last-child')) {
+      const classId = row.getAttribute('data-id');
       const cls = scheduleData.find(c => c.id === classId);
       if (cls) {
-        showJournalModal(cls, clients);
+        showJournalModal(cls, clients, subscriptions);
       }
     }
   });
 
-  // --- Форма добавления/редактирования занятия ---
-  function showClassForm(title, cls = {}, trainers, groups, rooms, clients, callback) {
+  function showClassForm(title, cls = {}, trainers, groups, rooms, clients, subscriptions, callback) {
     const modal = document.createElement('div');
     modal.className = 'class-modal';
     modal.innerHTML = `
@@ -211,20 +245,11 @@ export async function loadClasses() {
           <option value="">Выберите группу (опционально)</option>
           ${groups.map(group => `<option value="${escapeHtml(group)}" ${cls.group === group ? 'selected' : ''}>${escapeHtml(group)}</option>`).join('')}
         </select>
-
-        <!-- Клиент-пикер -->
-        <div class="client-picker">
-          <label>Клиенты:</label>
-          <div class="client-search-container">
-            <input type="text" id="class-client-search" placeholder="Поиск клиента (имя или телефон)">
-            <div id="class-client-results" class="client-results"></div>
-          </div>
-          <div id="class-client-selected" class="client-selected">
-            <label>Выбранные:</label>
-            <div class="selected-chips"></div>
-          </div>
+        <button id="class-select-clients-btn">Выбрать клиентов</button>
+        <div id="class-selected-clients" class="selected-clients">
+          <label>Выбранные клиенты:</label>
+          <div class="selected-chips"></div>
         </div>
-
         <div class="days-of-week">
           <label>Дни недели:</label>
           <div class="days-of-week-buttons">
@@ -233,11 +258,9 @@ export async function loadClasses() {
             `).join('')}
           </div>
         </div>
-
         <input type="date" id="class-date" value="${cls.date || ''}" required>
         <input type="time" id="class-start" value="${cls.startTime || ''}" required>
         <input type="time" id="class-end" value="${cls.endTime || ''}" required>
-
         <div class="class-modal-actions">
           <button id="class-save-btn">Сохранить</button>
           <button id="class-cancel-btn">Отмена</button>
@@ -246,82 +269,42 @@ export async function loadClasses() {
     `;
     mainContent.appendChild(modal);
 
-    let selectedClients = Array.isArray(cls.clients) ? cls.clients.slice() : [];
-
-    const resultsEl = modal.querySelector('#class-client-results');
-    const selectedEl = modal.querySelector('.selected-chips');
-    const searchEl = modal.querySelector('#class-client-search');
-
-    function renderResults() {
-      const q = searchEl.value.trim().toLowerCase();
-      if (!q) {
-        resultsEl.classList.remove('visible');
-        resultsEl.innerHTML = '';
-        return;
-      }
-      const matches = clients
-        .filter(c => {
-          const name = (c.name || '').toLowerCase();
-          const phone = (c.phone || '').toLowerCase();
-          return name.includes(q) || phone.includes(q);
-        })
-        .slice(0, 10);
-      resultsEl.innerHTML = matches.map(c => `
-        <label class="client-checkbox-item" data-name="${escapeHtml(c.name)}">
-          <input type="checkbox" value="${escapeHtml(c.name)}" ${selectedClients.includes(c.name) ? 'checked' : ''} ${c.blacklisted ? 'disabled' : ''}>
-          <span>${escapeHtml(c.name)}${c.blacklisted ? ' (В чёрном списке)' : ''}</span>
-          <div class="client-phone">${escapeHtml(c.phone || '')}</div>
-        </label>
-      `).join('');
-      resultsEl.classList.add('visible');
-    }
-
-    function renderSelected() {
-      selectedEl.innerHTML = selectedClients.map(name => `
-        <span class="client-chip" data-name="${escapeHtml(name)}">
-          ${escapeHtml(name)} <button class="client-remove-btn" data-name="${escapeHtml(name)}">×</button>
-        </span>
-      `).join('');
-    }
-
-    renderResults();
-    renderSelected();
-
-    searchEl.addEventListener('input', renderResults);
-
-    resultsEl.addEventListener('change', (e) => {
-      if (e.target.matches('input[type="checkbox"]')) {
-        const name = e.target.value;
-        if (e.target.checked) {
-          if (!selectedClients.includes(name)) selectedClients.push(name);
-        } else {
-          selectedClients = selectedClients.filter(n => n !== name);
-        }
-        renderSelected();
-        resultsEl.classList.remove('visible');
-        searchEl.value = '';
-        renderResults();
+    modal.addEventListener('mousedown', (e) => {
+      if (e.target.classList.contains('class-modal') && !window.getSelection().toString()) {
+        modal.remove();
       }
     });
 
-    resultsEl.addEventListener('click', (e) => {
-      const item = e.target.closest('.client-checkbox-item');
-      if (!item) return;
-      const checkbox = item.querySelector('input[type="checkbox"]');
-      if (checkbox && !checkbox.disabled) {
-        checkbox.checked = !checkbox.checked;
-        const ev = new Event('change', { bubbles: true });
-        checkbox.dispatchEvent(ev);
-      }
-    });
+    let selectedClientIds = Array.isArray(cls.clientIds) ? cls.clientIds.slice() : [];
 
-    selectedEl.addEventListener('click', (e) => {
+    function renderSelectedClients() {
+      const selectedEl = modal.querySelector('.selected-chips');
+      selectedEl.innerHTML = selectedClientIds.map(clientId => {
+        const client = clients.find(c => c.id === clientId);
+        const fullName = client ? getClientFullName(client) : 'Неизвестный клиент';
+        return `
+          <span class="client-chip" data-clientid="${escapeHtml(clientId)}">
+            ${escapeHtml(fullName)} <button class="client-remove-btn" data-clientid="${escapeHtml(clientId)}">×</button>
+          </span>
+        `;
+      }).join('');
+    }
+
+    renderSelectedClients();
+
+    modal.querySelector('.selected-chips').addEventListener('click', (e) => {
       if (e.target.classList.contains('client-remove-btn')) {
-        const name = e.target.getAttribute('data-name');
-        selectedClients = selectedClients.filter(n => n !== name);
-        renderSelected();
-        renderResults();
+        const clientId = e.target.getAttribute('data-clientid');
+        selectedClientIds = selectedClientIds.filter(id => id !== clientId);
+        renderSelectedClients();
       }
+    });
+
+    modal.querySelector('#class-select-clients-btn').addEventListener('click', () => {
+      showClientPickerModal(clients, subscriptions, selectedClientIds, (newSelected) => {
+        selectedClientIds = newSelected;
+        renderSelectedClients();
+      });
     });
 
     modal.querySelectorAll('.day-button').forEach(button => {
@@ -348,7 +331,7 @@ export async function loadClasses() {
           alert('Время окончания должно быть позже времени начала!');
           return;
         }
-        callback({ name, roomId, type, trainer, group, clients: selectedClients, date, startTime, endTime, daysOfWeek });
+        callback({ name, roomId, type, trainer, group, clientIds: selectedClientIds, date, startTime, endTime, daysOfWeek });
         modal.remove();
       } else {
         alert('Заполните все поля корректно!');
@@ -360,8 +343,7 @@ export async function loadClasses() {
     });
   }
 
-  // --- Журнал ---
-  async function showJournalModal(cls, clientsList) {
+  async function showJournalModal(cls, clientsList, subscriptions) {
     const modal = document.createElement('div');
     modal.className = 'journal-modal';
     modal.innerHTML = `
@@ -372,11 +354,7 @@ export async function loadClasses() {
         </div>
         <p><strong>Дата:</strong> ${escapeHtml(cls.date || '—')} ${cls.startTime ? `, ${escapeHtml(cls.startTime)}–${escapeHtml(cls.endTime)}` : ''}</p>
         <div class="journal-controls">
-          <div class="client-search-container">
-            <input type="text" id="journal-search" placeholder="Поиск клиента">
-            <div id="journal-client-results" class="client-results"></div>
-          </div>
-          <button id="journal-add-client-btn">Добавить клиента</button>
+          <button id="journal-mark-all-btn">Отметить всех пришедшими</button>
         </div>
         <div>
           <table class="journal-table">
@@ -397,29 +375,40 @@ export async function loadClasses() {
     `;
     document.body.appendChild(modal);
 
+    modal.addEventListener('mousedown', (e) => {
+      if (e.target.classList.contains('journal-modal') && !window.getSelection().toString()) {
+        modal.remove();
+      }
+    });
+
     let journalClients = [];
-    if (Array.isArray(cls.clients) && cls.clients.length) {
-      journalClients = clientsList.filter(c => cls.clients.includes(c.name));
+    if (Array.isArray(cls.clientIds) && cls.clientIds.length) {
+      journalClients = clientsList.filter(c => cls.clientIds.includes(c.id) && (c.firstName || c.lastName || c.patronymic));
     } else if (cls.group) {
-      journalClients = clientsList.filter(c => Array.isArray(c.groups) && c.groups.includes(cls.group));
+      journalClients = clientsList.filter(c => Array.isArray(c.groups) && c.groups.includes(cls.group) && (c.firstName || c.lastName || c.patronymic));
     } else {
-      journalClients = clientsList.slice(0, 10);
+      journalClients = [];
     }
 
     cls.attendance = cls.attendance || {};
 
-    function renderJournal(filter = '') {
-      const q = filter.trim().toLowerCase();
+    function renderJournal() {
       const rows = journalClients
-        .filter(c => !q || c.name.toLowerCase().includes(q) || (c.phone || '').toLowerCase().includes(q))
+        .sort((a, b) => {
+          const aName = getClientFullName(a) || '';
+          const bName = getClientFullName(b) || '';
+          return aName.localeCompare(bName);
+        })
         .map(c => {
-          const status = cls.attendance[c.name] || 'Не пришёл';
+          const clientId = c.id;
+          const fullName = getClientFullName(c);
+          const status = cls.attendance[clientId] || 'Не пришёл';
           const disabled = c.blacklisted ? 'disabled' : '';
           const blackTag = c.blacklisted ? ' <small>(В чёрном списке)</small>' : '';
-          return `<tr data-name="${escapeHtml(c.name)}">
-                    <td>${escapeHtml(c.name)}${blackTag}</td>
+          return `<tr data-clientid="${escapeHtml(clientId)}">
+                    <td>${escapeHtml(fullName)}${blackTag}</td>
                     <td>
-                      <select class="journal-status" data-name="${escapeHtml(c.name)}" ${disabled}>
+                      <select class="journal-status" data-clientid="${escapeHtml(clientId)}" ${disabled}>
                         <option value="Пришёл" ${status === 'Пришёл' ? 'selected' : ''}>Пришёл</option>
                         <option value="Не пришёл" ${status === 'Не пришёл' ? 'selected' : ''}>Не пришёл</option>
                         <option value="Опоздал" ${status === 'Опоздал' ? 'selected' : ''}>Опоздал</option>
@@ -433,94 +422,27 @@ export async function loadClasses() {
 
     renderJournal();
 
-    const searchEl = modal.querySelector('#journal-search');
-    const resultsEl = modal.querySelector('#journal-client-results');
-
-    function renderSearchResults() {
-      const q = searchEl.value.trim().toLowerCase();
-      if (!q) {
-        resultsEl.classList.remove('visible');
-        resultsEl.innerHTML = '';
-        return;
-      }
-      const matches = clientsList
-        .filter(c => c.name.toLowerCase().includes(q) || (c.phone || '').toLowerCase().includes(q))
-        .slice(0, 10);
-      resultsEl.innerHTML = matches.map(c => `
-        <label class="client-checkbox-item" data-name="${escapeHtml(c.name)}">
-          <input type="checkbox" value="${escapeHtml(c.name)}" ${journalClients.find(j => j.name === c.name) ? 'checked' : ''} ${c.blacklisted ? 'disabled' : ''}>
-          <span>${escapeHtml(c.name)}${c.blacklisted ? ' (В чёрном списке)' : ''}</span>
-          <div class="client-phone">${escapeHtml(c.phone || '')}</div>
-        </label>
-      `).join('');
-      resultsEl.classList.add('visible');
-    }
-
-    searchEl.addEventListener('input', renderSearchResults);
-
-    resultsEl.addEventListener('change', (e) => {
-      if (e.target.matches('input[type="checkbox"]')) {
-        const name = e.target.value;
-        const clientObj = clientsList.find(c => c.name === name);
-        if (e.target.checked) {
-          if (!journalClients.find(j => j.name === name)) {
-            journalClients.push(clientObj);
-            if (!cls.clients) cls.clients = [];
-            if (!cls.clients.includes(name)) cls.clients.push(name);
-            cls.attendance[name] = cls.attendance[name] || 'Пришёл';
-          }
-        } else {
-          journalClients = journalClients.filter(c => c.name !== name);
-          cls.clients = cls.clients.filter(c => c !== name);
-          delete cls.attendance[name];
-        }
-        renderJournal(searchEl.value);
-        resultsEl.classList.remove('visible');
-        searchEl.value = '';
-        renderSearchResults();
-      }
-    });
-
-    resultsEl.addEventListener('click', (e) => {
-      const item = e.target.closest('.client-checkbox-item');
-      if (!item) return;
-      const checkbox = item.querySelector('input[type="checkbox"]');
-      if (checkbox && !checkbox.disabled) {
-        checkbox.checked = !checkbox.checked;
-        const ev = new Event('change', { bubbles: true });
-        checkbox.dispatchEvent(ev);
-      }
-    });
-
-    modal.querySelector('#journal-add-client-btn').addEventListener('click', () => {
-      showInlineClientPicker(modal, clientsList, (selectedNames) => {
-        selectedNames.forEach(name => {
-          const clientObj = clientsList.find(c => c.name === name);
-          if (clientObj && !journalClients.find(j => j.name === name)) {
-            journalClients.push(clientObj);
-            if (!cls.clients) cls.clients = [];
-            if (!cls.clients.includes(name)) cls.clients.push(name);
-            cls.attendance[name] = cls.attendance[name] || 'Пришёл';
-          }
-        });
-        renderJournal(modal.querySelector('#journal-search').value);
+    modal.querySelector('#journal-mark-all-btn').addEventListener('click', () => {
+      const selects = modal.querySelectorAll('.journal-status:not([disabled])');
+      selects.forEach(select => {
+        select.value = 'Пришёл';
       });
     });
 
     modal.querySelector('#journal-save-btn').addEventListener('click', async () => {
-      const rows = modal.querySelectorAll('#journal-tbody tr[data-name]');
+      const rows = modal.querySelectorAll('#journal-tbody tr[data-clientid]');
       rows.forEach(row => {
-        const name = row.getAttribute('data-name');
+        const clientId = row.getAttribute('data-clientid');
         const statusEl = row.querySelector('.journal-status');
-        cls.attendance[name] = statusEl ? statusEl.value : 'Не пришёл';
+        cls.attendance[clientId] = statusEl ? statusEl.value : 'Не пришёл';
       });
 
       const subs = await getActiveSubscriptions();
       for (const row of rows) {
-        const name = row.getAttribute('data-name');
+        const clientId = row.getAttribute('data-clientid');
         const statusEl = row.querySelector('.journal-status');
         if (statusEl && statusEl.value === 'Пришёл') {
-          const clientObj = clientsList.find(c => c.name === name);
+          const clientObj = clientsList.find(c => c.id === clientId);
           if (clientObj) {
             const sub = subs.find(s => s.clientId === clientObj.id && s.remainingClasses !== Infinity);
             if (sub && typeof sub.remainingClasses === 'number' && sub.remainingClasses > 0) {
@@ -538,108 +460,101 @@ export async function loadClasses() {
     modal.querySelector('#journal-back-btn').addEventListener('click', () => modal.remove());
   }
 
-  // --- Клиент-пикер ---
-  function showInlineClientPicker(parentModal, allClients, callback) {
-    const picker = document.createElement('div');
-    picker.className = 'inline-client-picker';
-    picker.innerHTML = `
-      <div class="client-search-container">
-        <input type="text" id="picker-search" placeholder="Поиск по имени или телефону">
-        <div id="picker-results" class="picker-results"></div>
-      </div>
-      <div id="picker-selected" class="picker-selected">
-        <label>Выбранные:</label>
-        <div class="selected-chips"></div>
-      </div>
-      <div>
-        <button id="picker-add-btn">Добавить выбранных</button>
-        <button id="picker-cancel-btn">Отмена</button>
+  function showClientPickerModal(clientsList, subscriptions, selectedClientIds, callback) {
+    const modal = document.createElement('div');
+    modal.className = 'client-picker-modal';
+    modal.innerHTML = `
+      <div class="client-picker-modal-content">
+        <h2>Выбор клиентов</h2>
+        <div class="client-search-container">
+          <input type="text" id="client-picker-search" placeholder="Поиск по ФИО или телефону">
+        </div>
+        <div class="client-picker-table">
+          <table>
+            <thead>
+              <tr>
+                <th></th>
+                <th>ФИО</th>
+                <th>Телефон</th>
+                <th>Статус</th>
+              </tr>
+            </thead>
+            <tbody id="client-picker-tbody"></tbody>
+          </table>
+        </div>
+        <div class="client-picker-actions">
+          <button id="client-picker-save-btn">Сохранить</button>
+          <button id="client-picker-cancel-btn">Отмена</button>
+        </div>
       </div>
     `;
-    parentModal.querySelector('.journal-modal-content').insertBefore(picker, parentModal.querySelector('#journal-tbody'));
+    document.body.appendChild(modal);
 
-    const pickerResults = picker.querySelector('#picker-results');
-    const pickerSelected = picker.querySelector('.selected-chips');
-    const pickerSearch = picker.querySelector('#picker-search');
-
-    let selected = [];
-
-    function renderPickerResults() {
-      const q = pickerSearch.value.trim().toLowerCase();
-      if (!q) {
-        pickerResults.classList.remove('visible');
-        pickerResults.innerHTML = '';
-        return;
+    modal.addEventListener('mousedown', (e) => {
+      if (e.target.classList.contains('client-picker-modal') && !window.getSelection().toString()) {
+        modal.remove();
       }
-      const items = allClients
-        .filter(c => c.name.toLowerCase().includes(q) || (c.phone || '').toLowerCase().includes(q))
-        .slice(0, 10)
-        .map(c => `
-          <label class="client-checkbox-item" data-name="${escapeHtml(c.name)}">
-            <input type="checkbox" value="${escapeHtml(c.name)}" ${selected.includes(c.name) ? 'checked' : ''} ${c.blacklisted ? 'disabled' : ''}>
-            <span>${escapeHtml(c.name)}${c.blacklisted ? ' (В чёрном списке)' : ''}</span>
-            <div class="client-phone">${escapeHtml(c.phone || '')}</div>
-          </label>
-        `).join('');
-      pickerResults.innerHTML = items;
-      pickerResults.classList.add('visible');
+    });
+
+    let currentSelected = [...selectedClientIds];
+
+    function renderClientTable(filter = '') {
+      const q = filter.trim().toLowerCase();
+      const validClients = clientsList.filter(c => c.id && (c.firstName || c.lastName || c.patronymic));
+      const rows = validClients
+        .filter(c => {
+          const fullName = getClientFullName(c).toLowerCase();
+          const phone = (c.phone || '').toLowerCase();
+          return !q || fullName.includes(q) || phone.includes(q);
+        })
+        .sort((a, b) => {
+          const aName = getClientFullName(a) || '';
+          const bName = getClientFullName(b) || '';
+          return aName.localeCompare(bName);
+        })
+        .map(c => {
+          const fullName = getClientFullName(c);
+          const hasSubscription = subscriptions.some(s => s.clientId === c.id && s.remainingClasses > 0);
+          const status = c.blacklisted ? 'В чёрном списке' : hasSubscription ? 'Активная подписка' : 'Нет подписки';
+          const disabled = c.blacklisted ? 'disabled' : '';
+          return `
+            <tr>
+              <td>
+                <input type="checkbox" value="${escapeHtml(c.id)}" ${currentSelected.includes(c.id) ? 'checked' : ''} ${disabled}>
+              </td>
+              <td>${escapeHtml(fullName)}</td>
+              <td>${escapeHtml(c.phone || '—')}</td>
+              <td>${status}</td>
+            </tr>
+          `;
+        }).join('');
+      modal.querySelector('#client-picker-tbody').innerHTML = rows || '<tr><td colspan="4">Нет клиентов</td></tr>';
     }
 
-    function renderSelectedChips() {
-      pickerSelected.innerHTML = selected.map(n => `
-        <span class="client-chip" data-name="${escapeHtml(n)}">
-          ${escapeHtml(n)} <button class="picker-remove" data-name="${escapeHtml(n)}">×</button>
-        </span>
-      `).join('');
-    }
+    renderClientTable();
 
-    renderPickerResults();
-    renderSelectedChips();
+    modal.querySelector('#client-picker-search').addEventListener('input', (e) => {
+      renderClientTable(e.target.value);
+    });
 
-    pickerSearch.addEventListener('input', renderPickerResults);
-
-    pickerResults.addEventListener('change', (e) => {
-      if (e.target.matches('input[type="checkbox"]')) {
-        const name = e.target.value;
+    modal.querySelector('#client-picker-tbody').addEventListener('change', (e) => {
+      if (e.target.type === 'checkbox') {
+        const clientId = e.target.value;
         if (e.target.checked) {
-          if (!selected.includes(name)) selected.push(name);
+          if (!currentSelected.includes(clientId)) currentSelected.push(clientId);
         } else {
-          selected = selected.filter(n => n !== name);
+          currentSelected = currentSelected.filter(id => id !== clientId);
         }
-        renderSelectedChips();
-        pickerResults.classList.remove('visible');
-        pickerSearch.value = '';
-        renderPickerResults();
       }
     });
 
-    pickerResults.addEventListener('click', (e) => {
-      const item = e.target.closest('.client-checkbox-item');
-      if (!item) return;
-      const checkbox = item.querySelector('input[type="checkbox"]');
-      if (checkbox && !checkbox.disabled) {
-        checkbox.checked = !checkbox.checked;
-        const ev = new Event('change', { bubbles: true });
-        checkbox.dispatchEvent(ev);
-      }
+    modal.querySelector('#client-picker-save-btn').addEventListener('click', () => {
+      callback(currentSelected);
+      modal.remove();
     });
 
-    pickerSelected.addEventListener('click', (e) => {
-      if (e.target.classList.contains('picker-remove')) {
-        const name = e.target.getAttribute('data-name');
-        selected = selected.filter(n => n !== name);
-        renderSelectedChips();
-        renderPickerResults();
-      }
-    });
-
-    picker.querySelector('#picker-add-btn').addEventListener('click', () => {
-      callback(selected);
-      picker.remove();
-    });
-
-    picker.querySelector('#picker-cancel-btn').addEventListener('click', () => {
-      picker.remove();
+    modal.querySelector('#client-picker-cancel-btn').addEventListener('click', () => {
+      modal.remove();
     });
   }
 
@@ -656,3 +571,4 @@ export async function loadClasses() {
 export function getClasses() {
   return scheduleData ? scheduleData.map(cls => cls.name) : [];
 }
+
