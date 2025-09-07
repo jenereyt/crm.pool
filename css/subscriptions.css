@@ -1,35 +1,45 @@
-/* Стили для страницы Абонементы */
+:root {
+  --primary-color: #007bff;
+  --danger-color: #dc3545;
+  --secondary-color: #6c757d;
+  --background-color: #ffffff;
+  --text-color: #333;
+  --border-color: #e0e0e0;
+  --shadow-color: rgba(0, 0, 0, 0.1);
+}
+
 .template-section {
-  padding: 10px;
+  padding: 12px;
   max-height: 200px;
   overflow-y: auto;
+  margin: 0 8px;
 }
 
 .subscription-section {
-  padding: 10px;
+  padding: 12px;
   flex: 1;
+  margin: 0 8px;
 }
 
 .template-section h2,
 .subscription-section h2 {
-  margin: 0 0 8px;
+  margin: 0 0 10px;
   font-size: 1.2em;
-  color: #333;
+  color: var(--text-color);
   text-align: left;
   font-weight: 600;
 }
 
-/* Обновленные стили для табов и поиска */
 .subscription-tabs {
-  margin-bottom: 8px;
-  padding-left: 15px;
+  margin: 10px 8px;
 }
 
 .tabs-and-filter {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 15px;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .tab-buttons {
@@ -45,30 +55,32 @@
   cursor: pointer;
   font-size: 0.85em;
   font-weight: 500;
-  transition: background 0.2s, color 0.2s;
+  transition: background 0.2s, color 0.2s, transform 0.1s;
 }
 
 .tab-button.active {
-  background-color: #007bff;
+  background-color: var(--primary-color);
   color: white;
 }
 
 .tab-button:hover {
   background-color: #0056b3;
   color: white;
+  transform: translateY(-1px);
 }
 
-/* Стили для поиска рядом с табами */
 .filter-input {
   padding: 6px 12px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-color);
   border-radius: 4px;
   font-size: 0.85em;
   width: 200px;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .filter-input:focus {
-  border-color: #007bff;
+  border-color: var(--primary-color);
   outline: none;
 }
 
@@ -79,11 +91,11 @@
 }
 
 .template-container {
-  background-color: #ffffff;
-  border: 1px solid #e0e0e0;
+  background-color: var(--background-color);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   padding: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px var(--shadow-color);
   transition: transform 0.2s, box-shadow 0.2s;
   display: flex;
   justify-content: space-between;
@@ -93,13 +105,13 @@
 
 .template-container:hover {
   transform: translateY(-1px);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 6px var(--shadow-color);
 }
 
 .template-info h3 {
   margin: 0 0 4px;
   font-size: 0.95em;
-  color: #333;
+  color: var(--text-color);
 }
 
 .template-info p {
@@ -114,8 +126,8 @@
 }
 
 .template-action-icon {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   background: none;
   border: none;
   cursor: pointer;
@@ -126,74 +138,64 @@
 }
 
 .template-action-icon img {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
 }
 
-.template-action-icon.edit {
-  color: #007bff;
-}
-
-.template-action-icon.edit:hover {
-  color: #0056b3;
-}
-
-.template-action-icon.delete {
-  color: #dc3545;
-}
-
-.template-action-icon.delete:hover {
-  color: #b02a37;
-}
-
-.template-action-icon[title]:hover::after {
-  content: attr(title);
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background-color: #333;
-  color: #fff;
-  padding: 4px 8px;
-  border-radius: 4px;
-  white-space: nowrap;
-  font-size: 0.7em;
-  pointer-events: none;
-  opacity: 1;
-  transition: opacity 0.1s;
-  z-index: 1001;
+.template-action-icon:hover img {
+  filter: brightness(0.8);
 }
 
 .template-action-icon[title]::after {
+  content: attr(title);
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #333;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.7em;
+  white-space: nowrap;
   opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s, visibility 0.2s;
+  z-index: 1001;
+}
+
+.template-action-icon:hover::after {
+  opacity: 1;
+  visibility: visible;
 }
 
 .subscription-table {
   max-height: calc(80vh - 30px);
   overflow-y: auto;
   padding-right: 5px;
+  margin: 0 8px;
 }
 
 .subscription-table table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.85em;
-  background-color: #ffffff;
+  background-color: var(--background-color);
   border-radius: 6px;
   overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px var(--shadow-color);
 }
 
 .subscription-table th,
 .subscription-table td {
   padding: 8px;
   text-align: left;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .subscription-table th {
   background-color: #f8f9fa;
-  color: #333;
+  color: var(--text-color);
   font-weight: 600;
   position: sticky;
   top: 0;
@@ -207,7 +209,7 @@
 .subscription-table tr:hover {
   background-color: #f1f3f5;
 }
-  
+
 .subscription-table td {
   color: #666;
 }
@@ -216,14 +218,16 @@
   color: #134d20;
   background-color: #28a74670;
   font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 4px;
 }
 
 .subscription-table .status-inactive {
-  color: #dc3545;
+  color: var(--danger-color);
   background-color: #ffebee;
   font-weight: 500;
-  border-radius: 4px;
   padding: 4px 8px;
+  border-radius: 4px;
 }
 
 .subscription-actions {
@@ -233,8 +237,8 @@
 }
 
 .subscription-action-icon {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   background: none;
   border: none;
   cursor: pointer;
@@ -244,65 +248,46 @@
   position: relative;
 }
 
+.subscription-action-icon img {
+  width: 16px;
+  height: 16px;
+}
+
+.subscription-action-icon:hover img {
+  filter: brightness(0.8);
+}
+
+.subscription-action-icon[title]::after {
+  content: attr(title);
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #333;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.7em;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s, visibility 0.2s;
+  z-index: 1001;
+}
+
+.subscription-action-icon:hover::after {
+  opacity: 1;
+  visibility: visible;
+}
+
 .subscription-action-icon:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.subscription-add {
-  background-color: #0056b3;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  padding: 5px;
-}
-
-.subscription-action-icon img {
-  width: 18px;
-  height: 18px;
-}
-
-.subscription-action-icon.edit {
-  color: #007bff;
-}
-
-.subscription-action-icon.edit:hover:not(:disabled) {
-  color: #0056b3;
-}
-
-.subscription-action-icon.delete {
-  color: #dc3545;
-}
-
-.subscription-action-icon.delete:hover:not(:disabled) {
-  color: #b02a37;
-}
-
-.subscription-action-icon[title]:hover::after {
-  content: attr(title);
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background-color: #333;
-  color: #fff;
-  padding: 4px 8px;
-  border-radius: 4px;
-  white-space: nowrap;
-  font-size: 0.7em;
-  pointer-events: none;
-  opacity: 1;
-  transition: opacity 0.1s;
-  z-index: 1001;
-}
-
-.subscription-action-icon[title]::after {
-  opacity: 0;
-}
-
 .subscription-add-btn {
   padding: 8px 16px;
-  background-color: #007bff;
+  background-color: var(--primary-color);
   color: white;
   border: none;
   border-radius: 4px;
@@ -330,6 +315,7 @@
   justify-content: center;
   align-items: center;
   z-index: 1000;
+  padding: 8px;
 }
 
 .subscription-modal-content,
@@ -337,14 +323,14 @@
 .subscription-details-content,
 .renew-subscription-content,
 .subscription-form-content {
-  background-color: #f9f9f9;
-  padding: 15px;
-  border-radius: 12px;
+  background-color: var(--background-color);
+  padding: 12px;
+  border-radius: 8px;
   width: 90%;
   max-width: 600px;
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
   max-height: 85vh;
   overflow-y: auto;
+  box-shadow: 0 4px 12px var(--shadow-color);
 }
 
 .subscription-modal-content h2,
@@ -352,9 +338,9 @@
 .subscription-details-content h2,
 .renew-subscription-content h2,
 .subscription-form-content h2 {
-  margin: 0 0 12px;
-  font-size: 1.4em;
-  color: #007bff;
+  margin: 0 0 10px;
+  font-size: 1.3em;
+  color: var(--primary-color);
   text-align: center;
   font-weight: 600;
 }
@@ -364,14 +350,14 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 15px;
+  margin-bottom: 12px;
 }
 
 .renew-close,
 .subscription-form-close {
   background: none;
   border: none;
-  font-size: 1.5em;
+  font-size: 1.4em;
   cursor: pointer;
   color: #666;
 }
@@ -380,23 +366,23 @@
 .subscription-form-body {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 12px;
 }
 
 .current-subscription-info {
-  background-color: #ffffff;
+  background-color: #f9f9f9;
   padding: 10px;
   border-radius: 6px;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--border-color);
 }
 
 .current-subscription-info h3 {
   margin: 0 0 8px;
   font-size: 1.1em;
-  color: #333;
+  color: var(--text-color);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .current-subscription-info .icon {
@@ -422,11 +408,11 @@
 }
 
 .value {
-  color: #333;
+  color: var(--text-color);
 }
 
 .low-classes {
-  color: #dc3545;
+  color: var(--danger-color);
   font-weight: 500;
 }
 
@@ -436,17 +422,17 @@
 }
 
 .status-inactive {
-  color: #dc3545;
+  color: var(--danger-color);
   font-weight: 500;
 }
 
 .renewal-history-section {
-  margin-top: 10px;
+  margin-top: 8px;
 }
 
 .renewal-history-section h4 {
   margin: 0 0 4px;
-  font-size: 0.95em;
+  font-size: 0.9em;
 }
 
 .renewal-list {
@@ -458,19 +444,19 @@
 }
 
 .renewal-form {
-  background-color: #ffffff;
+  background-color: #f9f9f9;
   padding: 10px;
   border-radius: 6px;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--border-color);
 }
 
 .renewal-form h3 {
   margin: 0 0 8px;
   font-size: 1.1em;
-  color: #333;
+  color: var(--text-color);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .renewal-form .icon {
@@ -495,26 +481,26 @@
 
 .form-group label.required::after {
   content: '*';
-  color: #dc3545;
+  color: var(--danger-color);
   margin-left: 4px;
 }
 
 .checkbox-label {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   font-size: 0.85em;
 }
 
 .checkmark {
   width: 16px;
   height: 16px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-color);
   border-radius: 4px;
 }
 
-.checkbox-label input:checked+.checkmark {
-  background-color: #007bff;
+.checkbox-label input:checked + .checkmark {
+  background-color: var(--primary-color);
 }
 
 .field-hint {
@@ -531,7 +517,7 @@
 
 .day-button {
   padding: 4px 8px;
-  border: 1px solid #007bff;
+  border: 1px solid var(--primary-color);
   border-radius: 4px;
   background-color: #fff;
   cursor: pointer;
@@ -544,7 +530,7 @@
 }
 
 .day-button.selected {
-  background-color: #007bff;
+  background-color: var(--primary-color);
   color: white;
 }
 
@@ -552,34 +538,40 @@
 .subscription-form-footer {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  margin-top: 15px;
-}
-
-.btn-secondary {
-  padding: 8px 16px;
-  background-color: #6c757d;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.btn-secondary:hover {
-  background-color: #5a6268;
+  gap: 8px;
+  margin-top: 12px;
 }
 
 .btn-primary {
   padding: 8px 16px;
-  background-color: #007bff;
+  background-color: var(--primary-color);
   color: white;
   border: none;
   border-radius: 4px;
   cursor: pointer;
+  font-size: 0.9em;
+  transition: background 0.2s, transform 0.1s;
 }
 
 .btn-primary:hover {
   background-color: #0056b3;
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  padding: 8px 16px;
+  background-color: var(--secondary-color);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9em;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.btn-secondary:hover {
+  background-color: #5a6268;
+  transform: translateY(-1px);
 }
 
 .subscription-modal-content input,
@@ -593,7 +585,7 @@
   width: 100%;
   padding: 6px;
   margin-bottom: 8px;
-  border: 1px solid #007bff;
+  border: 1px solid var(--border-color);
   border-radius: 4px;
   font-size: 0.85em;
   box-sizing: border-box;
@@ -607,7 +599,7 @@
 .renew-subscription-content select:focus,
 .subscription-form-content input:focus,
 .subscription-form-content select:focus {
-  border-color: #0056b3;
+  border-color: var(--primary-color);
   outline: none;
 }
 
@@ -617,79 +609,288 @@
   font-size: 0.85em;
 }
 
-.tooltip {
-  cursor: help;
-  color: #007bff;
-  margin-left: 4px;
+.filter-bar {
+  margin: 10px 8px;
 }
 
-.tooltip:hover::after {
-  content: attr(title);
-  position: absolute;
-  background-color: #333;
-  color: #fff;
-  padding: 4px 8px;
-  border-radius: 4px;
-  white-space: nowrap;
-  font-size: 0.7em;
-  z-index: 10;
-  margin-left: 5px;
-}
-
-.subscription-modal-actions,
-.template-modal-actions,
-.subscription-details-actions,
-.renew-subscription-modal-actions {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  margin-top: 12px;
-}
-
-.subscription-modal-actions button,
-.template-modal-actions button,
-.subscription-details-actions button,
-.renew-subscription-modal-actions button {
+.subscription-add-btn {
   padding: 8px 16px;
+  background-color: var(--primary-color);
+  color: white;
   border: none;
   border-radius: 4px;
   cursor: pointer;
   font-size: 0.9em;
   font-weight: 500;
-  transition: background 0.2s;
 }
 
-#subscription-save-btn,
-#template-save-btn,
-#subscription-renew-btn,
-#renew-save-btn {
-  background-color: #007bff;
-  color: white;
+/* Промежуточная адаптивность (600px) */
+@media (max-width: 600px) {
+  .template-section,
+  .subscription-section,
+  .subscription-tabs,
+  .filter-bar {
+    margin: 0 4px;
+    padding: 8px;
+  }
+
+  .template-list {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  }
+
+  .template-container {
+    padding: 6px;
+    min-height: 40px;
+  }
+
+  .template-info h3 {
+    font-size: 0.9em;
+  }
+
+  .template-info p {
+    font-size: 0.7em;
+  }
+
+  .template-action-icon {
+    width: 18px;
+    height: 18px;
+  }
+
+  .template-action-icon img {
+    width: 14px;
+    height: 14px;
+  }
+
+  .subscription-table {
+    overflow-x: auto;
+  }
+
+  .subscription-table th,
+  .subscription-table td {
+    padding: 6px;
+    font-size: 0.8em;
+  }
+
+  .subscription-action-icon {
+    width: 18px;
+    height: 18px;
+  }
+
+  .subscription-action-icon img {
+    width: 14px;
+    height: 14px;
+  }
+
+  .tabs-and-filter {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .filter-input {
+    width: 100%;
+  }
+
+  .tab-button {
+    padding: 5px 10px;
+    font-size: 0.8em;
+  }
+
+  .subscription-modal-content,
+  .template-modal-content,
+  .subscription-details-content,
+  .renew-subscription-content,
+  .subscription-form-content {
+    padding: 10px;
+    max-width: 95%;
+  }
+
+  .subscription-modal-content h2,
+  .template-modal-content h2,
+  .subscription-details-content h2,
+  .renew-subscription-content h2,
+  .subscription-form-content h2 {
+    font-size: 1.2em;
+  }
+
+  .info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-grid {
+    gap: 8px;
+  }
+
+  .form-group label,
+  .info-item {
+    font-size: 0.8em;
+  }
+
+  .renew-footer,
+  .subscription-form-footer {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .btn-primary,
+  .btn-secondary {
+    width: 100%;
+    padding: 6px;
+    font-size: 0.8em;
+  }
+
+  .days-of-week-selector {
+    gap: 3px;
+  }
+
+  .day-button {
+    padding: 3px 6px;
+    font-size: 0.75em;
+  }
 }
 
-#subscription-save-btn:hover,
-#template-save-btn:hover,
-#subscription-renew-btn:hover,
-#renew-save-btn:hover {
-  background-color: #0056b3;
-}
+/* Адаптивность для 350px */
+@media (max-width: 350px) {
+  .template-section,
+  .subscription-section,
+  .subscription-tabs,
+  .filter-bar {
+    margin: 0 2px;
+    padding: 6px;
+  }
 
-#subscription-cancel-btn,
-#template-cancel-btn,
-#subscription-close-btn,
-#renew-cancel-btn {
-  background-color: #dc3545;
-  color: white;
-}
+  .template-section h2,
+  .subscription-section h2 {
+    font-size: 1.1em;
+  }
 
-.filter-bar{
-  margin-top: 10px;
-  margin-left: 10px;
-}
+  .template-list {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
 
-#subscription-cancel-btn:hover,
-#template-cancel-btn:hover,
-#subscription-close-btn:hover,
-#renew-cancel-btn:hover {
-  background-color: #b02a37;
+  .template-container {
+    padding: 5px;
+    min-height: 36px;
+  }
+
+  .template-info h3 {
+    font-size: 0.85em;
+  }
+
+  .template-info p {
+    font-size: 0.65em;
+  }
+
+  .template-action-icon {
+    width: 16px;
+    height: 16px;
+  }
+
+  .template-action-icon img {
+    width: 14px;
+    height: 14px;
+  }
+
+  .template-action-icon[title]::after {
+    font-size: 0.65em;
+    padding: 3px 6px;
+    top: -18px;
+  }
+
+  .subscription-table th,
+  .subscription-table td {
+    padding: 5px;
+    font-size: 0.75em;
+  }
+
+  .subscription-action-icon {
+    width: 16px;
+    height: 16px;
+  }
+
+  .subscription-action-icon img {
+    width: 14px;
+    height: 14px;
+  }
+
+  .subscription-action-icon[title]::after {
+    font-size: 0.65em;
+    padding: 3px 6px;
+    top: -18px;
+  }
+
+  .tab-button {
+    padding: 4px 8px;
+    font-size: 0.75em;
+  }
+
+  .filter-input {
+    padding: 5px;
+    font-size: 0.75em;
+  }
+
+  .subscription-add-btn {
+    padding: 6px 12px;
+    font-size: 0.8em;
+  }
+
+  .subscription-modal-content,
+  .template-modal-content,
+  .subscription-details-content,
+  .renew-subscription-content,
+  .subscription-form-content {
+    padding: 8px;
+    max-width: 95%;
+  }
+
+  .subscription-modal-content h2,
+  .template-modal-content h2,
+  .subscription-details-content h2,
+  .renew-subscription-content h2,
+  .subscription-form-content h2 {
+    font-size: 1.1em;
+  }
+
+  .form-group label,
+  .info-item {
+    font-size: 0.75em;
+  }
+
+  .subscription-modal-content input,
+  .subscription-modal-content select,
+  .template-modal-content input,
+  .template-modal-content select,
+  .renew-subscription-content input,
+  .renew-subscription-content select,
+  .subscription-form-content input,
+  .subscription-form-content select {
+    padding: 5px;
+    font-size: 0.75em;
+  }
+
+  .days-of-week-selector {
+    gap: 2px;
+  }
+
+  .day-button {
+    padding: 2px 5px;
+    font-size: 0.7em;
+  }
+
+  .btn-primary,
+  .btn-secondary {
+    padding: 5px;
+    font-size: 0.75em;
+  }
+
+  .current-subscription-info .icon,
+  .renewal-form .icon {
+    width: 14px;
+    height: 14px;
+  }
+
+  .renew-close,
+  .subscription-form-close {
+    font-size: 1.2em;
+  }
 }

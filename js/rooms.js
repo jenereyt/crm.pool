@@ -16,10 +16,9 @@ export function loadRooms() {
   const header = document.createElement('header');
   header.className = 'header';
   header.innerHTML = `
-    <h1>Залы</h1>
-    <div class="user-actions">
-      <span>Пользователь</span>
-      <button>Выход</button>
+    <div class="header-content">
+      <img src="images/icon-rooms.svg" alt="Залы" class="header-icon">
+      <h1>Залы</h1>
     </div>
   `;
   mainContent.appendChild(header);
@@ -32,23 +31,39 @@ export function loadRooms() {
   `;
   mainContent.appendChild(filterBar);
 
-  const roomList = document.createElement('div');
-  roomList.className = 'room-list';
-  mainContent.appendChild(roomList);
+  const roomTable = document.createElement('div');
+  roomTable.className = 'room-table';
+  mainContent.appendChild(roomTable);
 
   function renderRooms() {
     const filter = document.getElementById('room-filter').value.toLowerCase();
-    roomList.innerHTML = rooms
-      .filter(room => room.name.toLowerCase().includes(filter))
-      .map(room => `
-        <div class="room-container" data-id="${room.id}">
-          <h3>${room.name}</h3>
-          <div class="room-actions">
-            <button class="room-edit-btn" data-id="${room.id}">Редактировать</button>
-            <button class="room-delete-btn" data-id="${room.id}">Удалить</button>
-          </div>
-        </div>
-      `).join('');
+    roomTable.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>Название</th>
+            <th>Действия</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rooms
+        .filter(room => room.name.toLowerCase().includes(filter))
+        .map(room => `
+              <tr class="room-row" id="${room.id}">
+                <td>${room.name}</td>
+                <td>
+                  <button class="room-edit-btn" data-id="${room.id}">
+                    <img src="images/icon-edit.svg" alt="Редактировать" class="action-icon">
+                  </button>
+                  <button class="room-delete-btn" data-id="${room.id}">
+                    <img src="images/trash.svg" alt="Удалить" class="action-icon">
+                  </button>
+                </td>
+              </tr>
+            `).join('')}
+        </tbody>
+      </table>
+    `;
   }
 
   renderRooms();
@@ -61,15 +76,15 @@ export function loadRooms() {
     });
   });
 
-  roomList.addEventListener('click', (e) => {
-    if (e.target.classList.contains('room-delete-btn')) {
-      const roomId = e.target.getAttribute('data-id');
+  roomTable.addEventListener('click', (e) => {
+    if (e.target.closest('.room-delete-btn')) {
+      const roomId = e.target.closest('.room-delete-btn').getAttribute('data-id');
       if (confirm('Удалить зал?')) {
         rooms = rooms.filter(room => room.id !== roomId);
         renderRooms();
       }
-    } else if (e.target.classList.contains('room-edit-btn')) {
-      const roomId = e.target.getAttribute('data-id');
+    } else if (e.target.closest('.room-edit-btn')) {
+      const roomId = e.target.closest('.room-edit-btn').getAttribute('data-id');
       const room = rooms.find(r => r.id === roomId);
       showRoomForm('Редактировать зал', room, (data) => {
         room.name = data.name;

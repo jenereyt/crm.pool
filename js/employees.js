@@ -13,10 +13,9 @@ export function loadEmployees() {
   const header = document.createElement('header');
   header.className = 'header';
   header.innerHTML = `
-    <h1>Сотрудники</h1>
-    <div class="user-actions">
-      <span>Пользователь</span>
-      <button>Выход</button>
+    <div class="header-content">
+      <img src="images/icon-employees.svg" alt="Employees Icon" class="header-icon">
+      <h1>Сотрудники</h1>
     </div>
   `;
   mainContent.appendChild(header);
@@ -35,22 +34,36 @@ export function loadEmployees() {
   `;
   mainContent.appendChild(filterBar);
 
-  const employeeList = document.createElement('div');
-  employeeList.className = 'employee-list';
-  mainContent.appendChild(employeeList);
+  const employeeTable = document.createElement('div');
+  employeeTable.className = 'employee-table';
+  mainContent.appendChild(employeeTable);
 
   function renderEmployees() {
-    employeeList.innerHTML = employees.map(emp => `
-      <div class="employee-container" id="${emp.id}" data-position="${emp.position}">
-        <h3>${emp.name}</h3>
-        <p>Должность: ${emp.position === 'trainer' ? 'Тренер' : emp.position === 'admin' ? 'Администратор' : 'Менеджер'}</p>
-        <p>Телефон: ${emp.phone}</p>
-        <div class="employee-actions">
-          <button class="employee-edit-btn" data-id="${emp.id}">Редактировать</button>
-          <button class="employee-delete-btn" data-id="${emp.id}">Удалить</button>
-        </div>
-      </div>
-    `).join('');
+    employeeTable.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>Имя</th>
+            <th>Должность</th>
+            <th>Телефон</th>
+            <th>Действия</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${employees.map(emp => `
+            <tr class="employee-row" id="${emp.id}" data-position="${emp.position}">
+              <td>${emp.name}</td>
+              <td>${emp.position === 'trainer' ? 'Тренер' : emp.position === 'admin' ? 'Администратор' : 'Менеджер'}</td>
+              <td>${emp.phone}</td>
+              <td>
+                <button class="employee-edit-btn" data-id="${emp.id}">Редактировать</button>
+                <button class="employee-delete-btn" data-id="${emp.id}">Удалить</button>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
   }
 
   renderEmployees();
@@ -76,7 +89,7 @@ export function loadEmployees() {
     });
   });
 
-  employeeList.addEventListener('click', (e) => {
+  employeeTable.addEventListener('click', (e) => {
     if (e.target.classList.contains('employee-delete-btn')) {
       const empId = e.target.getAttribute('data-id');
       employees = employees.filter(emp => emp.id !== empId);
@@ -137,11 +150,11 @@ export function loadEmployees() {
   function filterEmployees() {
     const searchTerm = filterInput.value.toLowerCase();
     const position = filterPosition.value;
-    const employeeBlocks = employeeList.querySelectorAll('.employee-container');
-    employeeBlocks.forEach(block => {
-      const name = block.querySelector('h3').textContent.toLowerCase();
-      const emp = employees.find(emp => emp.id === block.id);
-      block.classList.toggle('employee-hidden',
+    const employeeRows = employeeTable.querySelectorAll('.employee-row');
+    employeeRows.forEach(row => {
+      const name = row.querySelector('td').textContent.toLowerCase();
+      const emp = employees.find(emp => emp.id === row.id);
+      row.classList.toggle('employee-hidden',
         (searchTerm && !name.includes(searchTerm)) ||
         (position && emp.position !== position)
       );

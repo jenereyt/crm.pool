@@ -51,17 +51,14 @@ export function loadSubscriptions() {
   const header = document.createElement('header');
   header.className = 'header';
   header.innerHTML = `
-    <h1><img src="./images/icon-subscriptions.svg" alt=""> Абонементы</h1>
-    <div class="user-actions">
-      <span>Пользователь</span>
-    </div>
+    <h1><img src="./images/icon-subscriptions.svg" alt="Абонементы"> Абонементы</h1>
   `;
   mainContent.appendChild(header);
 
   const filterBar = document.createElement('div');
   filterBar.className = 'filter-bar';
   filterBar.innerHTML = `
-    <button class="subscription-add btn" id="subscription-add-btn">Добавить шаблон</button>
+    <button class="subscription-add btn-primary" id="subscription-add-btn">Добавить шаблон</button>
   `;
   mainContent.appendChild(filterBar);
 
@@ -112,8 +109,12 @@ export function loadSubscriptions() {
             <p>Осталось занятий: ${template.remainingClasses === Infinity ? 'Безлимит' : template.remainingClasses}</p>
           </div>
           <div class="template-actions">
-            <button class="template-action-icon edit" data-id="${template.id}" title="Редактировать"><img src="./images/icon-edit.svg" alt="Редактировать"></button>
-            <button class="template-action-icon delete" data-id="${template.id}" title="Удалить"><img src="./images/trash.svg" alt="Удалить"></button>
+            <button class="template-action-icon edit" data-id="${template.id}" title="Редактировать">
+              <img src="./images/icon-edit.svg" alt="Редактировать">
+            </button>
+            <button class="template-action-icon delete" data-id="${template.id}" title="Удалить">
+              <img src="./images/icon-delete.svg" alt="Удалить">
+            </button>
           </div>
         </div>
       `).join('');
@@ -124,24 +125,24 @@ export function loadSubscriptions() {
     const subscriptions = tab === 'active' ? getActiveSubscriptions() : getInactiveSubscriptions();
     const subscriptionTable = document.querySelector('.subscription-table');
     subscriptionTable.innerHTML = `
-    <table>
-      <thead>
-        <tr>
-          <th>Клиент</th>
-          <th>Номер</th>
-          <th>Тип</th>
-          <th>Период</th>
-          <th>Занятий</th>
-          <th>В неделю</th>
-          <th>Дни</th>
-          <th>Время</th>
-          <th>Группа</th>
-          <th>Статус</th>
-          <th>Действия</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${subscriptions
+      <table>
+        <thead>
+          <tr>
+            <th>Клиент</th>
+            <th>Номер</th>
+            <th>Тип</th>
+            <th>Период</th>
+            <th>Занятий</th>
+            <th>В неделю</th>
+            <th>Дни</th>
+            <th>Время</th>
+            <th>Группа</th>
+            <th>Статус</th>
+            <th>Действия</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${subscriptions
         .filter(sub => {
           const client = clients.find(c => c.id === sub.clientId);
           return client && `${client.surname} ${client.name} ${client.patronymic || ''}`.toLowerCase().includes(filter);
@@ -151,31 +152,35 @@ export function loadSubscriptions() {
           const template = subscriptionTemplates.find(t => t.id === sub.templateId);
           const fullName = `${client.surname} ${client.name} ${client.patronymic || ''}`;
           return `
-              <tr class="subscription-row" data-id="${sub.id}">
-                <td>${fullName}</td>
-                <td>#${sub.subscriptionNumber}</td>
-                <td>${template ? template.type : 'Неизвестный'}</td>
-                <td>${sub.startDate} — ${sub.endDate}</td>
-                <td>${sub.remainingClasses === Infinity ? '∞' : sub.remainingClasses}</td>
-                <td>${sub.classesPerWeek}</td>
-                <td>${sub.daysOfWeek.join(', ') || 'Не указаны'}</td>
-                <td>${sub.classTime}</td>
-                <td>${sub.group || 'Не указана'}</td>
-                <td class="status-${tab === 'active' ? 'active' : 'inactive'}">
-                  ${tab === 'active' ? 'Активный' : 'Неактивный'}
-                </td>
-                <td>
-                  <div class="subscription-actions">
-                    <button class="subscription-action-icon edit" data-id="${sub.id}" title="Редактировать"><img src="./images/icon-edit.svg" alt="Редактировать"></button>
-                    <button class="subscription-action-icon delete" data-id="${sub.id}" title="Удалить"><img src="./images/trash.svg" alt="Удалить"></button>
-                  </div>
-                </td>
-              </tr>
-            `;
+                <tr class="subscription-row" data-id="${sub.id}">
+                  <td>${fullName}</td>
+                  <td>#${sub.subscriptionNumber}</td>
+                  <td>${template ? template.type : 'Неизвестный'}</td>
+                  <td>${sub.startDate} — ${sub.endDate}</td>
+                  <td>${sub.remainingClasses === Infinity ? '∞' : sub.remainingClasses}</td>
+                  <td>${sub.classesPerWeek}</td>
+                  <td>${sub.daysOfWeek.join(', ') || 'Не указаны'}</td>
+                  <td>${sub.classTime}</td>
+                  <td>${sub.group || 'Не указана'}</td>
+                  <td class="status-${tab === 'active' ? 'active' : 'inactive'}">
+                    ${tab === 'active' ? 'Активный' : 'Неактивный'}
+                  </td>
+                  <td>
+                    <div class="subscription-actions">
+                      <button class="subscription-action-icon edit" data-id="${sub.id}" title="Редактировать">
+                        <img src="./images/icon-edit.svg" alt="Редактировать">
+                      </button>
+                      <button class="subscription-action-icon delete" data-id="${sub.id}" title="Удалить">
+                        <img src="./images/icon-delete.svg" alt="Удалить">
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              `;
         }).join('')}
-      </tbody>
-    </table>
-  `;
+        </tbody>
+      </table>
+    `;
   }
 
   renderTemplates();
@@ -225,11 +230,8 @@ export function loadSubscriptions() {
     const subRow = e.target.closest('.subscription-row');
     if (!subRow) return;
 
-    // Проверяем, есть ли выделенный текст
     const selection = window.getSelection();
-    if (selection.toString().length > 0) {
-      return;
-    }
+    if (selection.toString().length > 0) return;
 
     const subId = subRow.getAttribute('data-id');
     const [_, clientId, subscriptionNumber] = subId.split('_');
@@ -281,8 +283,8 @@ export function loadSubscriptions() {
           <input type="number" id="template-remaining-classes" placeholder="Осталось занятий" value="${template.remainingClasses && template.remainingClasses !== Infinity ? template.remainingClasses : ''}">
         </div>
         <div class="template-modal-actions">
-          <button id="template-save-btn">Сохранить</button>
-          <button id="template-cancel-btn">Отмена</button>
+          <button id="template-save-btn" class="btn-primary">Сохранить</button>
+          <button id="template-cancel-btn" class="btn-secondary">Отмена</button>
         </div>
       </div>
     `;
@@ -335,8 +337,8 @@ export function loadSubscriptions() {
       return entry.fromTemplate ? `${date}: ${entry.fromTemplate} → ${entry.toTemplate}` : date;
     }).join(', ') : 'Нет'}</p>
         <div class="subscription-details-actions">
-          <button id="subscription-renew-btn">Продлить</button>
-          <button id="subscription-close-btn">Закрыть</button>
+          <button id="subscription-renew-btn" class="btn-primary">Продлить</button>
+          <button id="subscription-close-btn" class="btn-secondary">Закрыть</button>
         </div>
       </div>
     `;
@@ -669,9 +671,7 @@ export function loadSubscriptions() {
     modal.querySelector('#subscription-cancel-btn').addEventListener('click', closeModal);
   }
 
-  // Функция для показа уведомлений (если не определена где-то еще)
   function showToast(message, type = 'info') {
-    // Простая реализация уведомлений
     if (typeof window.showToast === 'function') {
       window.showToast(message, type);
     } else {

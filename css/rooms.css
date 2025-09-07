@@ -1,133 +1,300 @@
-/* Стили для страницы Залы */
-.room-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 20px;
-    padding: 20px;
+.header-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-.room-container {
-    background-color: #ffffff;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    padding: 15px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    transition: transform 0.2s;
+.header-icon {
+  width: 24px;
+  height: 24px;
 }
 
-.room-container:hover {
-    transform: translateY(-2px);
+.header h1 {
+  margin: 0;
+  font-size: 24px;
+  color: #333;
+  font-weight: 500;
 }
 
-.room-container h3 {
-    margin: 0 0 10px;
-    font-size: 1.2em;
-    color: #333;
+.user-actions {
+  margin-left: auto;
 }
 
-.room-actions {
-    display: flex;
-    gap: 10px;
-    margin-top: 10px;
+.user-actions span {
+  padding: 6px 12px;
+  background: #e8ecef;
+  border-radius: 12px;
+  font-size: 0.85em;
+  color: #333;
 }
 
-.room-add-btn,
+/* Фильтр бар */
+.filter-bar {
+  display: flex;
+  gap: 10px;
+  padding: 15px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.filter-input {
+  flex: 1;
+  max-width: 300px;
+  padding: 8px 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  font-size: 0.9em;
+  outline: none;
+}
+
+.filter-input:focus {
+  border-color: #007bff;
+}
+
+.room-add-btn {
+  background-color: #0056b3;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9em;
+  font-weight: 500;
+}
+
+/* Таблица залов */
+.room-table {
+  background-color: #ffffff;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+}
+
+th, td {
+  padding: 10px;
+  text-align: left;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+th {
+  background-color: #007bff;
+  color: white;
+  font-weight: 500;
+}
+
+tr:hover {
+  background-color: #f8f9fa;
+}
+
+.room-row.employee-hidden {
+  display: none;
+}
+
 .room-edit-btn,
 .room-delete-btn {
-    background-color: #007bff;
-    color: white;
-    border: none;
-    padding: 8px 12px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.9em;
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  margin-right: 5px;
+  display: inline-flex;
+  align-items: center;
 }
 
-.room-add-btn:hover,
-.room-edit-btn:hover {
-    background-color: #0056b3;
+.action-icon {
+  width: 20px;
+  height: 20px;
 }
 
-.room-delete-btn {
-    background-color: #dc3545;
+.room-edit-btn:hover .action-icon {
+  filter: brightness(0.8);
 }
 
-.room-delete-btn:hover {
-    background-color: #b02a37;
+.room-delete-btn:hover .action-icon {
+  filter: brightness(0.8);
 }
 
+/* Модальное окно */
 .room-modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
 }
 
 .room-modal-content {
-    background-color: white;
-    padding: 20px;
-    border-radius: 8px;
-    width: 90%;
-    max-width: 400px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  background: #ffffff;
+  padding: 20px;
+  border-radius: 6px;
+  width: 90%;
+  max-width: 400px;
+  border: 1px solid #e0e0e0;
 }
 
 .room-modal-content h2 {
-    margin: 0 0 15px;
-    font-size: 1.5em;
-    color: #333;
+  margin: 0 0 15px;
+  font-size: 18px;
+  color: #333;
+  font-weight: 500;
 }
 
 .room-modal-content input {
-    width: 100%;
-    padding: 8px;
-    margin-bottom: 10px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 0.9em;
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 10px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+.room-modal-content input:focus {
+  border-color: #007bff;
 }
 
 .room-modal-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 .room-modal-actions button {
-    padding: 8px 12px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.9em;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9em;
 }
 
 .room-modal-actions button[id="room-save-btn"] {
-    background-color: #007bff;
-    color: white;
+  background-color: #007bff;
+  color: white;
 }
 
 .room-modal-actions button[id="room-save-btn"]:hover {
-    background-color: #0056b3;
+  background-color: #0056b3;
 }
 
 .room-modal-actions button[id="room-cancel-btn"] {
-    background-color: #6c757d;
-    color: white;
+  background-color: #6c757d;
+  color: white;
 }
 
 .room-modal-actions button[id="room-cancel-btn"]:hover {
-    background-color: #5a6268;
+  background-color: #5a6268;
 }
 
 /* Адаптивность */
 @media (max-width: 768px) {
-    .room-list {
-        grid-template-columns: 1fr;
-    }
+  .header {
+    padding: 10px 15px;
+  }
+
+  .header h1 {
+    font-size: 20px;
+  }
+
+  .header-icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  .filter-bar {
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .filter-input {
+    max-width: none;
+    width: 100%;
+  }
+
+  .room-add-btn {
+    width: 100%;
+    padding: 8px;
+  }
+
+  .room-table {
+    padding: 15px;
+  }
+
+  th, td {
+    padding: 8px;
+  }
+
+  .room-modal-content {
+    padding: 15px;
+    margin: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .header {
+    padding: 8px 12px;
+  }
+
+  .header h1 {
+    font-size: 18px;
+  }
+
+  .header-icon {
+    width: 18px;
+    height: 18px;
+  }
+
+  .user-actions span {
+    padding: 5px 10px;
+    font-size: 0.8em;
+  }
+
+  .filter-bar {
+    padding: 10px;
+  }
+
+  .room-add-btn {
+    font-size: 0.85em;
+  }
+
+  .room-table {
+    padding: 12px;
+  }
+
+  th, td {
+    padding: 6px;
+    font-size: 0.85em;
+  }
+
+  .action-icon {
+    width: 18px;
+    height: 18px;
+  }
+
+  .room-modal-content {
+    padding: 12px;
+    margin: 8px;
+  }
+
+  .room-modal-content h2 {
+    font-size: 16px;
+  }
+
+  .room-modal-content input {
+    font-size: 0.85em;
+  }
+
+  .room-modal-actions button {
+    padding: 6px 10px;
+    font-size: 0.85em;
+  }
 }
