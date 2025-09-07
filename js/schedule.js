@@ -1,67 +1,71 @@
 import { getTrainers } from './employees.js';
 import { getGroups } from './groups.js';
-import { getRooms } from './rooms.js';
+import { getRooms as getRoomsFromRooms } from './rooms.js';
 import { getClients } from './clients.js';
 import { getActiveSubscriptions, getSubscriptionTemplates } from './subscriptions.js';
 
+// Прокси-экспорт getRooms
+export function getRooms() {
+  return getRoomsFromRooms() || [
+    { id: 'room1', name: 'Зал 1' },
+    { id: 'room2', name: 'Зал 2' },
+    { id: 'room3', name: 'Зал 3' }
+  ];
+}
+
 export let scheduleData = [
   {
-    id: 'class1',
-    name: 'Аквааэробика',
-    roomId: 'room3',
+    id: 'class5',
+    name: 'Йога',
+    roomId: 'room1',
     type: 'group',
     trainer: 'Анна Иванова',
     group: 'Йога для начинающих',
-    clients: ['Иван Сергеев'],
-    date: '2025-08-01',
+    clients: ['Иван Иванов'],
+    date: '2025-09-05',
     startTime: '09:00',
-    endTime: '11:00',
-    attendance: { 'Иван Сергеев': 'Пришёл' },
-    daysOfWeek: ['Пн', 'Ср']
+    endTime: '10:00',
+    attendance: { 'Иван Иванов': 'Пришёл' },
+    daysOfWeek: ['Пн']
   },
   {
-    id: 'class2',
-    name: 'Плавание',
-    roomId: 'room1',
+    id: 'class6',
+    name: 'Фитнес',
+    roomId: 'room2',
     type: 'individual',
     trainer: 'Мария Петрова',
     group: '',
-    clients: ['Марина Ковалёва'],
-    date: '2025-08-01',
-    startTime: '09:00',
-    endTime: '10:00',
-    attendance: { 'Марина Ковалёва': 'Не пришёл' },
+    clients: ['Мария Петрова'],
+    date: '2025-09-05',
+    startTime: '18:00',
+    endTime: '19:00',
+    attendance: { 'Мария Петрова': 'Пришёл' },
     daysOfWeek: []
   },
   {
-    id: 'class3',
-    name: 'Зумба',
-    roomId: 'room4',
+    id: 'class7',
+    name: 'Пилатес',
+    roomId: 'room3',
     type: 'group',
     trainer: 'Олег Смирнов',
-    group: 'Зумба вечеринка',
-    clients: ['Алексей Попов'],
-    date: '2025-08-01',
-    startTime: '10:00',
-    endTime: '11:00',
-    attendance: { 'Алексей Попов': 'Опоздал' },
-    daysOfWeek: ['Вт', 'Чт']
-  },
-  {
-    id: 'class4',
-    name: 'Силовая тренировка',
-    roomId: 'room4',
-    type: 'special',
-    trainer: 'Елена Козлова',
-    group: '',
-    clients: [],
-    date: '2025-08-02',
-    startTime: '11:00',
-    endTime: '13:00',
-    attendance: {},
-    daysOfWeek: []
+    group: 'Пилатес',
+    clients: ['Ольга Кузнецова'],
+    date: '2025-09-05',
+    startTime: '19:00',
+    endTime: '20:00',
+    attendance: { 'Ольга Кузнецова': 'Пришёл' },
+    daysOfWeek: ['Ср']
   }
 ];
+
+export function setupModalClose(modal, closeModal, checkInnerSelection = false) {
+  modal.addEventListener('click', (e) => {
+    const selection = window.getSelection();
+    if (e.target === modal && (!checkInnerSelection || !modal.querySelector('.client-form-content, .schedule-modal-content, .journal-modal-content, .inline-client-picker')?.contains(selection.anchorNode))) {
+      closeModal();
+    }
+  });
+}
 
 export function loadSchedule() {
   const mainContent = document.getElementById('main-content');
@@ -70,18 +74,14 @@ export function loadSchedule() {
   const header = document.createElement('header');
   header.className = 'header';
   header.innerHTML = `
-    <h1>Расписание</h1>
-    <div class="user-actions">
-      <span>Пользователь</span>
-      <button>Выход</button>
-    </div>
+    <h1><img src="./images/icon-home.svg" alt="Расписание"> Расписание</h1>
   `;
   mainContent.appendChild(header);
 
   const filterBar = document.createElement('div');
   filterBar.className = 'filter-bar';
   filterBar.innerHTML = `
-    <input type="date" id="schedule-date-input" class="schedule-date-input" value="2025-08-01">
+    <input type="date" id="schedule-date-input" class="schedule-date-input" value="2025-09-05">
     <select id="schedule-group-filter" class="filter-select">
       <option value="">Все группы</option>
     </select>
@@ -102,7 +102,7 @@ export function loadSchedule() {
   groupSelect.innerHTML += groups.map(group => `<option value="${escapeHtml(group)}">${escapeHtml(group)}</option>`).join('');
 
   let viewMode = 'day';
-  let selectedDate = new Date('2025-08-01');
+  let selectedDate = new Date('2025-09-05');
 
   function renderSchedule() {
     scheduleContainer.innerHTML = '';
@@ -337,22 +337,8 @@ export function loadSchedule() {
 
     searchEl.addEventListener('input', renderResults);
 
-    resultsEl.addEventListener('change', (e) => {
-      if (e.target.matches('input[type="checkbox"]')) {
-        const name = e.target.value;
-        if (e.target.checked) {
-          if (!selectedClients.includes(name)) selectedClients.push(name);
-        } else {
-          selectedClients = selectedClients.filter(n => n !== name);
-        }
-        renderSelected();
-        resultsEl.classList.remove('visible');
-        searchEl.value = '';
-        renderResults();
-      }
-    });
-
     resultsEl.addEventListener('click', (e) => {
+      if (window.getSelection().toString().length > 0) return;
       const item = e.target.closest('.client-checkbox-item');
       if (!item) return;
       const checkbox = item.querySelector('input[type="checkbox"]');
@@ -364,6 +350,7 @@ export function loadSchedule() {
     });
 
     selectedEl.addEventListener('click', (e) => {
+      if (window.getSelection().toString().length > 0) return;
       if (e.target.classList.contains('client-remove-btn')) {
         const name = e.target.getAttribute('data-name');
         selectedClients = selectedClients.filter(n => n !== name);
@@ -373,12 +360,14 @@ export function loadSchedule() {
     });
 
     modal.querySelectorAll('.day-button').forEach(button => {
-      button.addEventListener('click', () => {
+      button.addEventListener('click', (e) => {
+        if (window.getSelection().toString().length > 0) return;
         button.classList.toggle('selected');
       });
     });
 
-    modal.querySelector('#schedule-save-btn').addEventListener('click', () => {
+    modal.querySelector('#schedule-save-btn').addEventListener('click', (e) => {
+      if (window.getSelection().toString().length > 0) return;
       const name = modal.querySelector('#schedule-class-name').value.trim();
       const roomId = modal.querySelector('#schedule-class-room').value;
       const type = modal.querySelector('#schedule-class-type').value;
@@ -405,6 +394,7 @@ export function loadSchedule() {
 
     if (cls.id) {
       modal.querySelector('#schedule-delete-btn').addEventListener('click', () => {
+        if (window.getSelection().toString().length > 0) return;
         const classId = cls.id;
         if (confirm('Удалить занятие?')) {
           scheduleData.splice(scheduleData.findIndex(c => c.id === classId), 1);
@@ -415,6 +405,7 @@ export function loadSchedule() {
     }
 
     modal.querySelector('#schedule-cancel-btn').addEventListener('click', () => {
+      if (window.getSelection().toString().length > 0) return;
       modal.remove();
     });
   }
@@ -448,6 +439,7 @@ export function loadSchedule() {
     mainContent.appendChild(modal);
 
     document.getElementById('schedule-edit-btn').addEventListener('click', () => {
+      if (window.getSelection().toString().length > 0) return;
       const trainers = getTrainers();
       const groupsList = getGroups();
       const roomsList = getRooms();
@@ -478,6 +470,7 @@ export function loadSchedule() {
     });
 
     document.getElementById('schedule-attendance-btn').addEventListener('click', () => {
+      if (window.getSelection().toString().length > 0) return;
       const clientsList = getClients();
       modal.remove();
       showJournalModal(cls, clientsList, (attendance) => {
@@ -487,6 +480,7 @@ export function loadSchedule() {
     });
 
     document.getElementById('schedule-delete-btn').addEventListener('click', () => {
+      if (window.getSelection().toString().length > 0) return;
       const classId = cls.id;
       if (confirm('Удалить занятие?')) {
         scheduleData.splice(scheduleData.findIndex(c => c.id === classId), 1);
@@ -496,6 +490,7 @@ export function loadSchedule() {
     });
 
     document.getElementById('schedule-close-btn').addEventListener('click', () => {
+      if (window.getSelection().toString().length > 0) return;
       modal.remove();
     });
   }
@@ -598,6 +593,18 @@ export function loadSchedule() {
 
     searchEl.addEventListener('input', renderSearchResults);
 
+    resultsEl.addEventListener('click', (e) => {
+      if (window.getSelection().toString().length > 0) return;
+      const item = e.target.closest('.client-checkbox-item');
+      if (!item) return;
+      const checkbox = item.querySelector('input[type="checkbox"]');
+      if (checkbox && !checkbox.disabled) {
+        checkbox.checked = !checkbox.checked;
+        const ev = new Event('change', { bubbles: true });
+        checkbox.dispatchEvent(ev);
+      }
+    });
+
     resultsEl.addEventListener('change', (e) => {
       if (e.target.matches('input[type="checkbox"]')) {
         const name = e.target.value;
@@ -621,18 +628,8 @@ export function loadSchedule() {
       }
     });
 
-    resultsEl.addEventListener('click', (e) => {
-      const item = e.target.closest('.client-checkbox-item');
-      if (!item) return;
-      const checkbox = item.querySelector('input[type="checkbox"]');
-      if (checkbox && !checkbox.disabled) {
-        checkbox.checked = !checkbox.checked;
-        const ev = new Event('change', { bubbles: true });
-        checkbox.dispatchEvent(ev);
-      }
-    });
-
     modal.querySelector('#journal-add-client-btn').addEventListener('click', () => {
+      if (window.getSelection().toString().length > 0) return;
       showInlineClientPicker(modal, clientsList, (selectedNames) => {
         selectedNames.forEach(name => {
           const clientObj = clientsList.find(c => c.name === name);
@@ -648,6 +645,7 @@ export function loadSchedule() {
     });
 
     modal.querySelector('#journal-save-btn').addEventListener('click', async () => {
+      if (window.getSelection().toString().length > 0) return;
       const rows = modal.querySelectorAll('#journal-tbody tr[data-name]');
       const attendance = {};
       rows.forEach(row => {
@@ -679,8 +677,14 @@ export function loadSchedule() {
       modal.remove();
     });
 
-    modal.querySelector('#journal-close-btn').addEventListener('click', () => modal.remove());
-    modal.querySelector('#journal-back-btn').addEventListener('click', () => modal.remove());
+    modal.querySelector('#journal-close-btn').addEventListener('click', () => {
+      if (window.getSelection().toString().length > 0) return;
+      modal.remove();
+    });
+    modal.querySelector('#journal-back-btn').addEventListener('click', () => {
+      if (window.getSelection().toString().length > 0) return;
+      modal.remove();
+    });
   }
 
   function showInlineClientPicker(parentModal, allClients, callback) {
@@ -702,17 +706,13 @@ export function loadSchedule() {
     `;
     parentModal.querySelector('.journal-modal-content').insertBefore(picker, parentModal.querySelector('#journal-tbody'));
 
-    const pickerResults = picker.querySelector('#picker-results');
-    const pickerSelected = picker.querySelector('.selected-chips');
-    const pickerSearch = picker.querySelector('#picker-search');
-
     let selected = [];
 
     function renderPickerResults() {
-      const q = pickerSearch.value.trim().toLowerCase();
+      const q = picker.querySelector('#picker-search').value.trim().toLowerCase();
       if (!q) {
-        pickerResults.classList.remove('visible');
-        pickerResults.innerHTML = '';
+        picker.querySelector('#picker-results').classList.remove('visible');
+        picker.querySelector('#picker-results').innerHTML = '';
         return;
       }
       const items = allClients
@@ -725,12 +725,12 @@ export function loadSchedule() {
             <div class="client-phone">${escapeHtml(c.phone || '')}</div>
           </label>
         `).join('');
-      pickerResults.innerHTML = items;
-      pickerResults.classList.add('visible');
+      picker.querySelector('#picker-results').innerHTML = items;
+      picker.querySelector('#picker-results').classList.add('visible');
     }
 
     function renderSelectedChips() {
-      pickerSelected.innerHTML = selected.map(n => `
+      picker.querySelector('.selected-chips').innerHTML = selected.map(n => `
         <span class="client-chip" data-name="${escapeHtml(n)}">
           ${escapeHtml(n)} <button class="picker-remove" data-name="${escapeHtml(n)}">×</button>
         </span>
@@ -740,9 +740,9 @@ export function loadSchedule() {
     renderPickerResults();
     renderSelectedChips();
 
-    pickerSearch.addEventListener('input', renderPickerResults);
+    picker.querySelector('#picker-search').addEventListener('input', renderPickerResults);
 
-    pickerResults.addEventListener('change', (e) => {
+    picker.querySelector('#picker-results').addEventListener('change', (e) => {
       if (e.target.matches('input[type="checkbox"]')) {
         const name = e.target.value;
         if (e.target.checked) {
@@ -751,13 +751,14 @@ export function loadSchedule() {
           selected = selected.filter(n => n !== name);
         }
         renderSelectedChips();
-        pickerResults.classList.remove('visible');
-        pickerSearch.value = '';
+        picker.querySelector('#picker-results').classList.remove('visible');
+        picker.querySelector('#picker-search').value = '';
         renderPickerResults();
       }
     });
 
-    pickerResults.addEventListener('click', (e) => {
+    picker.querySelector('#picker-results').addEventListener('click', (e) => {
+      if (window.getSelection().toString().length > 0) return;
       const item = e.target.closest('.client-checkbox-item');
       if (!item) return;
       const checkbox = item.querySelector('input[type="checkbox"]');
@@ -768,7 +769,8 @@ export function loadSchedule() {
       }
     });
 
-    pickerSelected.addEventListener('click', (e) => {
+    picker.querySelector('.selected-chips').addEventListener('click', (e) => {
+      if (window.getSelection().toString().length > 0) return;
       if (e.target.classList.contains('picker-remove')) {
         const name = e.target.getAttribute('data-name');
         selected = selected.filter(n => n !== name);
@@ -778,16 +780,19 @@ export function loadSchedule() {
     });
 
     picker.querySelector('#picker-add-btn').addEventListener('click', () => {
+      if (window.getSelection().toString().length > 0) return;
       callback(selected);
       picker.remove();
     });
 
     picker.querySelector('#picker-cancel-btn').addEventListener('click', () => {
+      if (window.getSelection().toString().length > 0) return;
       picker.remove();
     });
   }
 
   document.getElementById('schedule-day-view').addEventListener('click', () => {
+    if (window.getSelection().toString().length > 0) return;
     viewMode = 'day';
     document.getElementById('schedule-day-view').classList.add('active');
     document.getElementById('schedule-week-view').classList.remove('active');
@@ -795,6 +800,7 @@ export function loadSchedule() {
   });
 
   document.getElementById('schedule-week-view').addEventListener('click', () => {
+    if (window.getSelection().toString().length > 0) return;
     viewMode = 'week';
     document.getElementById('schedule-week-view').classList.add('active');
     document.getElementById('schedule-day-view').classList.remove('active');
@@ -802,6 +808,7 @@ export function loadSchedule() {
   });
 
   document.getElementById('schedule-date-input').addEventListener('change', (e) => {
+    if (window.getSelection().toString().length > 0) return;
     selectedDate = new Date(e.target.value);
     renderSchedule();
   });
@@ -809,6 +816,7 @@ export function loadSchedule() {
   document.getElementById('schedule-group-filter').addEventListener('change', renderSchedule);
 
   document.getElementById('schedule-add-btn').addEventListener('click', () => {
+    if (window.getSelection().toString().length > 0) return;
     const trainers = getTrainers();
     const groupsList = getGroups();
     const roomsList = getRooms();
@@ -865,6 +873,7 @@ export function loadSchedule() {
   });
 
   scheduleContainer.addEventListener('click', (e) => {
+    if (window.getSelection().toString().length > 0) return;
     const classElement = e.target.closest('.schedule-class');
     if (classElement) {
       const classId = classElement.getAttribute('data-id');

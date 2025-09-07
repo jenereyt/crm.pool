@@ -1,131 +1,307 @@
-.main-content {
-    flex: 1;
-    min-height: 100vh;
-    transition: margin-left 0.3s ease;
-    overflow: hidden;
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #f4f4f4;
+  /* УБИРАЕМ overflow: hidden - это и есть проблема! */
 }
 
-.main-content.sidebar-closed {
-    margin-left: 40px;
+header {
+  background-color: #007bff;
+  color: white;
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
 }
 
-.main-content.sidebar-open {
-    margin-left: 250px;
+header h1 {
+  color: black;
+  margin: 0;
+  font-size: 24px;
+  display: flex;
+  align-items: center;
 }
 
-.header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin: 0;
-    padding: 0;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-}
-
-.header h1 {
-    font-size: 24px;
-    color: #333;
-    padding: 10px;
-}
-
-.user-actions {
-    display: flex;
-    gap: 10px;
-    padding: 15px;
-    align-items: center;
-}
-
-.user-actions span {
-    color: #333;
-}
-
-.user-actions button {
-    padding: 5px 10px;
-    border: none;
-    border-radius: 3px;
-    background-color: #fff;
-    cursor: pointer;
-}
-
-.filter-bar {
-    display: flex;
-    gap: 10px;
-    margin: 20px;
-}
-
-.filter-input,
-.filter-select {
-    padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    font-size: 14px;
+header h1 img {
+  width: 24px;
+  height: 24px;
+  margin-right: 10px;
 }
 
 .content-blocks {
-    display: grid;
-    grid-template-areas:
-        "block1 block2 block3"
-        "large large large";
-    gap: 20px;
-    padding: 20px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 20px;
+  padding: 20px;
+  /* УБИРАЕМ фиксированную высоту - пусть контент определяет высоту */
+  box-sizing: border-box;
 }
 
 .content-block {
-    background-color: #6a9ab0;
-    min-height: 150px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #fff;
-    font-size: 16px;
-    transition: opacity 0.3s ease;
-}
-
-.content-block#block1 {
-    grid-area: block1;
-}
-
-.content-block#block2 {
-    grid-area: block2;
-}
-
-.content-block#block3 {
-    grid-area: block3;
-}
-
-.content-block.hidden {
-    opacity: 0;
-    height: 0;
-    margin: 0;
+  background-color: white;
+  border-radius: 10px;
+  padding: 10px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
 }
 
 .large-block {
-    grid-area: large;
-    background-color: #8b6f47;
-    min-height: 300px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #fff;
-    font-size: 16px;
+  grid-column: 1 / -1;
+  background-color: white;
+  border-radius: 10px;
+  padding: 15px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.content-block img, .large-block img {
+  width: 50px;
+  height: 50px;
+  margin-bottom: 10px;
+}
+
+.content-block h2, .large-block h2 {
+  font-size: 18px;
+  margin: 10px 0;
+}
+
+.badge {
+  background-color: #ff0000;
+  color: white;
+  border-radius: 50%;
+  padding: 5px 10px;
+  font-size: 16px;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.content-block ul {
+  list-style: none;
+  padding: 15px;
+  margin: 0;
+  text-align: left;
+  width: 100%;
+}
+
+.content-block li {
+  padding: 5px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.main-content {
+  /* УБИРАЕМ overflow: hidden отсюда тоже */
+}
+
+.main-content.sidebar-closed {
+  margin-left: 40px;
+  transition: margin-left 0.3s ease;
+}
+
+.main-content.sidebar-open {
+  margin-left: 250px;
+  transition: margin-left 0.3s ease;
+}
+
+.client-form-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.client-form-content {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  max-width: 600px;
+  width: 100%;
+  position: relative;
+  overflow-y: auto;
+  max-height: 80vh;
+}
+
+.client-form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.client-form-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.client-form-tabsgrupp tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.tab-button {
+  background: #e9ecef;
+  border: none;
+  padding: 10px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.tab-button.active {
+  background: #007bff;
+  color: white;
+}
+
+.client-form-tab-content {
+  display: none;
+}
+
+.client-form-tab-content.active {
+  display: block;
+}
+
+.parents-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.parents-table th, .parents-table td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+}
+
+.parents-table th {
+  background-color: #f2f2f2;
+}
+
+.client-form-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.btn-secondary {
+  background-color: #6c757d;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.btn-secondary:hover {
+  background-color: #5a6268;
+}
+
+.schedule-container {
+  width: 100%;
+  /* УБИРАЕМ ограничения по высоте - пусть расписание будет полной высоты */
+  overflow-x: auto;
+  /* Оставляем только горизонтальный скролл если нужно */
+}
+
+.schedule-table {
+  display: grid;
+  gap: 1px;
+  background: #ddd;
+  border-radius: 5px;
+  width: 100%;
+  box-sizing: border-box;
+  /* УБИРАЕМ min-height - пусть контент определяет высоту */
+}
+
+.schedule-row {
+  display: grid;
+  grid-template-columns: 60px repeat(auto-fit, minmax(150px, 1fr));
+  border-bottom: 1px solid #ddd;
+  min-height: 60px;
+}
+
+.schedule-header {
+  font-weight: bold;
+  background: #f8f9fa;
+}
+
+.schedule-time {
+  padding: 10px;
+  background: #fff;
+  border-right: 1px solid #ddd;
+}
+
+.schedule-cell {
+  padding: 10px;
+  background: #fff;
+  min-height: 60px;
+  position: relative;
+}
+
+.schedule-class {
+  background: #e9ecef;
+  border-radius: 5px;
+  padding: 5px;
+  margin: 2px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.schedule-group {
+  background: #d4edda;
+}
+
+.schedule-individual {
+  background: #d1ecf1;
+}
+
+.schedule-special {
+  background: #fff3cd;
 }
 
 @media (max-width: 768px) {
-    .main-content.sidebar-closed {
-        margin-left: 40px;
-    }
+  .content-blocks {
+    grid-template-columns: 1fr;
+  }
 
-    .main-content.sidebar-open {
-        margin-left: 250px;
-    }
+  .large-block {
+    grid-column: 1 / -1;
+  }
 
-    .content-blocks {
-        grid-template-areas:
-            "block1"
-            "block2"
-            "block3"
-            "large";
-    }
+  .schedule-row {
+    grid-template-columns: 60px 1fr;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1200px) {
+  .content-blocks {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .large-block {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 1201px) {
+  .content-blocks {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+
+  .large-block {
+    grid-column: 1 / -1;
+  }
 }

@@ -28,12 +28,12 @@ let clientsData = [
       {
         templateId: 'template1',
         startDate: '2025-08-01',
-        endDate: '2025-08-31',
+        endDate: '2025-09-30',
         classesPerWeek: 2,
         daysOfWeek: ['Пн', 'Ср'],
         classTime: '10:00',
         group: 'Йога для начинающих',
-        remainingClasses: 8,
+        remainingClasses: 1,
         isPaid: true,
         renewalHistory: [
           { date: '2025-08-15', fromTemplate: 'Стандартный', toTemplate: 'Премиум' },
@@ -107,12 +107,12 @@ let clientsData = [
       {
         templateId: 'template1',
         startDate: '2025-08-01',
-        endDate: '2025-08-31',
+        endDate: '2025-09-30',
         classesPerWeek: 0,
         daysOfWeek: [],
         classTime: '09:00',
         group: '',
-        remainingClasses: Infinity,
+        remainingClasses: 1,
         isPaid: true,
         renewalHistory: [],
         subscriptionNumber: 'SUB-002'
@@ -120,6 +120,102 @@ let clientsData = [
     ],
     photo: '',
     createdAt: '2025-02-20T14:30:00Z'
+  },
+  {
+    id: 'client3',
+    surname: 'Сидоров',
+    name: 'Алексей',
+    patronymic: 'Петрович',
+    phone: '+7 (345) 678-90-12',
+    birthDate: '1985-03-15',
+    gender: 'male',
+    parents: [],
+    diagnosis: [{ name: 'Нет', notes: '' }],
+    features: '',
+    blacklisted: false,
+    groups: ['Фитнес'],
+    groupHistory: [],
+    subscriptions: [
+      {
+        templateId: 'template2',
+        startDate: '2025-09-01',
+        endDate: '2025-09-30',
+        classesPerWeek: 3,
+        daysOfWeek: ['Пн', 'Ср', 'Пт'],
+        classTime: '18:00',
+        group: 'Фитнес',
+        remainingClasses: 1,
+        isPaid: true,
+        renewalHistory: [],
+        subscriptionNumber: 'SUB-005'
+      }
+    ],
+    photo: '',
+    createdAt: '2025-03-10T09:00:00Z'
+  },
+  {
+    id: 'client4',
+    surname: 'Кузнецова',
+    name: 'Ольга',
+    patronymic: 'Викторовна',
+    phone: '+7 (456) 789-01-23',
+    birthDate: '1992-07-20',
+    gender: 'female',
+    parents: [],
+    diagnosis: [{ name: 'Нет', notes: '' }],
+    features: 'Предпочитает утренние занятия',
+    blacklisted: false,
+    groups: ['Пилатес'],
+    groupHistory: [],
+    subscriptions: [
+      {
+        templateId: 'template1',
+        startDate: '2025-09-01',
+        endDate: '2025-09-30',
+        classesPerWeek: 2,
+        daysOfWeek: ['Вт', 'Чт'],
+        classTime: '09:00',
+        group: 'Пилатес',
+        remainingClasses: 1,
+        isPaid: true,
+        renewalHistory: [],
+        subscriptionNumber: 'SUB-006'
+      }
+    ],
+    photo: '',
+    createdAt: '2025-04-15T12:00:00Z'
+  },
+  {
+    id: 'client5',
+    surname: 'Смирнов',
+    name: 'Дмитрий',
+    patronymic: 'Александрович',
+    phone: '+7 (567) 890-12-34',
+    birthDate: '1988-11-11',
+    gender: 'male',
+    parents: [],
+    diagnosis: [{ name: 'Гипертония', notes: 'Контролируемая' }],
+    features: '',
+    blacklisted: false,
+    groups: ['Зумба вечеринка'],
+    groupHistory: [],
+    subscriptions: [
+      {
+        templateId: 'template2',
+        startDate: '2025-09-01',
+        endDate: '2025-09-30',
+        classesPerWeek: 3,
+        daysOfWeek: ['Пн', 'Ср', 'Пт'],
+        classTime: '19:00',
+        group: 'Зумба вечеринка',
+        remainingClasses: 1,
+        isPaid: true,
+        renewalHistory: [],
+        subscriptionNumber: 'SUB-007'
+      }
+    ],
+    photo: '',
+    createdAt: '2025-05-20T15:00:00Z'
   }
 ];
 
@@ -177,6 +273,169 @@ export function removeGroupFromClient(clientId, group) {
     client.groups = client.groups.filter(g => g !== group);
     client.groupHistory.push({ date: new Date().toISOString(), action: 'removed', group });
   }
+}
+
+function setupModalClose(modal, closeModal) {
+  modal.addEventListener('click', (e) => {
+    const selection = window.getSelection();
+    if (e.target === modal && selection.toString().length === 0) {
+      closeModal();
+    }
+  });
+}
+
+export function showClientForm(title, client, callback) {
+  const modal = document.createElement('div');
+  modal.className = 'client-form-modal';
+  const fullName = client ? `${client.surname || ''} ${client.name || ''} ${client.patronymic || ''}`.trim() : '';
+  modal.innerHTML = `
+    <div class="client-form-content">
+      <div class="client-form-header">
+        <h2>${title}</h2>
+        <button type="button" class="client-form-close">×</button>
+      </div>
+      <div class="client-form-body">
+        <div class="form-group">
+          <label for="client-surname" class="required">Фамилия</label>
+          <input type="text" id="client-surname" value="${client?.surname || ''}" required>
+        </div>
+        <div class="form-group">
+          <label for="client-name" class="required">Имя</label>
+          <input type="text" id="client-name" value="${client?.name || ''}" required>
+        </div>
+        <div class="form-group">
+          <label for="client-patronymic">Отчество</label>
+          <input type="text" id="client-patronymic" value="${client?.patronymic || ''}">
+        </div>
+        <div class="form-group">
+          <label for="client-phone" class="required">Телефон</label>
+          <input type="tel" id="client-phone" value="${client?.phone || ''}" pattern="\\+7\\s\\(\\d{3}\\)\\s\\d{3}-\\d{2}-\\d{2}" placeholder="+7 (XXX) XXX-XX-XX" required>
+        </div>
+        <div class="form-group">
+          <label for="client-birth-date" class="required">Дата рождения</label>
+          <input type="date" id="client-birth-date" value="${client?.birthDate || ''}" required>
+        </div>
+        <div class="form-group">
+          <label for="client-gender" class="required">Пол</label>
+          <select id="client-gender" required>
+            <option value="">Выберите пол</option>
+            <option value="male" ${client?.gender === 'male' ? 'selected' : ''}>Мужской</option>
+            <option value="female" ${client?.gender === 'female' ? 'selected' : ''}>Женский</option>
+          </select>
+        </div>
+        <div class="form-group full-width">
+          <label for="client-diagnosis">Диагноз</label>
+          <select id="client-diagnosis">
+            <option value="">Выберите диагноз</option>
+            ${commonDiagnoses.map(d => `<option value="${d}" ${client?.diagnosis?.[0]?.name === d ? 'selected' : ''}>${d}</option>`).join('')}
+          </select>
+          <textarea id="client-diagnosis-notes" placeholder="Примечания к диагнозу">${client?.diagnosis?.[0]?.notes || ''}</textarea>
+        </div>
+        <div class="form-group full-width">
+          <label for="client-features">Особенности</label>
+          <textarea id="client-features" placeholder="Особенности клиента">${client?.features || ''}</textarea>
+        </div>
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="client-blacklisted" ${client?.blacklisted ? 'checked' : ''}>
+            <span class="checkmark"></span>
+            В чёрном списке
+          </label>
+        </div>
+        <div class="form-group full-width">
+          <label>Родители (опционально)</label>
+          <div id="client-parents">
+            ${client?.parents?.map((p, i) => `
+              <div class="parent-group" data-index="${i}">
+                <input type="text" class="parent-fullname" placeholder="ФИО родителя" value="${p.fullName}">
+                <input type="tel" class="parent-phone" placeholder="Телефон" value="${p.phone}" pattern="\\+7\\s\\(\\d{3}\\)\\s\\d{3}-\\d{2}-\\d{2}">
+                <select class="parent-relation">
+                  <option value="">Степень родства</option>
+                  ${commonRelations.map(r => `<option value="${r}" ${p.relation === r ? 'selected' : ''}>${r}</option>`).join('')}
+                </select>
+                <button type="button" class="remove-parent-btn">Удалить</button>
+              </div>
+            `).join('') || ''}
+          </div>
+          <button type="button" id="add-parent-btn" class="btn-secondary">Добавить родителя</button>
+        </div>
+      </div>
+      <div class="client-form-footer">
+        <button type="button" id="client-cancel-btn" class="btn-secondary">Отмена</button>
+        <button type="button" id="client-save-btn" class="btn-primary">Сохранить</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('main-content').appendChild(modal);
+
+  const closeModal = () => modal.remove();
+  setupModalClose(modal, closeModal);
+  modal.querySelector('.client-form-close').addEventListener('click', closeModal);
+  modal.querySelector('#client-cancel-btn').addEventListener('click', closeModal);
+
+  modal.querySelector('#add-parent-btn').addEventListener('click', () => {
+    const parentGroup = document.createElement('div');
+    parentGroup.className = 'parent-group';
+    parentGroup.innerHTML = `
+      <input type="text" class="parent-fullname" placeholder="ФИО родителя">
+      <input type="tel" class="parent-phone" placeholder="Телефон" pattern="\\+7\\s\\(\\d{3}\\)\\s\\d{3}-\\d{2}-\\d{2}">
+      <select class="parent-relation">
+        <option value="">Степень родства</option>
+        ${commonRelations.map(r => `<option value="${r}">${r}</option>`).join('')}
+      </select>
+      <button type="button" class="remove-parent-btn">Удалить</button>
+    `;
+    modal.querySelector('#client-parents').appendChild(parentGroup);
+  });
+
+  modal.addEventListener('click', (e) => {
+    if (e.target.classList.contains('remove-parent-btn')) {
+      e.target.closest('.parent-group').remove();
+    }
+  });
+
+  modal.querySelector('#client-save-btn').addEventListener('click', () => {
+    const surname = modal.querySelector('#client-surname').value.trim();
+    const name = modal.querySelector('#client-name').value.trim();
+    const patronymic = modal.querySelector('#client-patronymic').value.trim();
+    const phone = modal.querySelector('#client-phone').value.trim();
+    const birthDate = modal.querySelector('#client-birth-date').value;
+    const gender = modal.querySelector('#client-gender').value;
+    const diagnosisName = modal.querySelector('#client-diagnosis').value;
+    const diagnosisNotes = modal.querySelector('#client-diagnosis-notes').value.trim();
+    const features = modal.querySelector('#client-features').value.trim();
+    const blacklisted = modal.querySelector('#client-blacklisted').checked;
+    const parents = Array.from(modal.querySelectorAll('.parent-group')).map(group => ({
+      fullName: group.querySelector('.parent-fullname').value.trim(),
+      phone: group.querySelector('.parent-phone').value.trim(),
+      relation: group.querySelector('.parent-relation').value
+    })).filter(p => p.fullName && p.phone && p.relation);
+
+    if (!surname || !name || !phone || !birthDate || !gender) {
+      alert('Заполните все обязательные поля!');
+      return;
+    }
+
+    if (!phone.match(/\+7\s\(\d{3}\)\s\d{3}-\d{2}-\d{2}/)) {
+      alert('Телефон должен быть в формате +7 (XXX) XXX-XX-XX');
+      return;
+    }
+
+    callback({
+      surname,
+      name,
+      patronymic,
+      phone,
+      birthDate,
+      gender,
+      diagnosis: [{ name: diagnosisName || 'Нет', notes: diagnosisNotes }],
+      features,
+      blacklisted,
+      parents
+    });
+
+    closeModal();
+  });
 }
 
 export function loadClients() {
