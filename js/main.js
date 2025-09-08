@@ -94,7 +94,7 @@ export function loadHome() {
             <button class="tab-button active" data-tab="clients">Список клиентов</button>
           </div>
           <div class="client-form-tab-content active" id="clients">
-            <table class="parents-table">
+            <table class="parents-tablee">
               <thead>
                 <tr>
                   <th>Фамилия</th>

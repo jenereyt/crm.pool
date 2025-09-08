@@ -5,7 +5,13 @@ import { getClients, addGroupToClient, removeGroupFromClient } from './clients.j
 let groups = JSON.parse(localStorage.getItem('groups')) || [
   { id: 'group1', name: 'Йога для начинающих', trainer: 'Анна Иванова', clients: ['Иван Сергеев'] },
   { id: 'group2', name: 'Пилатес продвинутый', trainer: 'Мария Петрова', clients: [] },
-  { id: 'group3', name: 'Зумба вечеринка', trainer: 'Олег Смирнов', clients: ['Алексей Попов'] },
+  { id: 'group3', name: 'Зумба вечеринка1', trainer: 'Олег Смирнов', clients: ['Алексей Попов'] },
+  { id: 'group4', name: 'Зумба вечеринка2', trainer: 'Олег Смирнов', clients: ['Алексей Попов'] },
+  { id: 'group5', name: 'Зумба вечеринка4', trainer: 'Олег Смирнов', clients: ['Алексей Попов'] },
+  { id: 'group6', name: 'Зумба вечеринка5', trainer: 'Олег Смирнов', clients: ['Алексей Попов'] },
+  { id: 'group7', name: 'Зумба вечеринка6', trainer: 'Олег Смирнов', clients: ['Алексей Попов'] },
+  { id: 'group8', name: 'Зумба вечеринка7', trainer: 'Олег Смирнов', clients: ['Алексей Попов'] },
+  { id: 'group9', name: 'Зумба вечеринка8', trainer: 'Олег Смирнов', clients: ['Алексей Попов'] },
 ];
 
 function saveGroups() {

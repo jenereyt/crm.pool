@@ -4,7 +4,7 @@ export function loadProfile(userRole) {
   mainContent.innerHTML = `
     <div class="profile-page">
       <header class="header">
-        <h1><img src="./images/icon-profile.svg" alt="Профиль"> Профиль</h1>
+        <h1><img src="./images/icon-profile.svg" alt="Профиль" width="24" height="24"> Профиль</h1>
       </header>
       <div class="profile-content">
         <div class="profile-card">
@@ -53,10 +53,12 @@ export function loadProfile(userRole) {
       <tr>
         <td>${admin.username}</td>
         <td>
-        <div class="admin-actions">
-          <button class="reset-password-btn btn-secondary" data-username="${admin.username}">Сбросить пароль</button>
-          <button class="delete-admin-btn btn-danger" data-username="${admin.username}">Удалить</button>
-        </div>
+          <div class="admin-actions">
+            <button class="reset-password-btn btn-secondary" data-username="${admin.username}">Сбросить пароль</button>
+            <button class="delete-admin-btn btn-danger" data-username="${admin.username}">
+              <img src="./images/trash.svg" alt="Удалить" width="16" height="16" class="action-icon">
+            </button>
+          </div>
         </td>
       </tr>
     `).join('');
@@ -66,7 +68,7 @@ export function loadProfile(userRole) {
       mainContent.innerHTML = `
         <div class="profile-page">
           <header class="header">
-            <h1><img src="./images/icon-profile.svg" alt="Профиль"> Регистрация администратора</h1>
+            <h1><img src="./images/icon-profile.svg" alt="Профиль" width="24" height="24"> Регистрация администратора</h1>
           </header>
           <div class="auth-form">
             <form id="register-admin-form">

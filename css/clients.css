@@ -360,6 +360,8 @@ img[class*='icon'] {
 
 /* Список клиентов */
 .client-list {
+  padding-top: 5px;
+  padding-bottom: 5px;
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
@@ -2592,19 +2594,20 @@ img[class*='icon'] {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.4);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 1000;
+  padding: 8px;
 }
 
 .group-form-content {
   background: #fff;
-  border-radius: 8px;
+  border-radius: 6px;
   width: 100%;
-  max-width: 600px;
-  max-height: 80vh;
+  max-width: 500px;
+  max-height: 90vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -2614,22 +2617,23 @@ img[class*='icon'] {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px;
-  border-bottom: 1px solid #e0e0e0;
+  padding: 12px;
+  border-bottom: 1px solid #e6e6e6;
 }
 
 .group-form-header h2 {
   margin: 0;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 600;
 }
 
 .group-form-close {
   background: none;
   border: none;
-  font-size: 24px;
+  font-size: 20px;
   cursor: pointer;
   color: #333;
+  line-height: 1;
 }
 
 .group-form-close:hover {
@@ -2637,18 +2641,21 @@ img[class*='icon'] {
 }
 
 .group-form-body {
-  padding: 16px;
+  padding: 12px;
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   overflow-y: auto;
 }
 
 .client-info {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 500;
   color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .group-search-container {
@@ -2660,8 +2667,8 @@ img[class*='icon'] {
 
 #group-search {
   width: 100%;
-  padding: 10px;
-  font-size: 16px;
+  padding: 8px;
+  font-size: 14px;
   border: 1px solid #d9d9d9;
   border-radius: 4px;
   outline: none;
@@ -2680,16 +2687,20 @@ img[class*='icon'] {
 .groups-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .group-item {
-  padding: 12px;
-  background: #f5f5f5;
+  padding: 8px;
+  background: #f8f8f8;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 16px;
-  transition: background 0.2s;
+  font-size: 14px;
+  line-height: 1.4;
+  transition: background 0.2s, border 0.2s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .group-item:hover {
@@ -2702,21 +2713,21 @@ img[class*='icon'] {
 }
 
 .group-form-footer {
-  padding: 16px;
-  border-top: 1px solid #e0e0e0;
+  padding: 12px;
+  border-top: 1px solid #e6e6e6;
   display: flex;
   justify-content: flex-end;
   gap: 8px;
 }
 
 .btn-primary {
-  padding: 8px 16px;
+  padding: 6px 12px;
   background: #1890ff;
   color: #fff;
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .btn-primary:hover {
@@ -2724,15 +2735,72 @@ img[class*='icon'] {
 }
 
 .btn-secondary {
-  padding: 8px 16px;
+  padding: 6px 12px;
   background: #f5f5f5;
   color: #333;
   border: 1px solid #d9d9d9;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .btn-secondary:hover {
   background: #e0e0e0;
+}
+
+/* Адаптивность */
+@media (max-width: 600px) {
+  .group-form-content {
+    max-width: 100%;
+    margin: 0 8px;
+  }
+
+  .group-form-header h2 {
+    font-size: 16px;
+  }
+
+  .group-form-close {
+    font-size: 18px;
+  }
+
+  .group-form-body {
+    padding: 10px;
+    gap: 10px;
+  }
+
+  .client-info {
+    font-size: 13px;
+  }
+
+  #group-search {
+    padding: 6px;
+    font-size: 13px;
+  }
+
+  .group-item {
+    padding: 6px;
+    font-size: 13px;
+  }
+
+  .btn-primary,
+  .btn-secondary {
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 400px) {
+  .group-form-header {
+    padding: 8px;
+  }
+
+  .group-form-footer {
+    padding: 8px;
+    gap: 6px;
+  }
+
+  .group-form-body {
+    padding: 8px;
+    gap: 8px;
+  }
 }
