@@ -47,12 +47,13 @@ export async function loadClasses() {
   mainContent.appendChild(classTable);
 
   function getClientFullName(client) {
+    if (!client) return 'Без имени';
     const parts = [
-      client.lastName || '',
-      client.firstName || '',
-      client.patronymic || ''
-    ].filter(part => part.trim()).join(' ');
-    return parts.trim() || 'Без имени';
+      client.surname?.trim() || '',
+      client.name?.trim() || '',
+      client.patronymic?.trim() || ''
+    ].filter(part => part); // Удаляем пустые строки
+    return parts.join(' ') || 'Без имени';
   }
 
   function renderClasses() {
@@ -279,15 +280,19 @@ export async function loadClasses() {
 
     function renderSelectedClients() {
       const selectedEl = modal.querySelector('.selected-chips');
-      selectedEl.innerHTML = selectedClientIds.map(clientId => {
-        const client = clients.find(c => c.id === clientId);
-        const fullName = client ? getClientFullName(client) : 'Неизвестный клиент';
-        return `
-          <span class="client-chip" data-clientid="${escapeHtml(clientId)}">
-            ${escapeHtml(fullName)} <button class="client-remove-btn" data-clientid="${escapeHtml(clientId)}">×</button>
-          </span>
-        `;
-      }).join('');
+      selectedEl.innerHTML = selectedClientIds
+        .map(clientId => {
+          const client = clients.find(c => c.id === clientId);
+          if (!client || (!client.surname && !client.name && !client.patronymic)) return '';
+          const fullName = getClientFullName(client);
+          return `
+            <span class="client-chip" data-clientid="${escapeHtml(clientId)}">
+              ${escapeHtml(fullName)} <button class="client-remove-btn" data-clientid="${escapeHtml(clientId)}">×</button>
+            </span>
+          `;
+        })
+        .filter(chip => chip)
+        .join('');
     }
 
     renderSelectedClients();
@@ -334,6 +339,9 @@ export async function loadClasses() {
         callback({ name, roomId, type, trainer, group, clientIds: selectedClientIds, date, startTime, endTime, daysOfWeek });
         modal.remove();
       } else {
+        modal.querySelectorAll('input, select').forEach(el => {
+          if (!el.value.trim()) el.classList.add('error');
+        });
         alert('Заполните все поля корректно!');
       }
     });
@@ -383,11 +391,9 @@ export async function loadClasses() {
 
     let journalClients = [];
     if (Array.isArray(cls.clientIds) && cls.clientIds.length) {
-      journalClients = clientsList.filter(c => cls.clientIds.includes(c.id) && (c.firstName || c.lastName || c.patronymic));
+      journalClients = clientsList.filter(c => cls.clientIds.includes(c.id) && (c.surname?.trim() || c.name?.trim() || c.patronymic?.trim()));
     } else if (cls.group) {
-      journalClients = clientsList.filter(c => Array.isArray(c.groups) && c.groups.includes(cls.group) && (c.firstName || c.lastName || c.patronymic));
-    } else {
-      journalClients = [];
+      journalClients = clientsList.filter(c => Array.isArray(c.groups) && c.groups.includes(cls.group) && (c.surname?.trim() || c.name?.trim() || c.patronymic?.trim()));
     }
 
     cls.attendance = cls.attendance || {};
@@ -500,7 +506,7 @@ export async function loadClasses() {
 
     function renderClientTable(filter = '') {
       const q = filter.trim().toLowerCase();
-      const validClients = clientsList.filter(c => c.id && (c.firstName || c.lastName || c.patronymic));
+      const validClients = clientsList.filter(c => c.id && (c.surname?.trim() || c.name?.trim() || c.patronymic?.trim()));
       const rows = validClients
         .filter(c => {
           const fullName = getClientFullName(c).toLowerCase();
@@ -517,8 +523,9 @@ export async function loadClasses() {
           const hasSubscription = subscriptions.some(s => s.clientId === c.id && s.remainingClasses > 0);
           const status = c.blacklisted ? 'В чёрном списке' : hasSubscription ? 'Активная подписка' : 'Нет подписки';
           const disabled = c.blacklisted ? 'disabled' : '';
+          const selectedClass = currentSelected.includes(c.id) ? 'selected' : '';
           return `
-            <tr>
+            <tr data-clientid="${escapeHtml(c.id)}" class="${!c.blacklisted ? 'selectable' : ''} ${selectedClass}">
               <td>
                 <input type="checkbox" value="${escapeHtml(c.id)}" ${currentSelected.includes(c.id) ? 'checked' : ''} ${disabled}>
               </td>
@@ -537,14 +544,43 @@ export async function loadClasses() {
       renderClientTable(e.target.value);
     });
 
+    modal.querySelector('#client-picker-tbody').addEventListener('click', (e) => {
+      const row = e.target.closest('tr.selectable');
+      if (row && e.target.type !== 'checkbox') {
+        const checkbox = row.querySelector('input[type="checkbox"]');
+        if (checkbox && !checkbox.disabled) {
+          checkbox.checked = !checkbox.checked;
+          const clientId = checkbox.value;
+          if (checkbox.checked) {
+            if (!currentSelected.includes(clientId)) {
+              currentSelected.push(clientId);
+              row.classList.add('selected');
+            }
+          } else {
+            currentSelected = currentSelected.filter(id => id !== clientId);
+            row.classList.remove('selected');
+          }
+          // Обновляем таблицу для синхронизации визуального состояния
+          renderClientTable(modal.querySelector('#client-picker-search').value);
+        }
+      }
+    });
+
     modal.querySelector('#client-picker-tbody').addEventListener('change', (e) => {
       if (e.target.type === 'checkbox') {
         const clientId = e.target.value;
+        const row = e.target.closest('tr');
         if (e.target.checked) {
-          if (!currentSelected.includes(clientId)) currentSelected.push(clientId);
+          if (!currentSelected.includes(clientId)) {
+            currentSelected.push(clientId);
+            row.classList.add('selected');
+          }
         } else {
           currentSelected = currentSelected.filter(id => id !== clientId);
+          row.classList.remove('selected');
         }
+        // Обновляем таблицу для синхронизации визуального состояния
+        renderClientTable(modal.querySelector('#client-picker-search').value);
       }
     });
 
@@ -571,4 +607,3 @@ export async function loadClasses() {
 export function getClasses() {
   return scheduleData ? scheduleData.map(cls => cls.name) : [];
 }
-

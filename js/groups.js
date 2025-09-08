@@ -20,6 +20,10 @@ export function getGroupById(id) {
   return groups.find(group => group.id === id);
 }
 
+export function getGroupByName(name) {
+  return groups.find(group => group.name === name);
+}
+
 export function addClientToGroup(groupId, clientName) {
   const group = getGroupById(groupId);
   if (group && !group.clients.includes(clientName)) {
@@ -36,6 +40,73 @@ export function removeClientFromGroup(groupId, clientName) {
     removeGroupFromClient(clientName, group.name);
     saveGroups();
   }
+}
+
+export function addNewGroup(data) {
+  if (groups.some(g => g.name.toLowerCase() === data.name.toLowerCase())) {
+    return null;
+  }
+  const newGroup = {
+    id: `group${Date.now()}`,
+    name: data.name,
+    trainer: data.trainer,
+    clients: data.clients || []
+  };
+  groups.push(newGroup);
+  newGroup.clients.forEach(clientName => addClientToGroup(newGroup.id, clientName));
+  saveGroups();
+  return newGroup;
+}
+
+function escapeHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+}
+
+export function showGroupModal(title, group, trainers, selectedClients, callback) {
+  const modal = document.createElement('div');
+  modal.className = 'modal';
+  modal.innerHTML = `
+    <div class="modal-content">
+      <h2>${escapeHtml(title)}</h2>
+      <form id="group-form">
+        <input type="text" id="group-name" placeholder="Название группы" value="${escapeHtml(group.name || '')}" required>
+        <select id="group-trainer" required>
+          <option value="">Выберите тренера</option>
+          ${trainers.map(trainer => `<option value="${escapeHtml(trainer)}" ${group.trainer === trainer ? 'selected' : ''}>${escapeHtml(trainer)}</option>`).join('')}
+        </select>
+        <div class="modal-actions">
+          <button type="submit" class="btn-primary">Сохранить</button>
+          <button type="button" class="btn-secondary" id="modal-cancel-btn">Отмена</button>
+        </div>
+      </form>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  modal.querySelector('#group-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = modal.querySelector('#group-name').value.trim();
+    const trainer = modal.querySelector('#group-trainer').value;
+    if (name && trainer) {
+      callback({ name, trainer, clients: selectedClients });
+      modal.remove();
+    } else {
+      alert('Заполните все поля корректно!');
+    }
+  });
+
+  modal.querySelector('#modal-cancel-btn').addEventListener('click', () => {
+    modal.remove();
+  });
+
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) modal.remove();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') modal.remove();
+  }, { once: true });
 }
 
 export function loadGroups() {
@@ -73,11 +144,6 @@ export function loadGroups() {
     </table>
   `;
   mainContent.appendChild(groupTable);
-
-  function escapeHtml(s) {
-    if (!s) return '';
-    return String(s).replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
-  }
 
   let sortField = 'name';
   let sortOrder = 1;
@@ -206,52 +272,6 @@ export function loadGroups() {
     }
   });
 
-  function showGroupModal(title, group, trainers, selectedClients, callback) {
-    const modal = document.createElement('div');
-    modal.className = 'modal';
-    modal.innerHTML = `
-      <div class="modal-content">
-        <h2>${escapeHtml(title)}</h2>
-        <form id="group-form">
-          <input type="text" id="group-name" placeholder="Название группы" value="${escapeHtml(group.name || '')}" required>
-          <select id="group-trainer" required>
-            <option value="">Выберите тренера</option>
-            ${trainers.map(trainer => `<option value="${escapeHtml(trainer)}" ${group.trainer === trainer ? 'selected' : ''}>${escapeHtml(trainer)}</option>`).join('')}
-          </select>
-          <div class="modal-actions">
-            <button type="submit" class="btn-primary">Сохранить</button>
-            <button type="button" class="btn-secondary" id="modal-cancel-btn">Отмена</button>
-          </div>
-        </form>
-      </div>
-    `;
-    document.body.appendChild(modal);
-
-    modal.querySelector('#group-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const name = modal.querySelector('#group-name').value.trim();
-      const trainer = modal.querySelector('#group-trainer').value;
-      if (name && trainer) {
-        callback({ name, trainer, clients: selectedClients });
-        modal.remove();
-      } else {
-        alert('Заполните все поля корректно!');
-      }
-    });
-
-    modal.querySelector('#modal-cancel-btn').addEventListener('click', () => {
-      modal.remove();
-    });
-
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) modal.remove();
-    });
-
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') modal.remove();
-    }, { once: true });
-  }
-
   function showClientManagementModal(title, group, clients, callback) {
     const modal = document.createElement('div');
     modal.className = 'modal';
@@ -337,6 +357,17 @@ export function loadGroups() {
 
     searchInput.addEventListener('input', renderClientTable);
 
+    tableBody.addEventListener('click', (ev) => {
+      const row = ev.target.closest('.client-row');
+      if (!row) return;
+      const checkbox = row.querySelector('input[type="checkbox"]');
+      if (!checkbox || checkbox.disabled) return;
+      if (ev.target === checkbox || ev.target.closest('label') === checkbox.parentElement) return;
+      checkbox.checked = !checkbox.checked;
+      const changeEvent = new Event('change', { bubbles: true });
+      checkbox.dispatchEvent(changeEvent);
+    });
+
     tableBody.addEventListener('change', (ev) => {
       if (ev.target.matches('input[type="checkbox"]')) {
         const name = ev.target.value;
@@ -346,17 +377,6 @@ export function loadGroups() {
           currentClients = currentClients.filter(c => c !== name);
         }
         refreshSelectedChips();
-      }
-    });
-
-    tableBody.addEventListener('click', (ev) => {
-      const row = ev.target.closest('.client-row');
-      if (!row) return;
-      const checkbox = row.querySelector('input[type="checkbox"]');
-      if (checkbox && !checkbox.disabled) {
-        checkbox.checked = !checkbox.checked;
-        const ev = new Event('change', { bubbles: true });
-        checkbox.dispatchEvent(ev);
       }
     });
 

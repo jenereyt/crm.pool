@@ -112,11 +112,10 @@
   .subscription-history-table th,
   .subscription-history-table td {
     font-size: 0.8rem;
-    padding: 0.6rem;
     border: 1px solid var(--gray-200);
     text-align: left;
     min-width: 80px;
-    max-width: 150px;
+    max-width: 100%;
     /* Prevent columns from being too wide */
     overflow: hidden;
     text-overflow: ellipsis;
@@ -296,9 +295,8 @@
   .subscription-history-table th,
   .subscription-history-table td {
     font-size: 0.75rem;
-    padding: 0.5rem;
     min-width: 70px;
-    max-width: 120px;
+    max-width: 100%;
   }
 
   .diagnoses-table td input,
@@ -430,9 +428,9 @@
   .subscription-history-table th,
   .subscription-history-table td {
     font-size: 0.7rem;
-    padding: 0.4rem;
+ 
     min-width: 60px;
-    max-width: 100px;
+    max-width: 100%;
   }
 
   .diagnoses-table td input,
@@ -578,7 +576,6 @@
   .subscription-history-table th,
   .subscription-history-table td {
     font-size: 0.65rem;
-    padding: 0.35rem;
   }
 }
  
@@ -700,11 +697,11 @@
       .subscription-history-table th,
       .subscription-history-table td {
         font-size: 0.8rem;
-        padding: 0.6rem;
+
         border: 1px solid var(--gray-200);
         text-align: left;
         min-width: 80px;
-        max-width: 150px;
+        max-width: 100%;
         overflow: hidden;
         text-overflow: ellipsis;
       }
@@ -868,17 +865,7 @@
         height: 36px;
       }
 
-      .diagnoses-table th,
-      .diagnoses-table td,
-      .parents-table th,
-      .parents-table td,
-      .subscription-history-table th,
-      .subscription-history-table td {
-        font-size: 0.75rem;
-        padding: 0.5rem;
-        min-width: 70px;
-        max-width: 120px;
-      }
+
 
       .diagnoses-table td input,
       .parents-table td input {
@@ -1000,18 +987,6 @@
       .client-action-btn {
         width: 28px;
         height: 28px;
-      }
-
-      .diagnoses-table th,
-      .diagnoses-table td,
-      .parents-table th,
-      .parents-table td,
-      .subscription-history-table th,
-      .subscription-history-table td {
-        font-size: 0.7rem;
-        padding: 0.4rem;
-        min-width: 60px;
-        max-width: 100px;
       }
 
       .diagnoses-table td input,
@@ -1150,17 +1125,6 @@
         height: 14px;
       }
 
-      .diagnoses-table th,
-      .diagnoses-table td,
-      .parents-table th,
-      .parents-table td,
-      .subscription-history-table th,
-      .subscription-history-table td {
-        font-size: 0.65rem;
-        padding: 0.35rem;
-        min-width: 50px;
-        max-width: 90px;
-      }
 
       .diagnoses-table td input,
       .parents-table td input {

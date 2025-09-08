@@ -16,14 +16,13 @@
 }
 
 .subscription-section {
-  padding: 12px;
   flex: 1;
-  margin: 0 8px;
 }
 
 .template-section h2,
 .subscription-section h2 {
-  margin: 0 0 10px;
+
+  margin: 0 10px 10px;
   font-size: 1.2em;
   color: var(--text-color);
   text-align: left;
@@ -172,8 +171,6 @@
 .subscription-table {
   max-height: calc(80vh - 30px);
   overflow-y: auto;
-  padding-right: 5px;
-  margin: 0 8px;
 }
 
 .subscription-table table {
@@ -632,11 +629,9 @@
 /* Промежуточная адаптивность (600px) */
 @media (max-width: 600px) {
   .template-section,
-  .subscription-section,
   .subscription-tabs,
   .filter-bar {
     margin: 0 4px;
-    padding: 8px;
   }
 
   .template-list {

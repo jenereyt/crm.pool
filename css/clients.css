@@ -486,11 +486,10 @@ img[class*='icon'] {
 }
 
 .diagnoses-table td {
+  padding: 0;
   text-align: left;
   border: 1px solid var(--gray-200);
 }
-
-
 
 .diagnoses-table th {
   background: var(--gray-50);
@@ -503,7 +502,6 @@ img[class*='icon'] {
   width: 100%;
   padding: 0.3rem;
   border: none;
-
   font-size: 0.75rem;
   background: var(--card-background);
   color: var(--text-color);
@@ -522,6 +520,7 @@ img[class*='icon'] {
 }
 
 .diagnoses-table .diagnosis-row td:first-child {
+  padding: 0;
   display: flex;
   align-items: center;
 }
@@ -1046,6 +1045,13 @@ img[class*='icon'] {
 }
 
 /* Модалка редактирования клиента */
+.client-form-content {
+  min-height: 500px;
+  /* Устанавливаем минимальную высоту для всей модалки */
+  display: flex;
+  flex-direction: column;
+}
+
 .client-form-content .client-form-header {
   padding: 0.5rem;
   border-bottom: 1px solid var(--border-color);
@@ -1100,6 +1106,10 @@ img[class*='icon'] {
 
 .client-form-content .client-form-tab-content {
   display: none;
+  min-height: 210px;
+  /* Устанавливаем минимальную высоту для содержимого вкладок */
+  flex-grow: 1;
+  /* Позволяет вкладкам занимать доступное пространство */
 }
 
 .client-form-content .client-form-tab-content.active {
@@ -1229,7 +1239,6 @@ img[class*='icon'] {
 .client-form-content .add-parent-btn {
   background: var(--primary-color);
   color: white;
-
 }
 
 .client-form-content .add-parent-btn:hover {
@@ -1246,6 +1255,7 @@ img[class*='icon'] {
 
 .parents-table th,
 .parents-table td {
+  padding: 0;
   border: 1px solid var(--gray-200);
   text-align: left;
 }
@@ -1368,7 +1378,6 @@ img[class*='icon'] {
   margin-bottom: 0.5rem;
 }
 
-
 /* Секция истории абонементов */
 .subscription-history-section {
   border: 1px solid #e5e7eb;
@@ -1464,7 +1473,6 @@ img[class*='icon'] {
   font-size: 0.75rem;
 }
 
-
 .relations-list {
   max-height: 200px;
   overflow-y: auto;
@@ -1513,8 +1521,6 @@ img[class*='icon'] {
   background: var(--primary-hover);
   transform: translateY(-1px);
 }
-
-
 
 /* Модалка управления группами */
 .group-form-modal {
@@ -2579,564 +2585,154 @@ img[class*='icon'] {
   font-size: 0.875rem;
 }
 
-/* Responsive Design for Small Screens */
-@media (max-width: 768px) {
 
-  /* Header */
-  .header-content {
-    align-items: flex-start;
-    padding: 0.5rem;
-  }
-
-  .header-content h1 {
-    font-size: 1.25rem;
-  }
-
-  .header-stats {
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-
-
-  .stat-number {
-    font-size: 1rem;
-  }
-
-  /* Control Bar */
-  .control-bar {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.75rem;
-    padding: 0.75rem;
-  }
-
-  .search-container {
-    min-width: unset;
-    width: 100%;
-  }
-
-  .filter-controls {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .status-filter,
-  .sort-select {
-    min-width: unset;
-    width: 100%;
-  }
-
-  /* Client List and Cards */
-  .client-list {
-    gap: 0.5rem;
-  }
-
-  .client-card {
-    flex-direction: column;
-    align-items: flex-start;
-    padding: 0.75rem;
-  }
-
-  .client-main-info,
-  .client-details {
-    flex-direction: column;
-    gap: 0.5rem;
-    width: 100%;
-  }
-
-  .client-photo,
-  .client-photo-placeholder {
-    width: 40px;
-    height: 40px;
-  }
-
-  .client-name {
-    font-size: 0.875rem;
-  }
-
-  .client-phone,
-  .client-additional-info,
-  .info-label,
-  .group-tag {
-    font-size: 0.7rem;
-  }
-
-  .client-details-actions,
-  .action-buttons-group {
-    flex-wrap: wrap;
-    justify-content: flex-start;
-    gap: 0.5rem;
-  }
-
-  .client-action-btn {
-    width: 30px;
-    height: 30px;
-  }
-
-  /* Tables (Diagnoses and Parents) */
-  .diagnoses-table,
-  .parents-table,
-  .subscription-history-table {
-    display: block;
-    overflow-x: auto;
-    white-space: nowrap;
-  }
-
-  .diagnoses-table th,
-  .diagnoses-table td,
-  .parents-table th,
-  .parents-table td,
-  .subscription-history-table th,
-  .subscription-history-table td {
-    font-size: 0.7rem;
-    padding: 0.4rem;
-  }
-
-  .diagnoses-table td input,
-  .parents-table td input {
-    font-size: 0.7rem;
-  }
-
-  .diagnosis-dictionary-btn,
-  .remove-diagnosis-btn,
-  .remove-parent-btn {
-    padding: 0.2rem;
-    font-size: 0.7rem;
-  }
-
-  /* Modals */
-  .client-details-content,
-  .client-form-content,
-  .subscription-management-content,
-  .group-form-content,
-  .renew-subscription-content,
-  .diagnosis-dictionary-content,
-  .relation-dictionary-content,
-  .confirm-modal-content {
-    max-width: 95vw;
-    padding: 0.75rem;
-    max-height: 90vh;
-  }
-
-  .client-details-content .details-grid,
-  .client-form-content #client-tab-personal,
-  .subscription-form-body .form-grid,
-  .renewal-form .form-grid,
-  .group-management-content .group-sections {
-    grid-template-columns: 1fr;
-  }
-
-  .client-details-content .client-photo-large,
-  .client-details-content .client-photo-placeholder-large {
-    width: 60px;
-    height: 60px;
-  }
-
-  .client-details-content .client-title h2 {
-    font-size: 1rem;
-  }
-
-  .client-form-content .client-photo-preview {
-    height: 150px;
-  }
-
-  .group-management-content .client-avatar-small {
-    width: 28px;
-    height: 28px;
-  }
-
-  .diagnosis-dictionary-content,
-  .relation-dictionary-content {
-    max-width: 90vw;
-  }
-
-  .diagnosis-body input,
-  .relation-body input {
-    font-size: 0.7rem;
-  }
-
-  .diagnoses-list,
-  .relations-list {
-    max-height: 150px;
-  }
-
-  /* Buttons */
-  .btn-primary,
-  .btn-secondary,
-  .client-action-btn,
-  .btn-add-group,
-  .confirm-btn-ok,
-  .confirm-btn-cancel,
-  .photo-zoom-close,
-  .add-parent-btn,
-  .new-sub-btn,
-  .renew-sub-btn,
-  .add-diagnosis-btn {
-    padding: 0.4rem;
-    font-size: 0.75rem;
-    gap: 0.4rem;
-  }
+.group-form-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
 }
 
-@media (max-width: 600px) {
-
-  /* Further Adjustments */
-  .header-content h1 {
-    font-size: 1.1rem;
-  }
-
-  .stat-number {
-    font-size: 0.9rem;
-  }
-
-  .stat-label {
-    font-size: 0.65rem;
-  }
-
-  .control-bar {
-    padding: 0.5rem;
-  }
-
-  .client-search {
-    font-size: 0.8rem;
-    padding: 0.4rem 0.4rem 0.4rem 2rem;
-  }
-
-  .search-icon {
-    width: 16px;
-    height: 16px;
-  }
-
-  .search-clear {
-    font-size: 1rem;
-  }
-
-  .client-card {
-    padding: 0.5rem;
-  }
-
-  .client-name {
-    font-size: 0.8rem;
-  }
-
-  .client-photo,
-  .client-photo-placeholder {
-    width: 36px;
-    height: 36px;
-  }
-
-  .diagnoses-table th,
-  .diagnoses-table td,
-  .parents-table th,
-  .parents-table td,
-  .subscription-history-table th,
-  .subscription-history-table td {
-    font-size: 0.65rem;
-    padding: 0.3rem;
-  }
-
-  .client-details-content .client-photo-large,
-  .client-details-content .client-photo-placeholder-large {
-    width: 50px;
-    height: 50px;
-  }
-
-  .client-details-content .client-title h2 {
-    font-size: 0.9rem;
-  }
-
-  .client-details-content .detail-label,
-  .client-details-content .detail-value {
-    font-size: 0.7rem;
-  }
+.group-form-content {
+  background: #fff;
+  border-radius: 8px;
+  width: 100%;
+  max-width: 600px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
-@media (max-width: 450px) {
-
-  /* Ultra-Small Screen Adjustments */
-  :root {
-    --border-radius: 6px;
-    --border-radius-lg: 8px;
-    --shadow-sm: 0 1px 1px 0 rgba(0, 0, 0, 0.05);
-    --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1);
-    --shadow-lg: 0 6px 10px -3px rgba(0, 0, 0, 0.1);
-  }
-.client-name-section{
-flex-direction: column;
-}
-  .header-content {
-    padding: 0.4rem;
-  }
-
-  .header-content h1 {
-    font-size: 1rem;
-  }
-
-  .header-stats {
-    align-items: flex-start;
-  }
-
-  .stat-item {
-    flex: 1 1 auto;
-  }
-
-  .stat-number {
-    font-size: 0.85rem;
-  }
-
-  .stat-label {
-    font-size: 0.6rem;
-  }
-
-  .control-bar {
-    gap: 0.5rem;
-  }
-
-  .client-search {
-    font-size: 0.75rem;
-    padding: 0.3rem 0.3rem 0.3rem 1.8rem;
-  }
-
-  .search-icon {
-    width: 14px;
-    height: 14px;
-    left: 6px;
-  }
-
-  .search-clear {
-    font-size: 0.9rem;
-    right: 6px;
-  }
-
-  .client-card {
-    padding: 0.4rem;
-  }
-
-  .client-photo,
-  .client-photo-placeholder {
-    width: 32px;
-    height: 32px;
-  }
-
-  .client-name {
-    font-size: 0.75rem;
-  }
-
-  .client-phone,
-  .client-additional-info,
-  .info-label,
-  .group-tag {
-    font-size: 0.65rem;
-  }
-
-  .client-action-btn {
-    width: 28px;
-    height: 28px;
-  }
-
-  .diagnoses-table th,
-  .diagnoses-table td,
-  .parents-table th,
-  .parents-table td,
-  .subscription-history-table th,
-  .subscription-history-table td {
-    font-size: 0.6rem;
-    padding: 0.25rem;
-  }
-
-  .diagnoses-table td input,
-  .parents-table td input {
-    font-size: 0.6rem;
-  }
-
-  .diagnosis-dictionary-btn,
-  .remove-diagnosis-btn,
-  .remove-parent-btn {
-    padding: 0.15rem;
-    font-size: 0.6rem;
-  }
-
-  .client-details-content .client-photo-large,
-  .client-details-content .client-photo-placeholder-large {
-    width: 45px;
-    height: 45px;
-  }
-
-  .client-details-content .client-title h2 {
-    font-size: 0.85rem;
-  }
-
-  .client-details-content .detail-label,
-  .client-details-content .detail-value {
-    font-size: 0.65rem;
-  }
-
-  .client-form-content .client-photo-preview {
-    height: 120px;
-  }
-
-  .group-management-content .client-avatar-small {
-    width: 24px;
-    height: 24px;
-  }
-
-  .diagnosis-body input,
-  .relation-body input {
-    font-size: 0.65rem;
-  }
-
-  .diagnoses-list,
-  .relations-list {
-    max-height: 120px;
-  }
+.group-form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid #e0e0e0;
 }
 
-@media (max-width: 350px) {
+.group-form-header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
 
-  /* Final Adjustments for 350px and Below */
-  :root {
-    --border-radius: 4px;
-    --border-radius-lg: 6px;
-    --shadow-sm: 0 1px 1px 0 rgba(0, 0, 0, 0.05);
-    --shadow: 0 2px 3px -1px rgba(0, 0, 0, 0.1);
-  }
+.group-form-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #333;
+}
 
-  .header-content {
-    padding: 0.3rem;
-  }
+.group-form-close:hover {
+  color: #ff4d4f;
+}
 
-  .header-content h1 {
-    font-size: 0.9rem;
-  }
+.group-form-body {
+  padding: 16px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+}
 
-  .stat-number {
-    font-size: 0.8rem;
-  }
+.client-info {
+  font-size: 16px;
+  font-weight: 500;
+  color: #333;
+}
 
-  .stat-label {
-    font-size: 0.55rem;
-  }
+.group-search-container {
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 10;
+}
 
-  .control-bar {
-    padding: 0.4rem;
-    gap: 0.4rem;
-  }
+#group-search {
+  width: 100%;
+  padding: 10px;
+  font-size: 16px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  outline: none;
+}
 
-  .client-search {
-    font-size: 0.7rem;
-    padding: 0.25rem 0.25rem 0.25rem 1.6rem;
-  }
+#group-search:focus {
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+}
 
-  .search-icon {
-    width: 12px;
-    height: 12px;
-    left: 5px;
-  }
+.groups-list-container {
+  flex: 1;
+  overflow-y: auto;
+}
 
-  .search-clear {
-    font-size: 0.85rem;
-    right: 5px;
-  }
+.groups-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 
-  .client-card {
-    padding: 0.3rem;
-  }
+.group-item {
+  padding: 12px;
+  background: #f5f5f5;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background 0.2s;
+}
 
-  .client-photo,
-  .client-photo-placeholder {
-    width: 28px;
-    height: 28px;
-  }
+.group-item:hover {
+  background: #e6f7ff;
+}
 
-  .client-name {
-    font-size: 0.7rem;
-  }
+.group-item.selected {
+  background: #e6f7ff;
+  border: 1px solid #1890ff;
+}
 
-  .client-phone,
-  .client-additional-info,
-  .info-label,
-  .group-tag {
-    font-size: 0.6rem;
-  }
+.group-form-footer {
+  padding: 16px;
+  border-top: 1px solid #e0e0e0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
 
-  .client-action-btn {
-    width: 26px;
-    height: 26px;
-  }
+.btn-primary {
+  padding: 8px 16px;
+  background: #1890ff;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
 
-  .client-action-btn img {
-    width: 14px;
-    height: 14px;
-  }
+.btn-primary:hover {
+  background: #40a9ff;
+}
 
-  .diagnoses-table th,
-  .diagnoses-table td,
-  .parents-table th,
-  .parents-table td,
-  .subscription-history-table th,
-  .subscription-history-table td {
-    font-size: 0.55rem;
-    padding: 0.2rem;
-  }
+.btn-secondary {
+  padding: 8px 16px;
+  background: #f5f5f5;
+  color: #333;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
 
-  .diagnoses-table td input,
-  .parents-table td input {
-    font-size: 0.55rem;
-  }
-
-  .diagnosis-dictionary-btn,
-  .remove-diagnosis-btn,
-  .remove-parent-btn {
-    padding: 0.1rem;
-    font-size: 0.55rem;
-  }
-
-  .client-details-content .client-photo-large,
-  .client-details-content .client-photo-placeholder-large {
-    width: 40px;
-    height: 40px;
-  }
-
-  .client-details-content .client-title h2 {
-    font-size: 0.8rem;
-  }
-
-  .client-details-content .detail-label,
-  .client-details-content .detail-value {
-    font-size: 0.6rem;
-  }
-
-  .client-form-content .client-photo-preview {
-    height: 100px;
-  }
-
-  .group-management-content .client-avatar-small {
-    width: 22px;
-    height: 22px;
-  }
-
-  .diagnosis-body input,
-  .relation-body input {
-    font-size: 0.6rem;
-  }
-
-  .diagnoses-list,
-  .relations-list {
-    max-height: 100px;
-  }
-
-  .btn-primary,
-  .btn-secondary,
-  .client-action-btn,
-  .btn-add-group,
-  .confirm-btn-ok,
-  .confirm-btn-cancel,
-  .photo-zoom-close,
-  .add-parent-btn,
-  .new-sub-btn,
-  .renew-sub-btn,
-  .add-diagnosis-btn {
-    padding: 0.3rem;
-    font-size: 0.7rem;
-  }
+.btn-secondary:hover {
+  background: #e0e0e0;
 }

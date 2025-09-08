@@ -2015,13 +2015,14 @@ export function showGroupForm(title, client, groups, callback) {
   let selectedGroups = [...(client.groups || [])];
   let groupHistory = [...(client.groupHistory || [])];
 
-  function renderGroups() {
+  function renderGroups(searchTerm = '') {
     const groupList = modal.querySelector('.groups-list');
-    groupList.innerHTML = groups.map(group => `
-    <div class="group-item ${selectedGroups.includes(group) ? 'selected' : ''}" data-group="${group}">
-      ${group}
-    </div>
-  `).join('');
+    const filteredGroups = groups.filter(group => group.toLowerCase().includes(searchTerm.toLowerCase())).sort((a, b) => a.localeCompare(b));
+    groupList.innerHTML = filteredGroups.map(group => `
+      <div class="group-item ${selectedGroups.includes(group) ? 'selected' : ''}" data-group="${group}">
+        ${group}
+      </div>
+    `).join('');
 
     groupList.querySelectorAll('.group-item').forEach(item => {
       item.addEventListener('click', () => {
@@ -2033,32 +2034,34 @@ export function showGroupForm(title, client, groups, callback) {
           selectedGroups.push(group);
           groupHistory.push({ date: new Date().toISOString(), action: 'added', group });
         }
-        renderGroups();
+        renderGroups(searchTerm);
       });
     });
   }
 
   modal.innerHTML = `
-  <div class="group-form-content">
-    <div class="group-form-header">
-      <h2>${title}</h2>
-      <button type="button" class="group-form-close">×</button>
-    </div>
-    <div class="group-form-body">
-      <div class="client-info">
-        <span>Клиент: ${client.surname} ${client.name}</span>
+    <div class="group-form-content">
+      <div class="group-form-header">
+        <h2>${title}</h2>
+        <button type="button" class="group-form-close">×</button>
       </div>
-      <div class="groups-list"></div>
-      <div class="group-form-controls">
-        <button type="button" id="add-new-group-btn" class="btn-primary">Добавить новую группу</button>
+      <div class="group-form-body">
+        <div class="client-info">
+          <span>Клиент: ${client.surname} ${client.name}</span>
+        </div>
+        <div class="group-search-container">
+          <input type="text" id="group-search" placeholder="Поиск группы...">
+        </div>
+        <div class="groups-list-container">
+          <div class="groups-list"></div>
+        </div>
+      </div>
+      <div class="group-form-footer">
+        <button type="button" id="group-cancel-btn" class="btn-secondary">Отмена</button>
+        <button type="button" id="group-save-btn" class="btn-primary">Сохранить</button>
       </div>
     </div>
-    <div class="group-form-footer">
-      <button type="button" id="group-cancel-btn" class="btn-secondary">Отмена</button>
-      <button type="button" id="group-save-btn" class="btn-primary">Сохранить</button>
-    </div>
-  </div>
-`;
+  `;
 
   document.getElementById('main-content').appendChild(modal);
 
@@ -2068,13 +2071,9 @@ export function showGroupForm(title, client, groups, callback) {
   modal.querySelector('.group-form-close').addEventListener('click', closeModal);
   modal.querySelector('#group-cancel-btn').addEventListener('click', closeModal);
 
-  modal.querySelector('#add-new-group-btn').addEventListener('click', () => {
-    const newGroup = prompt('Введите название новой группы:');
-    if (newGroup && newGroup.trim() && !groups.includes(newGroup.trim())) {
-      groups.push(newGroup.trim());
-      renderGroups();
-      showToast('Новая группа добавлена', 'success');
-    }
+  const searchInput = modal.querySelector('#group-search');
+  searchInput.addEventListener('input', (e) => {
+    renderGroups(e.target.value);
   });
 
   modal.querySelector('#group-save-btn').addEventListener('click', () => {

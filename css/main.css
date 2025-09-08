@@ -9,7 +9,7 @@ body {
 /* Стили для header */
 header {
   color: white;
-  padding: 12px 24px;
+  padding: 7px 20px;
   display: flex;
   align-items: center;
   justify-content: flex-start;

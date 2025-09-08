@@ -56,7 +56,7 @@ export function loadRooms() {
                     <img src="images/icon-edit.svg" alt="Редактировать" class="action-icon">
                   </button>
                   <button class="room-delete-btn" data-id="${room.id}">
-                    <img src="images/icon-delete.svg" alt="Удалить" class="action-icon">
+                    <img src="images/trash.svg" alt="Удалить" class="action-icon">
                   </button>
                 </td>
               </tr>
