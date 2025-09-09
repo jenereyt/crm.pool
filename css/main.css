@@ -54,7 +54,7 @@ header h1 img {
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-.client-list-info{
+.client-list-info {
   color: #0056b3;
 }
 
@@ -63,8 +63,9 @@ header h1 img {
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
 }
 
-.parents-tablee th, .parents-tablee td{
-padding: 10px;
+.parents-tablee th,
+.parents-tablee td {
+  padding: 10px;
 }
 
 /* Стили для large-block */
@@ -134,6 +135,27 @@ padding: 10px;
   border-bottom: 1px solid #e9ecef;
   color: #555;
   font-size: 14px;
+}
+
+/* Стили для списка текущих занятий */
+.current-class {
+  padding: 8px 0;
+  border-bottom: 1px solid #e9ecef;
+  color: #333;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.current-class:hover {
+  background: #f8f9fa;
+}
+
+/* Стили для сообщения об отсутствии занятий */
+.no-classes-info {
+  color: #555;
+  font-size: 14px;
+  margin: 12px 0;
 }
 
 /* Основной контейнер контента */
@@ -434,7 +456,6 @@ padding: 10px;
   }
 }
 
-
-#add-client-home{
+#add-client-home {
   margin-bottom: 10px;
 }

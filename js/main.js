@@ -5,7 +5,7 @@ export function loadHome() {
   const mainContent = document.getElementById('main-content');
   mainContent.innerHTML = '';
 
-  // Хедер с "Главная" и иконкой
+  // Создаем хедер с заголовком "Главная" и иконкой
   const header = document.createElement('header');
   header.className = 'header';
   header.innerHTML = `
@@ -13,7 +13,7 @@ export function loadHome() {
   `;
   mainContent.appendChild(header);
 
-  // Контейнер для блоков
+  // Контейнер для блоков контента
   const contentBlocks = document.createElement('div');
   contentBlocks.className = 'content-blocks';
   mainContent.appendChild(contentBlocks);
@@ -40,16 +40,17 @@ export function loadHome() {
   `;
   contentBlocks.appendChild(block2);
 
-  // Блок 3: Плейсхолдер (Статистика)
+  // Блок 3: Текущие занятия
   const block3 = document.createElement('div');
   block3.className = 'content-block';
   block3.innerHTML = `
-    <h2>Статистика</h2>
-    <p>Здесь будет статистика</p>
+    <h2>Текущие занятия</h2>
+    <ul id="current-classes-list"></ul>
+    <p class="no-classes-info" style="display: none;">Сейчас нет занятий</p>
   `;
   contentBlocks.appendChild(block3);
 
-  // Большой блок 4: Расписание на сегодня
+  // Блок 4: Расписание на сегодня
   const block4 = document.createElement('div');
   block4.className = 'large-block';
   block4.innerHTML = `
@@ -59,7 +60,7 @@ export function loadHome() {
   contentBlocks.appendChild(block4);
 
   // Логика для Блока 1: Клиенты с 1 уроком
-  const today = new Date('2025-09-05');
+  const today = new Date('2025-09-09'); // Сегодняшняя дата: 9 сентября 2025
   const lowClassesClients = [];
   getClients().forEach(client => {
     client.subscriptions.forEach(sub => {
@@ -118,7 +119,7 @@ export function loadHome() {
     `;
     mainContent.appendChild(modal);
 
-    // Закрытие модалки только при клике вне её без выделения текста
+    // Закрытие модального окна при клике вне его без выделения текста
     modal.addEventListener('click', (e) => {
       if (e.target === modal && window.getSelection().toString().length === 0) {
         modal.remove();
@@ -170,16 +171,53 @@ export function loadHome() {
     }
   });
 
+  // Логика для Блока 3: Текущие занятия
+  const now = new Date('2025-09-09T11:14:00+05:00'); // Текущее время: 11:14, 9 сентября 2025
+  const todayStr = formatDate(now);
+  const currentClassesList = block3.querySelector('#current-classes-list');
+  const noClassesInfo = block3.querySelector('.no-classes-info');
+
+  // Фильтрация расписания для занятий, идущих прямо сейчас
+  const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  const currentClasses = scheduleData.filter(c => c.date === todayStr && isClassActiveNow(c, currentTime));
+
+  if (currentClasses.length > 0) {
+    currentClassesList.innerHTML = currentClasses.map(cls => {
+      const room = getRooms().find(r => r.id === cls.roomId);
+      const roomName = room ? room.name : 'Неизвестный зал';
+      const groupText = cls.type === 'group' && cls.group ? `<br><small>${cls.group}</small>` : '';
+      return `
+        <li class="current-class" data-id="${cls.id}">
+          ${cls.name} (${roomName})${groupText}
+          <br><small>${cls.clients.length ? cls.clients.join(', ') : 'Нет клиентов'}</small>
+        </li>
+      `;
+    }).join('');
+  } else {
+    noClassesInfo.style.display = 'block';
+  }
+
+  // Обработчик клика по текущим занятиям (опционально)
+  currentClassesList.addEventListener('click', (e) => {
+    const classItem = e.target.closest('.current-class');
+    if (classItem && window.getSelection().toString().length === 0) {
+      const classId = classItem.getAttribute('data-id');
+      const cls = scheduleData.find(c => c.id === classId);
+      if (cls) {
+        console.log('Выбрано занятие:', cls); // Здесь можно добавить модальное окно с деталями занятия
+      }
+    }
+  });
+
   // Логика для Блока 4: Расписание на сегодня
   const scheduleContainer = block4.querySelector('.schedule-container');
   const hours = Array.from({ length: 15 }, (_, i) => `${String(i + 8).padStart(2, '0')}:00`);
-  const todayStr = formatDate(today);
   const todaySchedule = scheduleData.filter(c => c.date === todayStr);
   const rooms = getRooms();
 
   let html = '<div class="schedule-table"><div class="schedule-row schedule-header"><div class="schedule-time"></div>';
   if (!Array.isArray(rooms)) {
-    console.error('Error: rooms is not an array:', rooms);
+    console.error('Ошибка: rooms не является массивом:', rooms);
     html += '<div class="schedule-cell">Ошибка: Залы не загружены</div>';
   } else {
     rooms.forEach(room => html += `<div class="schedule-cell">${room.name}</div>`);
@@ -234,5 +272,15 @@ export function loadHome() {
 
   function formatDate(date) {
     return date.toISOString().split('T')[0];
+  }
+
+  function isClassActiveNow(cls, currentTime) {
+    const [startHour, startMin] = cls.startTime.split(':').map(Number);
+    const [endHour, endMin] = cls.endTime.split(':').map(Number);
+    const [currentHour, currentMin] = currentTime.split(':').map(Number);
+    const startMinutes = startHour * 60 + startMin;
+    const endMinutes = endHour * 60 + endMin;
+    const currentMinutes = currentHour * 60 + currentMin;
+    return currentMinutes >= startMinutes && currentMinutes < endMinutes;
   }
 }

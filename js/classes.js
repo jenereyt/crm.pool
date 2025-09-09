@@ -354,33 +354,47 @@ export async function loadClasses() {
   async function showJournalModal(cls, clientsList, subscriptions) {
     const modal = document.createElement('div');
     modal.className = 'journal-modal';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-labelledby', 'journal-title');
     modal.innerHTML = `
-      <div class="journal-modal-content">
-        <div class="journal-header">
-          <h2>Журнал — ${escapeHtml(cls.name || cls.group || 'Занятие')}</h2>
-          <button id="journal-back-btn">← Назад</button>
-        </div>
-        <p><strong>Дата:</strong> ${escapeHtml(cls.date || '—')} ${cls.startTime ? `, ${escapeHtml(cls.startTime)}–${escapeHtml(cls.endTime)}` : ''}</p>
-        <div class="journal-controls">
-          <button id="journal-mark-all-btn">Отметить всех пришедшими</button>
-        </div>
-        <div>
-          <table class="journal-table">
-            <thead>
-              <tr>
-                <th>Клиент</th>
-                <th>Статус</th>
-              </tr>
-            </thead>
-            <tbody id="journal-tbody"></tbody>
-          </table>
-        </div>
-        <div class="journal-actions">
-          <button id="journal-save-btn">Сохранить</button>
-          <button id="journal-close-btn">Закрыть</button>
-        </div>
+    <div class="journal-modal-content">
+      <div class="journal-header">
+        <h2 id="journal-title">Журнал — ${escapeHtml(cls.name || cls.group || 'Занятие')}</h2>
+        <button class="journal-close-btn" aria-label="Закрыть модальное окно">×</button>
       </div>
-    `;
+      <p><strong>Дата:</strong> ${escapeHtml(cls.date || '—')} ${cls.startTime ? `, ${escapeHtml(cls.startTime)}–${escapeHtml(cls.endTime)}` : ''}</p>
+      <div class="journal-controls">
+        <div class="client-search-container">
+          <input type="text" id="journal-client-search" placeholder="Поиск по ФИО" aria-label="Поиск клиентов по ФИО">
+        </div>
+        <select id="journal-batch-action" aria-label="Выберите действие для всех">
+          <option value="">Действие для всех</option>
+          <option value="Пришёл">Отметить всех: Пришёл</option>
+          <option value="Не пришёл">Отметить всех: Не пришёл</option>
+          <option value="Опоздал">Отметить всех: Опоздал</option>
+          <option value="Отменено">Отметить всех: Отменено</option>
+        </select>
+      </div>
+      <div class="journal-table-container">
+        <table class="journal-table">
+          <thead>
+            <tr>
+              <th>Клиент</th>
+              <th>Статус</th>
+              <th>Подписка</th>
+            </tr>
+          </thead>
+          <tbody id="journal-tbody"></tbody>
+        </table>
+      </div>
+      <div class="journal-actions">
+        <span id="journal-save-status" class="save-status"></span>
+        <button id="journal-undo-btn" disabled>Отменить изменения</button>
+        <button id="journal-save-btn">Сохранить</button>
+        <button id="journal-close-btn">Закрыть</button>
+      </div>
+    </div>
+  `;
     document.body.appendChild(modal);
 
     modal.addEventListener('mousedown', (e) => {
@@ -397,9 +411,16 @@ export async function loadClasses() {
     }
 
     cls.attendance = cls.attendance || {};
+    let originalAttendance = { ...cls.attendance }; // Store original state for undo
+    let changedRows = new Set();
 
-    function renderJournal() {
+    function renderJournal(filter = '') {
+      const q = filter.trim().toLowerCase();
       const rows = journalClients
+        .filter(c => {
+          const fullName = getClientFullName(c).toLowerCase();
+          return !q || fullName.includes(q);
+        })
         .sort((a, b) => {
           const aName = getClientFullName(a) || '';
           const bName = getClientFullName(b) || '';
@@ -408,46 +429,79 @@ export async function loadClasses() {
         .map(c => {
           const clientId = c.id;
           const fullName = getClientFullName(c);
-          const status = cls.attendance[clientId] || 'Не пришёл';
+          const status = cls.attendance[clientId] || 'Пришёл'; // Default to "Пришёл"
           const disabled = c.blacklisted ? 'disabled' : '';
           const blackTag = c.blacklisted ? ' <small>(В чёрном списке)</small>' : '';
-          return `<tr data-clientid="${escapeHtml(clientId)}">
-                    <td>${escapeHtml(fullName)}${blackTag}</td>
-                    <td>
-                      <select class="journal-status" data-clientid="${escapeHtml(clientId)}" ${disabled}>
-                        <option value="Пришёл" ${status === 'Пришёл' ? 'selected' : ''}>Пришёл</option>
-                        <option value="Не пришёл" ${status === 'Не пришёл' ? 'selected' : ''}>Не пришёл</option>
-                        <option value="Опоздал" ${status === 'Опоздал' ? 'selected' : ''}>Опоздал</option>
-                        <option value="Отменено" ${status === 'Отменено' ? 'selected' : ''}>Отменено</option>
-                      </select>
-                    </td>
-                  </tr>`;
+          const sub = subscriptions.find(s => s.clientId === c.id);
+          const subStatus = sub ? (sub.remainingClasses === Infinity ? '∞' : sub.remainingClasses) : 'Нет';
+          const subWarning = sub && sub.remainingClasses < 3 && sub.remainingClasses !== Infinity ? ' <span class="sub-warning" title="Осталось мало занятий">⚠</span>' : '';
+          return `
+          <tr data-clientid="${escapeHtml(clientId)}" class="${changedRows.has(clientId) ? 'row-changed' : ''}">
+            <td>${escapeHtml(fullName)}${blackTag}</td>
+            <td>
+              <select class="journal-status" data-clientid="${escapeHtml(clientId)}" ${disabled} aria-label="Статус для ${escapeHtml(fullName)}">
+                <option value="Пришёл" ${status === 'Пришёл' ? 'selected' : ''}>Пришёл</option>
+                <option value="Не пришёл" ${status === 'Не пришёл' ? 'selected' : ''}>Не пришёл</option>
+                <option value="Опоздал" ${status === 'Опоздал' ? 'selected' : ''}>Опоздал</option>
+                <option value="Отменено" ${status === 'Отменено' ? 'selected' : ''}>Отменено</option>
+              </select>
+            </td>
+            <td>${subStatus}${subWarning}</td>
+          </tr>
+        `;
         }).join('');
-      modal.querySelector('#journal-tbody').innerHTML = rows || '<tr><td colspan="2">Нет клиентов</td></tr>';
+      modal.querySelector('#journal-tbody').innerHTML = rows || '<tr><td colspan="3">Нет клиентов</td></tr>';
     }
 
     renderJournal();
 
-    modal.querySelector('#journal-mark-all-btn').addEventListener('click', () => {
-      const selects = modal.querySelectorAll('.journal-status:not([disabled])');
-      selects.forEach(select => {
-        select.value = 'Пришёл';
-      });
+    modal.querySelector('#journal-client-search').addEventListener('input', (e) => {
+      renderJournal(e.target.value);
+    });
+
+    modal.querySelector('#journal-batch-action').addEventListener('change', (e) => {
+      const value = e.target.value;
+      if (value) {
+        const selects = modal.querySelectorAll('.journal-status:not([disabled])');
+        selects.forEach(select => {
+          select.value = value;
+          const clientId = select.getAttribute('data-clientid');
+          cls.attendance[clientId] = value;
+          changedRows.add(clientId);
+        });
+        renderJournal(modal.querySelector('#journal-client-search').value);
+        modal.querySelector('#journal-undo-btn').disabled = false;
+        e.target.value = ''; // Reset dropdown
+      }
+    });
+
+    modal.querySelector('#journal-tbody').addEventListener('change', (e) => {
+      if (e.target.classList.contains('journal-status')) {
+        const clientId = e.target.getAttribute('data-clientid');
+        cls.attendance[clientId] = e.target.value;
+        changedRows.add(clientId);
+        renderJournal(modal.querySelector('#journal-client-search').value);
+        modal.querySelector('#journal-undo-btn').disabled = false;
+      }
+    });
+
+    modal.querySelector('#journal-undo-btn').addEventListener('click', () => {
+      cls.attendance = { ...originalAttendance };
+      changedRows.clear();
+      renderJournal(modal.querySelector('#journal-client-search').value);
+      modal.querySelector('#journal-undo-btn').disabled = true;
     });
 
     modal.querySelector('#journal-save-btn').addEventListener('click', async () => {
-      const rows = modal.querySelectorAll('#journal-tbody tr[data-clientid]');
-      rows.forEach(row => {
-        const clientId = row.getAttribute('data-clientid');
-        const statusEl = row.querySelector('.journal-status');
-        cls.attendance[clientId] = statusEl ? statusEl.value : 'Не пришёл';
-      });
+      const significantChanges = Object.values(cls.attendance).filter(status => status === 'Не пришёл' || status === 'Отменено').length > journalClients.length / 2;
+      if (significantChanges && !confirm('Многие клиенты отмечены как "Не пришёл" или "Отменено". Сохранить изменения?')) {
+        return;
+      }
 
+      modal.querySelector('#journal-save-status').textContent = 'Сохранение...';
       const subs = await getActiveSubscriptions();
-      for (const row of rows) {
-        const clientId = row.getAttribute('data-clientid');
-        const statusEl = row.querySelector('.journal-status');
-        if (statusEl && statusEl.value === 'Пришёл') {
+      for (const clientId in cls.attendance) {
+        if (cls.attendance[clientId] === 'Пришёл') {
           const clientObj = clientsList.find(c => c.id === clientId);
           if (clientObj) {
             const sub = subs.find(s => s.clientId === clientObj.id && s.remainingClasses !== Infinity);
@@ -458,12 +512,29 @@ export async function loadClasses() {
         }
       }
 
-      renderClasses();
-      modal.remove();
+      originalAttendance = { ...cls.attendance }; // Update original state
+      changedRows.clear();
+      modal.querySelector('#journal-undo-btn').disabled = true;
+      modal.querySelector('#journal-save-status').textContent = 'Сохранено!';
+      setTimeout(() => {
+        modal.querySelector('#journal-save-status').textContent = '';
+        renderClasses();
+        modal.remove();
+      }, 1000);
     });
 
     modal.querySelector('#journal-close-btn').addEventListener('click', () => modal.remove());
-    modal.querySelector('#journal-back-btn').addEventListener('click', () => modal.remove());
+    modal.querySelector('.journal-close-btn').addEventListener('click', () => modal.remove());
+
+    // Keyboard navigation
+    modal.querySelectorAll('.journal-status').forEach((select, index, selects) => {
+      select.addEventListener('keydown', (e) => {
+        if (e.key === 'Tab' && !e.shiftKey && index === selects.length - 1) {
+          modal.querySelector('#journal-save-btn').focus();
+          e.preventDefault();
+        }
+      });
+    });
   }
 
   function showClientPickerModal(clientsList, subscriptions, selectedClientIds, callback) {
@@ -521,7 +592,7 @@ export async function loadClasses() {
         .map(c => {
           const fullName = getClientFullName(c);
           const hasSubscription = subscriptions.some(s => s.clientId === c.id && s.remainingClasses > 0);
-          const status = c.blacklisted ? 'В чёрном списке' : hasSubscription ? 'Активная подписка' : 'Нет подписки';
+          const status = c.blacklisted ? 'В чёрном списке' : hasSubscription ? 'Активный' : 'Нет подписки';
           const disabled = c.blacklisted ? 'disabled' : '';
           const selectedClass = currentSelected.includes(c.id) ? 'selected' : '';
           return `

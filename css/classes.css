@@ -299,15 +299,15 @@
   justify-content: center;
   align-items: center;
   z-index: 1000;
-  padding: 8px;
+  padding: 12px;
 }
 
 .journal-modal-content {
   background: var(--gray-50);
-  padding: 16px;
+  padding: 20px;
   border-radius: var(--border-radius);
   width: 100%;
-  max-width: 400px;
+  max-width: 500px;
   max-height: 90vh;
   overflow-y: auto;
   border: 1px solid var(--gray-200);
@@ -319,68 +319,95 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
+  position: relative;
 }
 
 .journal-header h2 {
   margin: 0;
-  font-size: 16px;
+  font-size: 18px;
   color: var(--gray-900);
+  font-weight: 600;
 }
 
-#journal-back-btn {
+.journal-close-btn {
   background: transparent;
   border: none;
-  cursor: pointer;
-  font-size: 14px;
+  font-size: 20px;
   color: var(--gray-700);
+  cursor: pointer;
+  padding: 4px;
 }
 
-#journal-back-btn:hover {
+.journal-close-btn:hover {
   color: var(--primary-color);
 }
 
 .journal-controls {
   display: flex;
+  flex-direction: column;
   gap: 8px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
-#journal-mark-all-btn {
-  background-color: var(--primary-color);
-  color: white;
-  border: none;
-  padding: 6px 12px;
+.client-search-container {
+  position: sticky;
+  top: 0;
+  background: var(--gray-50);
+  z-index: 1;
+}
+
+.client-search-container input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--gray-300);
   border-radius: var(--border-radius);
-  cursor: pointer;
-  font-size: 0.85em;
+  font-size: 0.9em;
   font-family: var(--font-family);
 }
 
-#journal-mark-all-btn:hover {
-  background-color: var(--primary-hover);
+.client-search-container input:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+}
+
+#journal-batch-action {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--border-radius);
+  font-size: 0.9em;
+  font-family: var(--font-family);
+  background: var(--gray-100);
+}
+
+#journal-batch-action:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+}
+
+.journal-table-container {
+  max-height: 50vh;
+  overflow-y: auto;
 }
 
 .journal-table {
   width: 100%;
-  border-collapse: collapse;
-  font-size: 0.85em;
+  border-collapse: separate;
+  border-spacing: 0 4px;
+  font-size: 0.9em;
   font-family: var(--font-family);
-  overflow-x: auto;
-  display: block;
 }
 
 .journal-table th,
 .journal-table td {
-  padding: 8px;
+  padding: 10px;
+  text-align: left;
   border-bottom: 1px solid var(--gray-200);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .journal-table th {
-  background-color: var(--gray-50);
+  background: var(--gray-50);
   color: var(--gray-900);
   font-weight: 600;
   position: sticky;
@@ -388,31 +415,87 @@
   z-index: 1;
 }
 
+.journal-table tr {
+  background: var(--gray-100);
+  border-radius: var(--border-radius);
+  transition: var(--transition);
+}
+
+.journal-table tr.row-changed {
+  background: rgba(79, 70, 229, 0.1);
+}
+
 .journal-table select {
   width: 100%;
-  padding: 4px;
+  padding: 6px;
   border: 1px solid var(--gray-300);
   border-radius: var(--border-radius);
-  font-size: 0.8em;
+  font-size: 0.9em;
   font-family: var(--font-family);
+  background-color: var(--gray-50);
+}
+
+.journal-table select option[value="Пришёл"] {
+  background-color: rgba(34, 197, 94, 0.1);
+  color: #15803d;
+}
+
+.journal-table select option[value="Не пришёл"] {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #b91c1c;
+}
+
+.journal-table select option[value="Опоздал"] {
+  background-color: rgba(234, 179, 8, 0.1);
+  color: #a16207;
+}
+
+.journal-table select option[value="Отменено"] {
+  background-color: rgba(107, 114, 128, 0.1);
+  color: var(--gray-700);
+}
+
+.journal-table select:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+}
+
+.sub-warning {
+  color: #f59e0b;
+  cursor: help;
 }
 
 .journal-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
-  margin-top: 10px;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
   border-top: 1px solid var(--gray-200);
-  padding-top: 8px;
+  padding-top: 12px;
 }
 
 .journal-actions button {
-  padding: 6px 12px;
+  padding: 8px 16px;
   border: none;
   border-radius: var(--border-radius);
   cursor: pointer;
-  font-size: 0.85em;
+  font-size: 0.9em;
   font-family: var(--font-family);
+}
+
+#journal-undo-btn {
+  background-color: var(--gray-400);
+  color: white;
+}
+
+#journal-undo-btn:disabled {
+  background-color: var(--gray-300);
+  cursor: not-allowed;
+}
+
+#journal-undo-btn:hover:not(:disabled) {
+  background-color: var(--gray-500);
 }
 
 #journal-save-btn {
@@ -431,6 +514,11 @@
 
 #journal-close-btn:hover {
   background-color: var(--gray-500);
+}
+
+.save-status {
+  font-size: 0.9em;
+  color: var(--primary-color);
 }
 
 /* Модальное окно для выбора клиентов */
@@ -453,7 +541,7 @@
   padding: 16px;
   border-radius: var(--border-radius);
   width: 100%;
-  max-width: 500px;
+  max-width: 600px;
   max-height: 90vh;
   overflow-y: auto;
   border: 1px solid var(--gray-200);
@@ -625,7 +713,7 @@
   }
 
   .class-add-btn {
-    width: auto;
+    width: 100%;
     padding: 5px;
   }
 
@@ -667,28 +755,33 @@
 
   .journal-modal-content {
     max-width: 100%;
-    padding: 12px;
+    padding: 16px;
   }
 
   .journal-header h2 {
-    font-size: 14px;
+    font-size: 16px;
   }
 
   .journal-table th,
   .journal-table td {
-    padding: 6px;
-    font-size: 0.8em;
+    padding: 8px;
+    font-size: 0.85em;
   }
 
   .journal-table select {
-    padding: 3px;
-    font-size: 0.75em;
+    padding: 5px;
+    font-size: 0.85em;
   }
 
-  .journal-actions button,
-  #journal-mark-all-btn {
-    padding: 5px 10px;
-    font-size: 0.8em;
+  .journal-actions button {
+    padding: 6px 12px;
+    font-size: 0.85em;
+  }
+
+  .client-search-container input,
+  #journal-batch-action {
+    padding: 6px;
+    font-size: 0.85em;
   }
 
   .client-picker-modal-content {
@@ -768,28 +861,33 @@
   }
 
   .journal-modal-content {
-    padding: 10px;
+    padding: 12px;
   }
 
   .journal-header h2 {
-    font-size: 13px;
+    font-size: 14px;
   }
 
   .journal-table th,
   .journal-table td {
-    padding: 4px;
-    font-size: 0.75em;
+    padding: 6px;
+    font-size: 0.8em;
   }
 
   .journal-table select {
-    padding: 2px;
-    font-size: 0.7em;
+    padding: 4px;
+    font-size: 0.8em;
   }
 
-  .journal-actions button,
-  #journal-mark-all-btn {
-    padding: 4px 8px;
-    font-size: 0.75em;
+  .journal-actions button {
+    padding: 5px 10px;
+    font-size: 0.8em;
+  }
+
+  .client-search-container input,
+  #journal-batch-action {
+    padding: 5px;
+    font-size: 0.8em;
   }
 
   .client-picker-modal-content {
