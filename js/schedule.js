@@ -4,7 +4,8 @@ import { getRooms as getRoomsFromRooms } from './rooms.js';
 import { getClients } from './clients.js';
 import { getActiveSubscriptions, getSubscriptionTemplates } from './subscriptions.js';
 
-// Прокси-экспорт getRooms
+
+
 export function getRooms() {
   return getRoomsFromRooms() || [
     { id: 'room1', name: 'Зал 1' },
@@ -58,11 +59,10 @@ export let scheduleData = [
   }
 ];
 
-export function setupModalClose(modal, closeModal, checkInnerSelection = false) {
+export function setupModalClose(modal, closeFn, allowSelection = false) {
   modal.addEventListener('click', (e) => {
-    const selection = window.getSelection();
-    if (e.target === modal && (!checkInnerSelection || !modal.querySelector('.client-form-content, .schedule-modal-content, .journal-modal-content, .inline-client-picker')?.contains(selection.anchorNode))) {
-      closeModal();
+    if (e.target === modal && (!window.getSelection().toString() || allowSelection)) {
+      closeFn();
     }
   });
 }

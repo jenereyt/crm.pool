@@ -1,3 +1,4 @@
+// main.js (updated to use clientIds and dynamic date)
 import { getClients, showClientForm, addClient, showClientDetails } from './clients.js';
 import { scheduleData, setupModalClose, getRooms } from './schedule.js';
 
@@ -60,7 +61,7 @@ export function loadHome() {
   contentBlocks.appendChild(block4);
 
   // Логика для Блока 1: Клиенты с 1 уроком
-  const today = new Date('2025-09-09'); // Сегодняшняя дата: 9 сентября 2025
+  const today = new Date(); // Dynamic date
   const lowClassesClients = [];
   getClients().forEach(client => {
     client.subscriptions.forEach(sub => {
@@ -172,7 +173,7 @@ export function loadHome() {
   });
 
   // Логика для Блока 3: Текущие занятия
-  const now = new Date('2025-09-09T11:14:00+05:00'); // Текущее время: 11:14, 9 сентября 2025
+  const now = new Date(); // Dynamic time
   const todayStr = formatDate(now);
   const currentClassesList = block3.querySelector('#current-classes-list');
   const noClassesInfo = block3.querySelector('.no-classes-info');
@@ -186,10 +187,15 @@ export function loadHome() {
       const room = getRooms().find(r => r.id === cls.roomId);
       const roomName = room ? room.name : 'Неизвестный зал';
       const groupText = cls.type === 'group' && cls.group ? `<br><small>${cls.group}</small>` : '';
+      // Map clientIds to names
+      const clientNames = cls.clientIds ? cls.clientIds.map(id => {
+        const client = getClients().find(c => c.id === id);
+        return client ? `${client.surname} ${client.name}` : 'Неизвестный';
+      }) : [];
       return `
         <li class="current-class" data-id="${cls.id}">
           ${cls.name} (${roomName})${groupText}
-          <br><small>${cls.clients.length ? cls.clients.join(', ') : 'Нет клиентов'}</small>
+          <br><small>${clientNames.length ? clientNames.join(', ') : 'Нет клиентов'}</small>
         </li>
       `;
     }).join('');
@@ -238,7 +244,12 @@ export function loadHome() {
             const slotKey = `${room.id}-${startHourIndex}`;
             if (!occupiedSlots.has(slotKey)) {
               const groupText = cls.type === 'group' && cls.group ? `<br><small>${cls.group}</small>` : '';
-              html += `<div class="schedule-class schedule-${cls.type}" data-id="${cls.id}" style="grid-row: span ${duration}">${cls.name}${groupText}<br><small>${cls.clients.length ? cls.clients.join(', ') : 'Нет клиентов'}</small></div>`;
+              // Map clientIds to names
+              const clientNames = cls.clientIds ? cls.clientIds.map(id => {
+                const client = getClients().find(c => c.id === id);
+                return client ? `${client.surname} ${client.name}` : 'Неизвестный';
+              }) : [];
+              html += `<div class="schedule-class schedule-${cls.type}" data-id="${cls.id}" style="grid-row: span ${duration}">${cls.name}${groupText}<br><small>${clientNames.length ? clientNames.join(', ') : 'Нет клиентов'}</small></div>`;
               occupiedSlots.set(slotKey, true);
             }
           }

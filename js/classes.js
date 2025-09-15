@@ -1,3 +1,4 @@
+// classes.js (no changes, but ensure clientIds are used consistently)
 import { getTrainers } from './employees.js';
 import { getGroups } from './groups.js';
 import { getClients } from './clients.js';

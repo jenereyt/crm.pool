@@ -1,3 +1,4 @@
+// subscriptions.js (updated for paymentMethod and contract)
 import { getClients, getClientById, updateClient } from './clients.js';
 import { scheduleData } from './schedule.js';
 import { getGroups as getGroupNames } from './groups.js';
@@ -129,6 +130,7 @@ export function loadSubscriptions() {
         <thead>
           <tr>
             <th>Клиент</th>
+            <th>Договор</th>
             <th>Номер</th>
             <th>Тип</th>
             <th>Период</th>
@@ -137,6 +139,7 @@ export function loadSubscriptions() {
             <th>Дни</th>
             <th>Время</th>
             <th>Группа</th>
+            <th>Способ оплаты</th>
             <th>Статус</th>
             <th>Действия</th>
           </tr>
@@ -151,9 +154,12 @@ export function loadSubscriptions() {
           const client = clients.find(c => c.id === sub.clientId);
           const template = subscriptionTemplates.find(t => t.id === sub.templateId);
           const fullName = `${client.surname} ${client.name} ${client.patronymic || ''}`;
+          const contract = client.contract ? `#${client.contract.number}` : 'Нет';
+          const paymentMethod = sub.paymentMethod || 'Не указан';
           return `
                 <tr class="subscription-row" data-id="${sub.id}">
                   <td>${fullName}</td>
+                  <td>${contract}</td>
                   <td>#${sub.subscriptionNumber}</td>
                   <td>${template ? template.type : 'Неизвестный'}</td>
                   <td>${sub.startDate} — ${sub.endDate}</td>
@@ -162,6 +168,7 @@ export function loadSubscriptions() {
                   <td>${sub.daysOfWeek.join(', ') || 'Не указаны'}</td>
                   <td>${sub.classTime}</td>
                   <td>${sub.group || 'Не указана'}</td>
+                  <td>${paymentMethod}</td>
                   <td class="status-${tab === 'active' ? 'active' : 'inactive'}">
                     ${tab === 'active' ? 'Активный' : 'Неактивный'}
                   </td>
@@ -171,7 +178,7 @@ export function loadSubscriptions() {
                         <img src="./images/icon-edit.svg" alt="Редактировать">
                       </button>
                       <button class="subscription-action-icon delete" data-id="${sub.id}" title="Удалить">
-                        <img src="./images/icon-delete.svg" alt="Удалить">
+                        <img src="./images/trash.svg" alt="Удалить">
                       </button>
                     </div>
                   </td>
@@ -331,6 +338,7 @@ export function loadSubscriptions() {
         <p>Дни недели: ${sub.daysOfWeek.join(', ') || 'Не указаны'}</p>
         <p>Время: ${sub.classTime || 'Не указано'}</p>
         <p>Группа: ${sub.group || 'Не указана'}</p>
+        <p>Способ оплаты: ${sub.paymentMethod || 'Не указан'}</p>
         <p>Статус: ${sub.isPaid && new Date(sub.endDate) >= new Date() ? 'Активный' : 'Неактивный'}</p>
         <p>История продлений: ${sub.renewalHistory.length ? sub.renewalHistory.map(entry => {
       const date = new Date(entry.date || entry).toLocaleDateString('ru-RU');
@@ -443,6 +451,16 @@ export function loadSubscriptions() {
                 <input type="date" id="renew-end-date" value="${defaultEndDate.toISOString().split('T')[0]}" required>
               </div>
               <div class="form-group">
+                <label for="renew-payment-method" class="required">Способ оплаты</label>
+                <select id="renew-payment-method" required>
+                  <option value="">Выберите способ</option>
+                  <option value="cash_register_cash" ${sub.paymentMethod === 'cash_register_cash' ? 'selected' : ''}>Касса (наличные)</option>
+                  <option value="cash_register_card" ${sub.paymentMethod === 'cash_register_card' ? 'selected' : ''}>Касса (карта)</option>
+                  <option value="cash" ${sub.paymentMethod === 'cash' ? 'selected' : ''}>Наличные</option>
+                  <option value="bank_account" ${sub.paymentMethod === 'bank_account' ? 'selected' : ''}>Расчетный счет</option>
+                </select>
+              </div>
+              <div class="form-group">
                 <label class="checkbox-label">
                   <input type="checkbox" id="renew-is-paid" ${sub.isPaid ? 'checked' : ''}>
                   <span class="checkmark"></span>
@@ -473,9 +491,10 @@ export function loadSubscriptions() {
     modal.querySelector('#renew-save-btn').addEventListener('click', () => {
       const templateId = modal.querySelector('#renew-template').value;
       const endDate = modal.querySelector('#renew-end-date').value;
+      const paymentMethod = modal.querySelector('#renew-payment-method').value;
       const isPaid = modal.querySelector('#renew-is-paid').checked;
 
-      if (!templateId || !endDate) {
+      if (!templateId || !endDate || !paymentMethod) {
         showToast('Заполните все обязательные поля!', 'error');
         return;
       }
@@ -498,6 +517,7 @@ export function loadSubscriptions() {
       callback({
         templateId,
         endDate,
+        paymentMethod,
         isPaid,
         remainingClasses: newTemplate ? newTemplate.remainingClasses : sub.remainingClasses,
         renewalHistory
@@ -575,6 +595,16 @@ export function loadSubscriptions() {
               </select>
             </div>
             <div class="form-group">
+              <label for="subscription-payment-method" class="required">Способ оплаты</label>
+              <select id="subscription-payment-method" required>
+                <option value="">Выберите способ</option>
+                <option value="cash_register_cash" ${sub.paymentMethod === 'cash_register_cash' ? 'selected' : ''}>Касса (наличные)</option>
+                <option value="cash_register_card" ${sub.paymentMethod === 'cash_register_card' ? 'selected' : ''}>Касса (карта)</option>
+                <option value="cash" ${sub.paymentMethod === 'cash' ? 'selected' : ''}>Наличные</option>
+                <option value="bank_account" ${sub.paymentMethod === 'bank_account' ? 'selected' : ''}>Расчетный счет</option>
+              </select>
+            </div>
+            <div class="form-group">
               <label class="checkbox-label">
                 <input type="checkbox" id="subscription-is-paid" ${sub.isPaid !== false ? 'checked' : ''}>
                 <span class="checkmark"></span>
@@ -624,47 +654,55 @@ export function loadSubscriptions() {
       const templateId = modal.querySelector('#subscription-template').value;
       const classesPerWeek = parseInt(modal.querySelector('#subscription-classes-per-week').value);
       const daysOfWeek = Array.from(modal.querySelectorAll('.day-button.selected')).map(b => b.dataset.day);
-      const startDate = startDateInput.value;
-      const endDate = endDateInput.value;
+      const date = modal.querySelector('#subscription-start-date').value;
+      const endDate = modal.querySelector('#subscription-end-date').value;
       const classTime = modal.querySelector('#subscription-class-time').value;
       const group = modal.querySelector('#subscription-group').value;
+      const paymentMethod = modal.querySelector('#subscription-payment-method').value;
       const isPaid = modal.querySelector('#subscription-is-paid').checked;
 
-      if (!clientId || !templateId || isNaN(classesPerWeek) || !startDate || !endDate || !classTime) {
-        alert('Заполните все обязательные поля!');
+      if (!clientId || !templateId || isNaN(classesPerWeek) || !date || !endDate || !classTime || !paymentMethod) {
+        alert('Заполните все поля корректно!');
         return;
       }
 
-      const start = new Date(startDate);
+      const start = new Date(date);
       const end = new Date(endDate);
       if (end <= start) {
         alert('Дата окончания должна быть позже даты начала!');
         return;
       }
-
       if (classesPerWeek > 0 && daysOfWeek.length === 0) {
         alert('Выберите дни недели для занятий!');
         return;
       }
 
       const client = getClientById(clientId);
+      if (!client.contract) {
+        // Create contract if not exists
+        client.contract = {
+          number: `CON-${Date.now().toString().slice(-6)}`,
+          date: new Date().toISOString().split('T')[0]
+        };
+      }
+
       const template = subscriptionTemplates.find(t => t.id === templateId);
       const subscriptionNumber = sub.subscriptionNumber || `SUB-${(client.subscriptions.length + 1).toString().padStart(3, '0')}`;
 
       callback({
         templateId,
-        startDate,
+        startDate: date,
         endDate,
         classesPerWeek,
         daysOfWeek,
         classTime,
         group,
+        paymentMethod,
         remainingClasses: template ? template.remainingClasses : Infinity,
         isPaid,
         renewalHistory: sub.renewalHistory || [],
         subscriptionNumber
       });
-
       closeModal();
     });
 

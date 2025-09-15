@@ -1,3 +1,4 @@
+// sidebar.js (updated to add 'reports' for manager)
 document.addEventListener('DOMContentLoaded', () => {
   const sidebar = document.getElementById('sidebar');
   const sidebarNav = document.getElementById('sidebar-nav');
@@ -100,7 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } else if (section === 'classes') {
         import('./classes.js').then(({ loadClasses }) => loadClasses());
       } else if (section === 'reports' && userRole === 'manager') {
-        mainContent.innerHTML = '<h1>Отчеты (в разработке)</h1>';
+        import('./reports.js').then(({ loadReports }) => loadReports());
       } else if (section === 'profile') {
         import('./profile.js').then(({ loadProfile }) => loadProfile(userRole));
       }

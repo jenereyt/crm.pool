@@ -1,6 +1,9 @@
 import { getSubscriptionTemplates } from './subscriptions.js';
 import { getGroups } from './groups.js';
 
+// Глобальный массив для истории групп (сохраняется в localStorage)
+let groupHistoryData = JSON.parse(localStorage.getItem('groupHistoryData')) || [];
+
 export let clientsData = [
   {
     id: 'client1',
@@ -34,6 +37,7 @@ export let clientsData = [
         classTime: '10:00',
         group: 'Йога для начинающих',
         remainingClasses: 1,
+        price: 8000,
         isPaid: true,
         renewalHistory: [
           { date: '2025-08-15', fromTemplate: 'Стандартный', toTemplate: 'Премиум' },
@@ -50,6 +54,7 @@ export let clientsData = [
         classTime: '09:00',
         group: 'Фитнес',
         remainingClasses: 0,
+        price: 12000,
         isPaid: true,
         renewalHistory: [
           { date: '2025-07-10' }
@@ -65,6 +70,7 @@ export let clientsData = [
         classTime: '18:00',
         group: 'Йога',
         remainingClasses: Infinity,
+        price: 15000,
         isPaid: false,
         renewalHistory: [],
         subscriptionNumber: 'SUB-003'
@@ -78,6 +84,7 @@ export let clientsData = [
         classTime: '11:00',
         group: 'Пилатес',
         remainingClasses: 5,
+        price: 10000,
         isPaid: true,
         renewalHistory: [
           { date: '2025-05-05', fromTemplate: 'Базовый', toTemplate: 'Расширенный' },
@@ -113,9 +120,10 @@ export let clientsData = [
         classTime: '09:00',
         group: '',
         remainingClasses: 1,
+        price: 7000,
         isPaid: true,
         renewalHistory: [],
-        subscriptionNumber: 'SUB-002'
+        subscriptionNumber: 'SUB-005'
       }
     ],
     photo: '',
@@ -145,9 +153,10 @@ export let clientsData = [
         classTime: '18:00',
         group: 'Фитнес',
         remainingClasses: 1,
+        price: 13000,
         isPaid: true,
         renewalHistory: [],
-        subscriptionNumber: 'SUB-005'
+        subscriptionNumber: 'SUB-006'
       }
     ],
     photo: '',
@@ -177,9 +186,10 @@ export let clientsData = [
         classTime: '09:00',
         group: 'Пилатес',
         remainingClasses: 1,
+        price: 8500,
         isPaid: true,
         renewalHistory: [],
-        subscriptionNumber: 'SUB-006'
+        subscriptionNumber: 'SUB-007'
       }
     ],
     photo: '',
@@ -209,9 +219,10 @@ export let clientsData = [
         classTime: '19:00',
         group: 'Зумба вечеринка',
         remainingClasses: 1,
+        price: 12500,
         isPaid: true,
         renewalHistory: [],
-        subscriptionNumber: 'SUB-007'
+        subscriptionNumber: 'SUB-008'
       }
     ],
     photo: '',
@@ -263,6 +274,8 @@ export function addGroupToClient(clientId, group, action = 'added', date = new D
   if (client && !client.groups.includes(group)) {
     client.groups.push(group);
     client.groupHistory.push({ date, action, group });
+    groupHistoryData.push({ clientId, date, action, group });
+    localStorage.setItem('groupHistoryData', JSON.stringify(groupHistoryData));
   }
 }
 
@@ -271,7 +284,20 @@ export function removeGroupFromClient(clientId, group) {
   if (client) {
     client.groups = client.groups.filter(g => g !== group);
     client.groupHistory.push({ date: new Date().toISOString(), action: 'removed', group });
+    groupHistoryData.push({ clientId, date: new Date().toISOString(), action: 'removed', group });
+    localStorage.setItem('groupHistoryData', JSON.stringify(groupHistoryData));
   }
+}
+
+function generateUniqueSubscriptionNumber(client) {
+  const existingNumbers = client.subscriptions.map(sub => sub.subscriptionNumber);
+  let number = client.subscriptions.length + 1;
+  let newNumber = `SUB-${String(number).padStart(3, '0')}`;
+  while (existingNumbers.includes(newNumber)) {
+    number++;
+    newNumber = `SUB-${String(number).padStart(3, '0')}`;
+  }
+  return newNumber;
 }
 
 function setupModalClose(modal, closeModal) {
@@ -600,7 +626,6 @@ export function showClientForm(title, client, callback) {
   const closeModal = () => modal.remove();
   setupModalClose(modal, closeModal);
 
-  // Добавляем обработчик для кнопки крестика
   modal.querySelector('.client-form-close').addEventListener('click', closeModal);
 
   const photoInput = document.getElementById('client-photo');
@@ -694,9 +719,8 @@ export function showClientForm(title, client, callback) {
       isValid = false;
     }
 
-    // Проверка на наличие родителей для несовершеннолетних с информативным уведомлением
     if (!isAdult(birthDate) && parents.length === 0) {
-      showToast('Клиент несовершеннолетний: перейдите на вкладку "Родители/опекуны" и добавьте хотя бы одного родителя.', 'info');
+      showToast('Клиент несовершеннолетний: добавьте хотя бы одного родителя.', 'info');
       isValid = false;
     }
 
@@ -1265,6 +1289,10 @@ export function showClientDetails(client) {
                       <span class="detail-label">Осталось занятий:</span>
                       <span class="detail-value">${sub.remainingClasses === Infinity ? 'Безлимит' : sub.remainingClasses}</span>
                     </div>
+                    <div class="detail-item">
+                      <span class="detail-label">Стоимость:</span>
+                      <span class="detail-value">${sub.price ? sub.price + ' сум' : 'Не указана'}</span>
+                    </div>
                   </div>
                 `;
     }).join('') : `
@@ -1312,7 +1340,6 @@ export function showClientDetails(client) {
       modal.remove();
       showClientForm('Редактировать клиента', client, (data) => {
         updateClient(client.id, data);
-        // renderClients() needs to be called if available; assuming it's in scope or global
         if (typeof renderClients === 'function') renderClients();
         showToast('Данные клиента обновлены', 'success');
       });
@@ -1512,6 +1539,7 @@ export function showSubscriptionManagement(client) {
               <th>Статус</th>
               <th>Период</th>
               <th>Занятий</th>
+              <th>Стоимость</th>
               <th>Продления</th>
             </tr>
           </thead>
@@ -1526,6 +1554,7 @@ export function showSubscriptionManagement(client) {
                 <td><span class="status-${isActive ? 'active' : 'inactive'}">${isActive ? 'Акт.' : 'Неакт.'}</span></td>
                 <td>${sub.startDate} — ${sub.endDate}</td>
                 <td>${sub.remainingClasses === Infinity ? '∞' : sub.remainingClasses}</td>
+                <td>${sub.price ? sub.price + ' сум' : 'Не указана'}</td>
                 <td>
                   ${sub.renewalHistory?.length ?
         `<span class="renewal-count" title="${sub.renewalHistory.map(entry => {
@@ -1538,7 +1567,7 @@ export function showSubscriptionManagement(client) {
             `;
   }).join('') : `
             <tr>
-              <td colspan="6" class="no-data">Нет абонементов</td>
+              <td colspan="7" class="no-data">Нет абонементов</td>
             </tr>
           `}
           </tbody>
@@ -1567,6 +1596,10 @@ export function showSubscriptionManagement(client) {
             <div class="detail-item">
               <span class="detail-label">Занятий:</span>
               <span class="detail-value">${sub.remainingClasses === Infinity ? '∞' : sub.remainingClasses}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Стоимость:</span>
+              <span class="detail-value">${sub.price ? sub.price + ' сум' : 'Не указана'}</span>
             </div>
             <button type="button" class="btn-primary renew-sub-btn" data-sub-index="${client.subscriptions.indexOf(sub)}">Продлить</button>
           </div>
@@ -1597,7 +1630,6 @@ export function showSubscriptionManagement(client) {
         client.subscriptions[index] = { ...sub, ...data };
         updateClient(client.id, client);
         modal.remove();
-        // renderClients() needs to be called if available
         if (typeof renderClients === 'function') renderClients();
         showToast('Абонемент продлён', 'success');
       });
@@ -1614,9 +1646,10 @@ export function showSubscriptionManagement(client) {
       classTime: '09:00',
       group: '',
       remainingClasses: 0,
+      price: 0,
       isPaid: true,
       renewalHistory: [],
-      subscriptionNumber: `SUB-${String(client.subscriptions.length + 1).padStart(3, '0')}`,
+      subscriptionNumber: generateUniqueSubscriptionNumber(client),
       clientId: client.id
     };
     showSubscriptionForm('Новый абонемент', newSub, [client], getGroups(), (data) => {
@@ -1627,7 +1660,6 @@ export function showSubscriptionManagement(client) {
       });
       updateClient(client.id, client);
       modal.remove();
-      // renderClients() needs to be called if available
       if (typeof renderClients === 'function') renderClients();
       showToast('Новый абонемент создан', 'success');
     });

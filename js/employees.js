@@ -1,3 +1,4 @@
+// employees.js (no changes)
 let employees = [
   { id: 'emp1', name: 'Анна Иванова', position: 'trainer', phone: '+7 (900) 123-45-67' },
   { id: 'emp2', name: 'Мария Петрова', position: 'trainer', phone: '+7 (900) 234-56-78' },
