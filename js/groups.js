@@ -151,7 +151,6 @@ export function loadGroups() {
     </table>
   `;
   mainContent.appendChild(groupTable);
-
   let sortField = 'name';
   let sortOrder = 1;
 
