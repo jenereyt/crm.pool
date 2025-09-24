@@ -1,18 +1,12 @@
-// groups.js (updated for history and date-based transition)
+// groups.js
 import { getTrainers } from './employees.js';
 import { getClients, addGroupToClient, removeGroupFromClient } from './clients.js';
 
 // Загрузка групп из localStorage
 let groups = JSON.parse(localStorage.getItem('groups')) || [
-  { id: 'group1', name: 'Йога для начинающих', trainer: 'Анна Иванова', clients: ['Иван Сергеев'] },
+  { id: 'group1', name: 'Йога для начинающих', trainer: 'Анна Иванова', clients: [{ name: 'Иван Сергеев', startDate: '2025-09-01' }] },
   { id: 'group2', name: 'Пилатес продвинутый', trainer: 'Мария Петрова', clients: [] },
-  { id: 'group3', name: 'Зумба вечеринка1', trainer: 'Олег Смирнов', clients: ['Алексей Попов'] },
-  { id: 'group4', name: 'Зумба вечеринка2', trainer: 'Олег Смирнов', clients: ['Алексей Попов'] },
-  { id: 'group5', name: 'Зумба вечеринка4', trainer: 'Олег Смирнов', clients: ['Алексей Попов'] },
-  { id: 'group6', name: 'Зумба вечеринка5', trainer: 'Олег Смирнов', clients: ['Алексей Попов'] },
-  { id: 'group7', name: 'Зумба вечеринка6', trainer: 'Олег Смирнов', clients: ['Алексей Попов'] },
-  { id: 'group8', name: 'Зумба вечеринка7', trainer: 'Олег Смирнов', clients: ['Алексей Попов'] },
-  { id: 'group9', name: 'Зумба вечеринка8', trainer: 'Олег Смирнов', clients: ['Алексей Попов'] },
+  { id: 'group3', name: 'Зумба вечеринка1', trainer: 'Олег Смирнов', clients: [{ name: 'Алексей Попов', startDate: '2025-09-01' }] },
 ];
 
 function saveGroups() {
@@ -33,7 +27,7 @@ export function getGroupByName(name) {
 
 export function addClientToGroup(groupId, clientName, startDate) {
   const group = getGroupById(groupId);
-  if (group && !group.clients.includes(clientName)) {
+  if (group && !group.clients.some(c => c.name === clientName)) {
     group.clients.push({ name: clientName, startDate });
     addGroupToClient(clientName, group.name, 'added', startDate);
     saveGroups();
@@ -57,10 +51,10 @@ export function addNewGroup(data) {
     id: `group${Date.now()}`,
     name: data.name,
     trainer: data.trainer,
-    clients: data.clients || []
+    clients: data.clients.map(name => ({ name, startDate: new Date().toISOString().split('T')[0] })) || []
   };
   groups.push(newGroup);
-  newGroup.clients.forEach(clientName => addClientToGroup(newGroup.id, clientName, new Date().toISOString().split('T')[0]));
+  newGroup.clients.forEach(c => addClientToGroup(newGroup.id, c.name, c.startDate));
   saveGroups();
   return newGroup;
 }
@@ -219,16 +213,10 @@ export function loadGroups() {
         alert('Группа с таким именем уже существует!');
         return;
       }
-      const newGroup = {
-        id: `group${Date.now()}`,
-        name: data.name,
-        trainer: data.trainer,
-        clients: data.clients || []
-      };
-      groups.push(newGroup);
-      newGroup.clients.forEach(clientName => addClientToGroup(newGroup.id, clientName));
-      saveGroups();
-      renderGroups();
+      const newGroup = addNewGroup(data);
+      if (newGroup) {
+        renderGroups();
+      }
     });
   });
 
@@ -258,7 +246,7 @@ export function loadGroups() {
         const oldClients = group.clients.map(c => c.name).slice();
         group.name = data.name;
         group.trainer = data.trainer;
-        group.clients = data.clients.map(name => ({ name, startDate: new Date().toISOString().split('T')[0] })) || [];
+        group.clients = data.clients.map(name => ({ name, startDate: group.clients.find(c => c.name === name)?.startDate || new Date().toISOString().split('T')[0] }));
         oldClients.filter(c => !group.clients.some(gc => gc.name === c)).forEach(c => removeClientFromGroup(groupId, c));
         group.clients.filter(c => !oldClients.includes(c.name)).forEach(c => addClientToGroup(groupId, c.name, c.startDate));
         saveGroups();
@@ -270,7 +258,10 @@ export function loadGroups() {
       const clients = getClients();
       showClientManagementModal(`Управление клиентами: ${group.name}`, group, clients, (selectedClients) => {
         const oldClients = group.clients.map(c => c.name).slice();
-        group.clients = selectedClients.map(name => ({ name, startDate: new Date().toISOString().split('T')[0] }));
+        group.clients = selectedClients.map(name => ({
+          name,
+          startDate: group.clients.find(c => c.name === name)?.startDate || new Date().toISOString().split('T')[0]
+        }));
         oldClients.filter(c => !selectedClients.includes(c)).forEach(c => removeClientFromGroup(groupId, c));
         selectedClients.filter(c => !oldClients.includes(c)).forEach(c => addClientToGroup(groupId, c, new Date().toISOString().split('T')[0]));
         saveGroups();
@@ -286,19 +277,15 @@ export function loadGroups() {
       <div class="modal-content">
         <h2>${escapeHtml(title)}</h2>
         <div class="client-management-container">
-          <div class="history-panel">
-            <h3>История переходов</h3>
-            <div class="history-list" id="history-list"></div>
-          </div>
           <div class="client-selector">
             <div class="client-search-container">
               <input type="text" id="group-client-search" placeholder="Поиск клиента (ФИО или телефон)">
             </div>
-            <div class="client-table-container" style="max-height: 400px; overflow-y: auto;">
+            <div class="client-table-container">
               <table class="client-table">
                 <thead>
                   <tr>
-                    <th></th>
+                    <th><input type="checkbox" id="select-all-clients"></th>
                     <th data-sort="name">ФИО</th>
                     <th data-sort="phone">Телефон</th>
                     <th>Статус</th>
@@ -325,29 +312,19 @@ export function loadGroups() {
     const tableBody = modal.querySelector('#client-table-body');
     const selectedChips = modal.querySelector('.selected-chips');
     const tableHead = modal.querySelector('.client-table thead');
-    const historyList = modal.querySelector('#history-list');
+    const selectAllCheckbox = modal.querySelector('#select-all-clients');
     let currentClients = group.clients.map(c => c.name).slice();
     let clientSortField = 'name';
     let clientSortOrder = 1;
 
     function getClientFullName(client) {
-      return client.surname ? `${client.name} ${client.surname}` : client.name;
+      const parts = [
+        client.surname?.trim() || '',
+        client.name?.trim() || '',
+        client.patronymic?.trim() || ''
+      ].filter(part => part);
+      return parts.join(' ') || 'Без имени';
     }
-
-    function renderHistory() {
-      historyList.innerHTML = clients
-        .filter(c => c.groupHistory.length > 0)
-        .map(client => `
-          <div class="history-entry">
-            <h4>${getClientFullName(client)}</h4>
-            <ul>
-              ${client.groupHistory.map(entry => `<li>${formatDate(entry.date)}: ${entry.action === 'added' ? 'Добавлен' : 'Удален'} в ${entry.group}</li>`).join('')}
-            </ul>
-          </div>
-        `).join('');
-    }
-
-    renderHistory();
 
     function renderClientTable() {
       const q = searchInput.value.trim().toLowerCase();
@@ -360,16 +337,18 @@ export function loadGroups() {
         });
       tableBody.innerHTML = filteredClients.map(client => {
         const fullName = getClientFullName(client);
+        const isSelected = currentClients.includes(client.name);
         return `
-          <tr class="client-row" data-name="${escapeHtml(client.name)}">
-            <td><input type="checkbox" value="${escapeHtml(client.name)}" ${currentClients.includes(client.name) ? 'checked' : ''} ${client.blacklisted ? 'disabled' : ''}></td>
+          <tr class="client-row ${isSelected ? 'selected' : ''}" data-name="${escapeHtml(client.name)}">
+            <td><input type="checkbox" value="${escapeHtml(client.name)}" ${isSelected ? 'checked' : ''} ${client.blacklisted ? 'disabled' : ''}></td>
             <td>${escapeHtml(fullName)}</td>
-            <td>${escapeHtml(client.phone || '')}</td>
+            <td>${escapeHtml(client.phone || '—')}</td>
             <td>${client.blacklisted ? 'В чёрном списке' : 'Активен'}</td>
           </tr>
         `;
       }).join('');
       refreshSelectedChips();
+      updateSelectAllCheckbox();
     }
 
     function refreshSelectedChips() {
@@ -382,16 +361,38 @@ export function loadGroups() {
       }).join('');
     }
 
+    function updateSelectAllCheckbox() {
+      const checkboxes = tableBody.querySelectorAll('input[type="checkbox"]:not(:disabled)');
+      const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+      const someChecked = Array.from(checkboxes).some(cb => cb.checked);
+      selectAllCheckbox.checked = allChecked;
+      selectAllCheckbox.indeterminate = someChecked && !allChecked;
+    }
+
     renderClientTable();
 
     searchInput.addEventListener('input', renderClientTable);
+
+    selectAllCheckbox.addEventListener('change', (e) => {
+      const checked = e.target.checked;
+      tableBody.querySelectorAll('input[type="checkbox"]:not(:disabled)').forEach(cb => {
+        const name = cb.value;
+        if (checked && !currentClients.includes(name)) {
+          currentClients.push(name);
+        } else if (!checked) {
+          currentClients = currentClients.filter(c => c !== name);
+        }
+        cb.checked = checked;
+      });
+      renderClientTable();
+    });
 
     tableBody.addEventListener('click', (ev) => {
       const row = ev.target.closest('.client-row');
       if (!row) return;
       const checkbox = row.querySelector('input[type="checkbox"]');
       if (!checkbox || checkbox.disabled) return;
-      if (ev.target === checkbox || ev.target.closest('label') === checkbox.parentElement) return;
+      if (ev.target === checkbox) return;
       checkbox.checked = !checkbox.checked;
       const changeEvent = new Event('change', { bubbles: true });
       checkbox.dispatchEvent(changeEvent);
@@ -400,20 +401,26 @@ export function loadGroups() {
     tableBody.addEventListener('change', (ev) => {
       if (ev.target.matches('input[type="checkbox"]')) {
         const name = ev.target.value;
+        const row = ev.target.closest('.client-row');
         if (ev.target.checked) {
           if (!currentClients.includes(name)) {
-            // Show date selection modal for new addition
             showDateSelectionModal('Дата начала участия в группе', (startDate) => {
               if (startDate) {
                 currentClients.push(name);
-                refreshSelectedChips();
-                showToast('Клиент добавлен в группу с ' + startDate, 'success');
+                const group = getGroupById(group.id);
+                if (group) {
+                  group.clients.push({ name, startDate });
+                  addGroupToClient(name, group.name, 'added', startDate);
+                  saveGroups();
+                }
+                renderClientTable();
+                showToast(`Клиент ${name} добавлен в группу с ${startDate}`, 'success');
               }
             });
           }
         } else {
           currentClients = currentClients.filter(c => c !== name);
-          refreshSelectedChips();
+          renderClientTable();
         }
       }
     });
@@ -462,11 +469,11 @@ export function loadGroups() {
       dateModal.className = 'date-modal';
       dateModal.innerHTML = `
         <div class="date-modal-content">
-          <h2>${title}</h2>
+          <h2>${escapeHtml(title)}</h2>
           <input type="date" id="start-date-input" required>
           <div class="date-modal-actions">
-            <button id="date-confirm-btn">Подтвердить</button>
-            <button id="date-cancel-btn">Отмена</button>
+            <button class="btn-primary" id="date-confirm-btn">Подтвердить</button>
+            <button class="btn-secondary" id="date-cancel-btn">Отмена</button>
           </div>
         </div>
       `;
@@ -479,6 +486,8 @@ export function loadGroups() {
         if (input.value) {
           callback(input.value);
           dateModal.remove();
+        } else {
+          alert('Выберите дату!');
         }
       });
 
@@ -493,6 +502,13 @@ export function loadGroups() {
           callback(null);
         }
       });
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          dateModal.remove();
+          callback(null);
+        }
+      }, { once: true });
     }
   }
 

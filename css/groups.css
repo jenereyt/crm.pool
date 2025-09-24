@@ -6,6 +6,7 @@
   --text-color: #333;
   --border-color: #e0e0e0;
   --shadow-color: rgba(0, 0, 0, 0.1);
+  --selected-color: rgba(0, 123, 255, 0.1); /* Цвет выделения выбранных строк */
 }
 
 .group-table-container {
@@ -86,7 +87,7 @@
 }
 
 .client-table-container {
-  max-height: 200px;
+  max-height: 300px; /* Увеличил высоту для удобства */
   overflow-y: auto;
   margin-bottom: 12px;
 }
@@ -109,6 +110,9 @@
   background: #f8f9fa;
   font-weight: 600;
   cursor: pointer;
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
 .client-table th[data-sort]:hover {
@@ -118,6 +122,10 @@
 .client-row:hover {
   background: #f8f9fa;
   cursor: pointer;
+}
+
+.client-row.selected {
+  background: var(--selected-color);
 }
 
 .client-row input[type="checkbox"] {
@@ -159,7 +167,6 @@
     opacity: 0;
     transform: translateY(-20px);
   }
-
   to {
     opacity: 1;
     transform: translateY(0);
@@ -240,10 +247,6 @@
   margin-bottom: 6px;
 }
 
-.client-search-container {
-  margin-bottom: 8px;
-}
-
 .client-search-container input {
   width: 100%;
   padding: 6px;
@@ -289,7 +292,6 @@
     opacity: 0;
     transform: scale(0.8);
   }
-
   to {
     opacity: 1;
     transform: scale(1);
@@ -310,9 +312,82 @@
   color: #b02a37;
 }
 
+.date-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1100;
+  padding: 10px;
+}
+
+.date-modal-content {
+  background: var(--background-color);
+  padding: 12px;
+  border-radius: 8px;
+  width: 95%;
+  max-width: 400px;
+  box-shadow: 0 4px 12px var(--shadow-color);
+  animation: fadeIn 0.3s ease;
+}
+
+.date-modal-content h2 {
+  margin: 0 0 10px;
+  font-size: 1.1em;
+  color: var(--text-color);
+}
+
+.date-modal-content input {
+  width: 100%;
+  padding: 6px;
+  margin-bottom: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 0.8em;
+}
+
+.date-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.date-modal-actions button {
+  padding: 5px 8px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8em;
+  transition: background 0.3s, transform 0.2s;
+}
+
+.date-modal-actions .btn-primary {
+  background: var(--primary-color);
+  color: white;
+}
+
+.date-modal-actions .btn-primary:hover {
+  background: #0056b3;
+  transform: translateY(-1px);
+}
+
+.date-modal-actions .btn-secondary {
+  background: var(--secondary-color);
+  color: white;
+}
+
+.date-modal-actions .btn-secondary:hover {
+  background: #5a6268;
+  transform: translateY(-1px);
+}
+
 /* Адаптивность для экранов до 350px */
 @media (max-width: 350px) {
-
   .group-table-container,
   .client-table-container {
     padding: 0 8px;
@@ -387,5 +462,24 @@
 
   .chip-remove {
     font-size: 0.8em;
+  }
+
+  .date-modal-content {
+    max-width: 300px;
+    padding: 10px;
+  }
+
+  .date-modal-content h2 {
+    font-size: 1em;
+  }
+
+  .date-modal-content input {
+    padding: 5px;
+    font-size: 0.75em;
+  }
+
+  .date-modal-actions button {
+    padding: 4px;
+    font-size: 0.75em;
   }
 }

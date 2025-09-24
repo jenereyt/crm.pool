@@ -16,6 +16,10 @@
   --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1);
   --transition: all 0.2s ease-in-out;
   --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  --low-color: #f59e0b;
+  /* Желтый для 1 ост. */
+  --zero-color: #ef4444;
+  /* Красный для 0 ост. */
 }
 
 /* Общие стили */
@@ -122,6 +126,12 @@
 
 .class-row:hover {
   background-color: var(--gray-100);
+}
+
+
+.pending {
+  background-color: #fef3c7;
+  /* Желтый фон для не отмеченных прошлых */
 }
 
 .class-edit-btn,
@@ -307,7 +317,6 @@
   padding: 20px;
   border-radius: var(--border-radius);
   width: 100%;
-  max-width: 500px;
   max-height: 90vh;
   overflow-y: auto;
   border: 1px solid var(--gray-200);
@@ -345,7 +354,8 @@
 
 .journal-controls {
   display: flex;
-  flex-direction: column;
+  flex-direction: row-reverse;
+  align-items: center;
   gap: 8px;
   margin-bottom: 12px;
 }
@@ -372,7 +382,7 @@
 }
 
 #journal-batch-action {
-  width: 100%;
+  width: 250px;
   padding: 8px;
   border: 1px solid var(--gray-300);
   border-radius: var(--border-radius);
@@ -425,7 +435,11 @@
   background: rgba(79, 70, 229, 0.1);
 }
 
-.journal-table select {
+.journal-table input[type="checkbox"] {
+  cursor: pointer;
+}
+
+.journal-table select.journal-reason {
   width: 100%;
   padding: 6px;
   border: 1px solid var(--gray-300);
@@ -435,29 +449,32 @@
   background-color: var(--gray-50);
 }
 
-.journal-table select option[value="Пришёл"] {
-  background-color: rgba(34, 197, 94, 0.1);
-  color: #15803d;
-}
-
-.journal-table select option[value="Не пришёл"] {
+.journal-table select.journal-reason option[value="Неуважительная"] {
   background-color: rgba(239, 68, 68, 0.1);
   color: #b91c1c;
 }
 
-.journal-table select option[value="Опоздал"] {
+.journal-table select.journal-reason option[value="Уважительная"] {
   background-color: rgba(234, 179, 8, 0.1);
   color: #a16207;
 }
 
-.journal-table select option[value="Отменено"] {
+.journal-table select.journal-reason option[value="Отменено"] {
   background-color: rgba(107, 114, 128, 0.1);
   color: var(--gray-700);
 }
 
-.journal-table select:focus {
+.journal-table select.journal-reason:focus {
   border-color: var(--primary-color);
   box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+}
+
+.ost-low {
+  color: var(--low-color);
+}
+
+.ost-zero {
+  color: var(--zero-color);
 }
 
 .sub-warning {
@@ -556,7 +573,6 @@
 }
 
 .client-search-container {
-  margin-bottom: 10px;
   position: sticky;
   top: 0;
   background: var(--gray-50);
@@ -564,7 +580,7 @@
 }
 
 .client-search-container input {
-  width: 100%;
+  width: 250px;
   padding: 6px;
   border: 1px solid var(--gray-300);
   border-radius: var(--border-radius);
