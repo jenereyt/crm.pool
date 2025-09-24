@@ -1,4 +1,3 @@
-// groups.js
 import { getTrainers } from './employees.js';
 import { getClients, addGroupToClient, removeGroupFromClient } from './clients.js';
 
@@ -516,8 +515,8 @@ export function loadGroups() {
     const modal = document.createElement('div');
     modal.className = 'modal';
     modal.innerHTML = `
-      <div class="modal-content confirm-modal">
-        <h2>Подтверждение</h2>
+      <div class="modal-content group-confirm-modal">
+        <h2>Подтверждение удаления</h2>
         <p>${escapeHtml(message)}</p>
         <div class="modal-actions">
           <button class="btn-primary" id="confirm-btn">Да</button>
