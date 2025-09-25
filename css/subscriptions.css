@@ -9,7 +9,7 @@
 }
 
 .template-section {
-  padding: 12px;
+  padding: 0 12px;
   max-height: 200px;
   overflow-y: auto;
   margin: 0 8px;

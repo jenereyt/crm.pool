@@ -1,8 +1,6 @@
 let rooms = [
   { id: 'room1', name: 'Большой бассейн' },
   { id: 'room2', name: 'Малый бассейн' },
-  { id: 'room3', name: 'Зона аквааэробики' },
-  { id: 'room4', name: 'Тренировочный зал' },
 ];
 
 export function getRooms() {

@@ -1,9 +1,13 @@
-/* reports.css */
+ .tabs-and-date {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 20px 0;
+}
+
 .reports-tabs {
   display: flex;
   gap: 10px;
-  margin: 20px 0;
-  border-bottom: 1px solid #e0e0e0;
 }
 
 .tab-button {
@@ -18,9 +22,8 @@
 
 .tab-button.active {
   border-bottom: 2px solid #007bff;
+  color: #007bff;
 }
-
-
 
 .reports-section {
   padding: 20px;
@@ -39,7 +42,6 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-left: auto;
 }
 
 .report-date label {
@@ -47,14 +49,16 @@
   color: #333;
 }
 
-.report-date input[type="date"] {
+.report-date input[type="date"],
+.report-date select {
   padding: 8px;
   border: 1px solid #ddd;
   border-radius: 4px;
   font-size: 14px;
 }
 
-#generate-report {
+#generate-report,
+#export-report {
   padding: 8px 16px;
   background: #007bff;
   color: #fff;
@@ -65,7 +69,8 @@
   transition: background 0.3s;
 }
 
-#generate-report:hover {
+#generate-report:hover,
+#export-report:hover {
   background: #0056b3;
 }
 
@@ -127,11 +132,88 @@
   color: #333;
 }
 
+.group-filter {
+  margin-bottom: 15px;
+}
+
+.group-filter label {
+  font-size: 14px;
+  color: #333;
+  margin-right: 10px;
+}
+
+.details-btn {
+  margin-top: 5px;
+  padding: 5px 10px;
+  background: #007bff;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.details-btn:hover {
+  background: #0056b3;
+}
+
+.details-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.details-modal-content {
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.details-modal-content h3 {
+  margin-bottom: 15px;
+  font-size: 18px;
+  color: #333;
+}
+
+.details-content {
+  font-size: 14px;
+  color: #555;
+  line-height: 1.6;
+}
+
+.close-details-btn {
+  margin-top: 15px;
+  padding: 8px 16px;
+  background: #007bff;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.close-details-btn:hover {
+  background: #0056b3;
+}
+
 @media (max-width: 768px) {
-  .report-date {
+  .tabs-and-date {
     flex-direction: column;
     align-items: flex-start;
-    margin-left: 0;
+  }
+
+  .report-date {
+    margin-top: 10px;
   }
 
   .report-table th,
@@ -143,5 +225,9 @@
   .report-summary {
     flex-direction: column;
     gap: 10px;
+  }
+
+  .details-modal-content {
+    width: 95%;
   }
 }

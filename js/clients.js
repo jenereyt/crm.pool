@@ -1,5 +1,8 @@
 import { getSubscriptionTemplates } from './subscriptions.js';
-import { getGroups } from './groups.js';
+import { getGroups, addClientToGroup, removeClientFromGroup } from './groups.js';
+
+// Глобальный массив для истории групп (сохраняется в localStorage)
+let groupHistoryData = JSON.parse(localStorage.getItem('groupHistoryData')) || [];
 
 export let clientsData = [
   {
@@ -24,88 +27,72 @@ export let clientsData = [
     groupHistory: [
       { date: '2025-08-01', action: 'added', group: 'Йога для начинающих' }
     ],
-    contract: {
-      id: 'contract1',
-      creationDate: '2025-01-15T10:00:00Z',
-      subscriptions: [
-        {
-          templateId: 'template1',
-          startDate: '2025-08-01',
-          endDate: '2025-09-30',
-          classesPerWeek: 2,
-          daysOfWeek: ['Пн', 'Ср'],
-          classTime: '10:00',
-          group: 'Йога для начинающих',
-          remainingClasses: 1,
-          isPaid: true,
-          payment: {
-            method: 'cash_register',
-            details: { cash: 1000, card: 2000 },
-            date: '2025-08-01'
-          },
-          renewalHistory: [
-            { date: '2025-08-15', fromTemplate: 'Стандартный', toTemplate: 'Премиум' },
-            { date: '2025-08-20' }
-          ],
-          subscriptionNumber: 'SUB-001'
-        },
-        {
-          templateId: 'template2',
-          startDate: '2025-07-01',
-          endDate: '2025-07-31',
-          classesPerWeek: 3,
-          daysOfWeek: ['Пн', 'Вт', 'Чт'],
-          classTime: '09:00',
-          group: 'Фитнес',
-          remainingClasses: 0,
-          isPaid: true,
-          payment: {
-            method: 'cash',
-            details: { amount: 3000 },
-            date: '2025-07-01'
-          },
-          renewalHistory: [
-            { date: '2025-07-10' }
-          ],
-          subscriptionNumber: 'SUB-002'
-        },
-        {
-          templateId: 'template1',
-          startDate: '2025-06-01',
-          endDate: '2025-06-30',
-          classesPerWeek: 1,
-          daysOfWeek: ['Пт'],
-          classTime: '18:00',
-          group: 'Йога',
-          remainingClasses: Infinity,
-          isPaid: false,
-          payment: null,
-          renewalHistory: [],
-          subscriptionNumber: 'SUB-003'
-        },
-        {
-          templateId: 'template3',
-          startDate: '2025-05-01',
-          endDate: '2025-05-31',
-          classesPerWeek: 4,
-          daysOfWeek: ['Пн', 'Ср', 'Пт', 'Сб'],
-          classTime: '11:00',
-          group: 'Пилатес',
-          remainingClasses: 5,
-          isPaid: true,
-          payment: {
-            method: 'bank_transfer',
-            details: { amount: 4000, reference: 'BT-12345' },
-            date: '2025-05-01'
-          },
-          renewalHistory: [
-            { date: '2025-05-05', fromTemplate: 'Базовый', toTemplate: 'Расширенный' },
-            { date: '2025-05-20', fromTemplate: 'Расширенный', toTemplate: 'Премиум' }
-          ],
-          subscriptionNumber: 'SUB-004'
-        }
-      ]
-    },
+    subscriptions: [
+      {
+        templateId: 'template1',
+        startDate: '2025-08-01',
+        endDate: '2025-09-30',
+        classesPerWeek: 2,
+        daysOfWeek: ['Пн', 'Ср'],
+        classTime: '10:00',
+        group: 'Йога для начинающих',
+        remainingClasses: 1,
+        price: 8000,
+        isPaid: true,
+        renewalHistory: [
+          { date: '2025-08-15', fromTemplate: 'Стандартный', toTemplate: 'Премиум' },
+          { date: '2025-08-20' }
+        ],
+        subscriptionNumber: 'SUB-001'
+      },
+      {
+        templateId: 'template2',
+        startDate: '2025-07-01',
+        endDate: '2025-07-31',
+        classesPerWeek: 3,
+        daysOfWeek: ['Пн', 'Вт', 'Чт'],
+        classTime: '09:00',
+        group: 'Фитнес',
+        remainingClasses: 0,
+        price: 12000,
+        isPaid: true,
+        renewalHistory: [
+          { date: '2025-07-10' }
+        ],
+        subscriptionNumber: 'SUB-002'
+      },
+      {
+        templateId: 'template1',
+        startDate: '2025-06-01',
+        endDate: '2025-06-30',
+        classesPerWeek: 1,
+        daysOfWeek: ['Пт'],
+        classTime: '18:00',
+        group: 'Йога',
+        remainingClasses: Infinity,
+        price: 15000,
+        isPaid: false,
+        renewalHistory: [],
+        subscriptionNumber: 'SUB-003'
+      },
+      {
+        templateId: 'template3',
+        startDate: '2025-05-01',
+        endDate: '2025-05-31',
+        classesPerWeek: 4,
+        daysOfWeek: ['Пн', 'Ср', 'Пт', 'Сб'],
+        classTime: '11:00',
+        group: 'Пилатес',
+        remainingClasses: 5,
+        price: 10000,
+        isPaid: true,
+        renewalHistory: [
+          { date: '2025-05-05', fromTemplate: 'Базовый', toTemplate: 'Расширенный' },
+          { date: '2025-05-20', fromTemplate: 'Расширенный', toTemplate: 'Премиум' }
+        ],
+        subscriptionNumber: 'SUB-004'
+      }
+    ],
     photo: '',
     createdAt: '2025-01-15T10:00:00Z'
   },
@@ -123,30 +110,22 @@ export let clientsData = [
     blacklisted: false,
     groups: [],
     groupHistory: [],
-    contract: {
-      id: 'contract2',
-      creationDate: '2025-02-20T14:30:00Z',
-      subscriptions: [
-        {
-          templateId: 'template1',
-          startDate: '2025-08-01',
-          endDate: '2025-09-30',
-          classesPerWeek: 0,
-          daysOfWeek: [],
-          classTime: '09:00',
-          group: '',
-          remainingClasses: 1,
-          isPaid: true,
-          payment: {
-            method: 'cash',
-            details: { amount: 1500 },
-            date: '2025-08-01'
-          },
-          renewalHistory: [],
-          subscriptionNumber: 'SUB-002'
-        }
-      ]
-    },
+    subscriptions: [
+      {
+        templateId: 'template1',
+        startDate: '2025-08-01',
+        endDate: '2025-09-30',
+        classesPerWeek: 0,
+        daysOfWeek: [],
+        classTime: '09:00',
+        group: '',
+        remainingClasses: 1,
+        price: 7000,
+        isPaid: true,
+        renewalHistory: [],
+        subscriptionNumber: 'SUB-005'
+      }
+    ],
     photo: '',
     createdAt: '2025-02-20T14:30:00Z'
   },
@@ -164,30 +143,22 @@ export let clientsData = [
     blacklisted: false,
     groups: ['Фитнес'],
     groupHistory: [],
-    contract: {
-      id: 'contract3',
-      creationDate: '2025-03-10T09:00:00Z',
-      subscriptions: [
-        {
-          templateId: 'template2',
-          startDate: '2025-09-01',
-          endDate: '2025-09-30',
-          classesPerWeek: 3,
-          daysOfWeek: ['Пн', 'Ср', 'Пт'],
-          classTime: '18:00',
-          group: 'Фитнес',
-          remainingClasses: 1,
-          isPaid: true,
-          payment: {
-            method: 'bank_transfer',
-            details: { amount: 2500, reference: 'BT-67890' },
-            date: '2025-09-01'
-          },
-          renewalHistory: [],
-          subscriptionNumber: 'SUB-005'
-        }
-      ]
-    },
+    subscriptions: [
+      {
+        templateId: 'template2',
+        startDate: '2025-09-01',
+        endDate: '2025-09-30',
+        classesPerWeek: 3,
+        daysOfWeek: ['Пн', 'Ср', 'Пт'],
+        classTime: '18:00',
+        group: 'Фитнес',
+        remainingClasses: 1,
+        price: 13000,
+        isPaid: true,
+        renewalHistory: [],
+        subscriptionNumber: 'SUB-006'
+      }
+    ],
     photo: '',
     createdAt: '2025-03-10T09:00:00Z'
   },
@@ -205,30 +176,22 @@ export let clientsData = [
     blacklisted: false,
     groups: ['Пилатес'],
     groupHistory: [],
-    contract: {
-      id: 'contract4',
-      creationDate: '2025-04-15T12:00:00Z',
-      subscriptions: [
-        {
-          templateId: 'template1',
-          startDate: '2025-09-01',
-          endDate: '2025-09-30',
-          classesPerWeek: 2,
-          daysOfWeek: ['Вт', 'Чт'],
-          classTime: '09:00',
-          group: 'Пилатес',
-          remainingClasses: 1,
-          isPaid: true,
-          payment: {
-            method: 'cash_register',
-            details: { cash: 500, card: 1500 },
-            date: '2025-09-01'
-          },
-          renewalHistory: [],
-          subscriptionNumber: 'SUB-006'
-        }
-      ]
-    },
+    subscriptions: [
+      {
+        templateId: 'template1',
+        startDate: '2025-09-01',
+        endDate: '2025-09-30',
+        classesPerWeek: 2,
+        daysOfWeek: ['Вт', 'Чт'],
+        classTime: '09:00',
+        group: 'Пилатес',
+        remainingClasses: 1,
+        price: 8500,
+        isPaid: true,
+        renewalHistory: [],
+        subscriptionNumber: 'SUB-007'
+      }
+    ],
     photo: '',
     createdAt: '2025-04-15T12:00:00Z'
   },
@@ -246,35 +209,26 @@ export let clientsData = [
     blacklisted: false,
     groups: ['Зумба вечеринка'],
     groupHistory: [],
-    contract: {
-      id: 'contract5',
-      creationDate: '2025-05-20T15:00:00Z',
-      subscriptions: [
-        {
-          templateId: 'template2',
-          startDate: '2025-09-01',
-          endDate: '2025-09-30',
-          classesPerWeek: 3,
-          daysOfWeek: ['Пн', 'Ср', 'Пт'],
-          classTime: '19:00',
-          group: 'Зумба вечеринка',
-          remainingClasses: 1,
-          isPaid: true,
-          payment: {
-            method: 'cash',
-            details: { amount: 3000 },
-            date: '2025-09-01'
-          },
-          renewalHistory: [],
-          subscriptionNumber: 'SUB-007'
-        }
-      ]
-    },
+    subscriptions: [
+      {
+        templateId: 'template2',
+        startDate: '2025-09-01',
+        endDate: '2025-09-30',
+        classesPerWeek: 3,
+        daysOfWeek: ['Пн', 'Ср', 'Пт'],
+        classTime: '19:00',
+        group: 'Зумба вечеринка',
+        remainingClasses: 1,
+        price: 12500,
+        isPaid: true,
+        renewalHistory: [],
+        subscriptionNumber: 'SUB-008'
+      }
+    ],
     photo: '',
     createdAt: '2025-05-20T15:00:00Z'
   }
 ];
-
 let commonDiagnoses = ['Сколиоз', 'Кифоз', 'Лордоз', 'Остеохондроз', 'Артрит', 'Астма', 'Диабет', 'Нет', 'Гипертония', 'Аллергия'];
 let commonRelations = ['Бабушка', 'Брат', 'Дедушка', 'Другая степень родства', 'Мать', 'Мачеха', 'Отец', 'Отчим', 'Сестра', 'Тетя', 'Дядя'];
 
@@ -292,11 +246,7 @@ export function addClient(client) {
     ...client,
     createdAt: new Date().toISOString(),
     groupHistory: [],
-    contract: {
-      id: `contract${Date.now()}`,
-      creationDate: new Date().toISOString(),
-      subscriptions: []
-    },
+    subscriptions: [],
     parents: client.parents || [],
     groups: client.groups || []
   };
@@ -309,8 +259,7 @@ export function updateClient(id, data) {
   if (client) {
     Object.assign(client, {
       ...data,
-      groups: Array.isArray(data.groups) ? data.groups : client.groups || [],
-      groupHistory: Array.isArray(data.groupHistory) ? data.groupHistory : client.groupHistory || []
+      groups: Array.isArray(data.groups) ? data.groups : client.groups || []
     });
   }
   return client;
@@ -321,19 +270,60 @@ export function removeClient(id) {
 }
 
 export function addGroupToClient(clientId, group, action = 'added', date = new Date().toISOString()) {
+  console.log(`addGroupToClient: clientId=${clientId}, group=${group}, date=${date}`);
   const client = getClientById(clientId);
-  if (client && !client.groups.includes(group)) {
+  if (!client) {
+    console.error(`Клиент с ID ${clientId} не найден`);
+    return;
+  }
+  if (!client.groups.includes(group)) {
     client.groups.push(group);
     client.groupHistory.push({ date, action, group });
+    groupHistoryData.push({ clientId, date, action, group });
+    localStorage.setItem('groupHistoryData', JSON.stringify(groupHistoryData));
+    addClientToGroup(clientId, group, date); // Синхронизация с groups.js
+    console.log(`Клиент ${clientId} добавлен в группу ${group} с датой ${date}`);
+    // Вызываем renderClients, если функция доступна
+    if (typeof renderClients === 'function') {
+      renderClients();
+    }
+  } else {
+    console.log(`Клиент ${clientId} уже в группе ${group}`);
   }
 }
 
 export function removeGroupFromClient(clientId, group) {
+  console.log(`removeGroupFromClient: clientId=${clientId}, group=${group}`);
   const client = getClientById(clientId);
-  if (client) {
+  if (!client) {
+    console.error(`Клиент с ID ${clientId} не найден`);
+    return;
+  }
+  if (client.groups.includes(group)) {
     client.groups = client.groups.filter(g => g !== group);
     client.groupHistory.push({ date: new Date().toISOString(), action: 'removed', group });
+    groupHistoryData.push({ clientId, date: new Date().toISOString(), action: 'removed', group });
+    localStorage.setItem('groupHistoryData', JSON.stringify(groupHistoryData));
+    removeClientFromGroup(clientId, group); // Синхронизация с groups.js
+    console.log(`Клиент ${clientId} удалён из группы ${group}`);
+    // Вызываем renderClients, если функция доступна
+    if (typeof renderClients === 'function') {
+      renderClients();
+    }
+  } else {
+    console.log(`Клиент ${clientId} не состоит в группе ${group}`);
   }
+}
+
+function generateUniqueSubscriptionNumber(client) {
+  const existingNumbers = client.subscriptions.map(sub => sub.subscriptionNumber);
+  let number = client.subscriptions.length + 1;
+  let newNumber = `SUB-${String(number).padStart(3, '0')}`;
+  while (existingNumbers.includes(newNumber)) {
+    number++;
+    newNumber = `SUB-${String(number).padStart(3, '0')}`;
+  }
+  return newNumber;
 }
 
 function setupModalClose(modal, closeModal) {
@@ -662,7 +652,6 @@ export function showClientForm(title, client, callback) {
   const closeModal = () => modal.remove();
   setupModalClose(modal, closeModal);
 
-  // Добавляем обработчик для кнопки крестика
   modal.querySelector('.client-form-close').addEventListener('click', closeModal);
 
   const photoInput = document.getElementById('client-photo');
@@ -756,9 +745,8 @@ export function showClientForm(title, client, callback) {
       isValid = false;
     }
 
-    // Проверка на наличие родителей для несовершеннолетних с информативным уведомлением
     if (!isAdult(birthDate) && parents.length === 0) {
-      showToast('Клиент несовершеннолетний: перейдите на вкладку "Родители/опекуны" и добавьте хотя бы одного родителя.', 'info');
+      showToast('Клиент несовершеннолетний: добавьте хотя бы одного родителя.', 'info');
       isValid = false;
     }
 
@@ -860,7 +848,7 @@ export function loadClients() {
             <span class="stat-label">всего</span>
           </div>
           <div class="stat-item">
-            <span class="stat-number">${clientsData.filter(c => c.contract.subscriptions.some(s => s.isPaid && new Date(s.endDate) >= new Date())).length}</span>
+            <span class="stat-number">${clientsData.filter(c => c.subscriptions.some(s => s.isPaid && new Date(s.endDate) >= new Date())).length}</span>
             <span class="stat-label">активных</span>
           </div>
           <div class="stat-item">
@@ -923,9 +911,9 @@ export function loadClients() {
   mainContent.appendChild(clientSection);
 
   function getSubscriptionStatus(client) {
-    if (!client.contract || !client.contract.subscriptions || client.contract.subscriptions.length === 0) return 'no-subscription';
+    if (!client.subscriptions || client.subscriptions.length === 0) return 'no-subscription';
     if (client.blacklisted) return 'blacklisted';
-    const hasActive = client.contract.subscriptions.some(s => s.isPaid && new Date(s.endDate) >= new Date());
+    const hasActive = client.subscriptions.some(s => s.isPaid && new Date(s.endDate) >= new Date());
     return hasActive ? 'active' : 'inactive';
   }
 
@@ -1005,7 +993,7 @@ export function loadClients() {
           'blacklisted': 'В чёрном списке'
         }[status];
 
-        const activeSub = client.contract.subscriptions.find(s => s.isPaid && new Date(s.endDate) >= new Date());
+        const activeSub = client.subscriptions.find(s => s.isPaid && new Date(s.endDate) >= new Date());
         const remainingClasses = activeSub ? activeSub.remainingClasses : undefined;
 
         return `
@@ -1208,137 +1196,183 @@ export function showClientDetails(client) {
   const modal = document.createElement('div');
   modal.className = 'client-details-modal';
   modal.innerHTML = `
-    <div class="client-details-content">
-      <div class="client-details-header">
-        <h2>Клиент: ${fullName}</h2>
-        <button type="button" class="client-details-close">×</button>
-      </div>
-      <div class="client-details-body">
+      <div class="client-details-content">
+        <div class="details-header">
+          <div class="client-avatar-large">
+            ${client.photo ?
+      `<img src="${client.photo}" class="client-photo-large" alt="${fullName}">` :
+      `<div class="client-photo-placeholder-large">${client.name.charAt(0).toUpperCase()}</div>`
+    }
+          </div>
+          <div class="client-title">
+            <h2>${fullName}${client.blacklisted ? ' (В чёрном списке)' : ''}</h2>
+            <span class="client-id">ID: ${client.id}</span>
+          </div>
+        </div>
+        
         <div class="tabs">
-          <button class="tab-btn active" data-tab="info">Информация</button>
-          <button class="tab-btn" data-tab="groups-subs">Группы и абонементы</button>
+          <button type="button" class="tab-button active" data-tab="main">Основная информация</button>
+          <button type="button" class="tab-button" data-tab="groups-subs">Группы и абонементы</button>
         </div>
-        <div class="tab-content" id="tab-info">
-          <div class="info-grid">
-            <div class="info-item">
-              <span class="label">ФИО:</span>
-              <span class="value">${fullName}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">Телефон:</span>
-              <span class="value">${client.phone}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">Дата рождения:</span>
-              <span class="value">${client.birthDate ? formatDate(client.birthDate) : '—'}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">Пол:</span>
-              <span class="value">${client.gender === 'male' ? 'Мужской' : client.gender === 'female' ? 'Женский' : '—'}</span>
-            </div>
-            <div class="info-item full-width">
-              <span class="label">Диагноз:</span>
-              <span class="value">${client.diagnosis?.length ? client.diagnosis.map(d => `${d.name}${d.notes ? ` (${d.notes})` : ''}`).join(', ') : '—'}</span>
-            </div>
-            <div class="info-item full-width">
-              <span class="label">Родители/Контактные лица:</span>
-              <span class="value">${client.parents?.length ? client.parents.map(p => `${p.fullName} (${p.relation}): ${p.phone}`).join(', ') : '—'}</span>
-            </div>
-            <div class="info-item full-width">
-              <span class="label">Особенности:</span>
-              <span class="value">${client.features || '—'}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">Статус:</span>
-              <span class="value">${client.blacklisted ? 'В чёрном списке' : 'Активен'}</span>
-            </div>
-            ${client.photo ? `
-              <div class="info-item">
-                <span class="label">Фото:</span>
-                <img src="${client.photo}" alt="Фото клиента" class="client-photo" onclick="showPhotoZoomModal('${client.photo}')">
+        
+        <div class="tab-content active" id="tab-main">
+          <div class="details-grid">
+            <div class="detail-section">
+              <h4>Контактная информация</h4>
+              <div class="detail-item">
+                <span class="detail-label">Телефон:</span>
+                <span class="detail-value">${client.phone}</span>
               </div>
-            ` : ''}
+              <div class="detail-item">
+                <span class="detail-label">Дата рождения:</span>
+                <span class="detail-value">${client.birthDate || 'Не указана'}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Пол:</span>
+                <span class="detail-value">${client.gender === 'male' ? 'Мужской' : client.gender === 'female' ? 'Женский' : 'Не указан'}</span>
+              </div>
+              ${client.parents.length > 0 ? `
+                <div class="detail-item">
+                  <span class="detail-label">Родители/опекуны:</span>
+                  <div class="detail-value">
+                    ${client.parents.map(p => `${p.fullName} (${p.phone})${p.relation ? ` - ${p.relation}` : ''}`).join('<br>')}
+                  </div>
+                </div>
+              ` : ''}
+            </div>
+            
+            <div class="detail-section">
+              <h4>Медицинская информация</h4>
+              <div class="detail-item">
+                <span class="detail-label">Диагнозы:</span>
+                <div class="detail-value ${client.diagnosis && client.diagnosis.some(d => d.name !== 'Нет') ? 'has-diagnosis' : ''}">
+                  ${client.diagnosis && client.diagnosis.length > 0 ?
+      client.diagnosis.map(d => `${d.name}${d.notes ? ` (${d.notes})` : ''}`).join('<br>') : 'Нет'}
+                </div>
+              </div>
+              ${client.features ? `
+                <div class="detail-item">
+                  <span class="detail-label">Особенности:</span>
+                  <span class="detail-value">${client.features}</span>
+                </div>
+              ` : ''}
+            </div>
+            
+            <div class="detail-section">
+              <h4>Активность</h4>
+              <div class="detail-item">
+                <span class="detail-label">Дата регистрации:</span>
+                <span class="detail-value">${formatDate(client.createdAt)}</span>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="tab-content" id="tab-groups-subs" style="display: none;">
-          <div class="groups-subs-grid">
-            <div class="groups-section">
-              <h3>Группы</h3>
-              <div class="groups-list">
-                ${client.groups?.length ? client.groups.map(g => `<span class="group-item">${g}</span>`).join('') : '—'}
+        
+        <div class="tab-content" id="tab-groups-subs">
+          <div class="details-grid">
+            <div class="detail-section">
+              <h4>Группы</h4>
+              <div class="detail-item">
+                <span class="detail-label">Текущие группы:</span>
+                <div class="groups-list">
+                  ${Array.isArray(client.groups) && client.groups.length ?
+      client.groups.map(group => `<span class="group-tag">${group}</span>`).join('') :
+      '<span class="no-data">Не назначены</span>'
+    }
+                </div>
               </div>
-              <button type="button" class="btn-primary manage-groups-btn">Управление группами</button>
+              ${client.groupHistory.length ? `
+                <div class="detail-item">
+                  <span class="detail-label">История групп:</span>
+                  <div class="renewal-history">
+                    ${client.groupHistory.map(entry => `
+                      <span class="renewal-entry">${formatDate(entry.date)}: ${entry.action === 'added' ? 'Добавлен в' : 'Удален из'} ${entry.group}</span>
+                    `).join('')}
+                  </div>
+                </div>
+              ` : ''}
             </div>
-            <div class="subscriptions-section">
-              <h3>Абонементы</h3>
-              <div class="subscriptions-list">
-                ${client.contract.subscriptions.length ? client.contract.subscriptions.filter(s => s.isPaid && new Date(s.endDate) >= new Date()).map((sub, index) => {
-    const template = getSubscriptionTemplates().find(t => t.id === sub.templateId);
-    return `
-                    <div class="subscription-item ${sub.isPaid && new Date(s.endDate) >= new Date() ? 'active' : 'inactive'}">
-                      <div class="subscription-number">#${sub.subscriptionNumber}</div>
-                      <div class="detail-item">
-                        <span class="detail-label">Тип:</span>
-                        <span class="detail-value">${template ? template.type : 'Неизвестный'}</span>
-                      </div>
-                      <div class="detail-item">
-                        <span class="detail-label">Период:</span>
-                        <span class="detail-value">${sub.startDate} — ${sub.endDate}</span>
-                      </div>
-                      <div class="detail-item">
-                        <span class="detail-label">Осталось занятий:</span>
-                        <span class="detail-value ${sub.remainingClasses <= 3 && sub.remainingClasses !== Infinity ? 'low-classes' : ''}">${sub.remainingClasses === Infinity ? '∞' : sub.remainingClasses}</span>
-                      </div>
-                      <div class="detail-item">
-                        <span class="detail-label">Группа:</span>
-                        <span class="detail-value">${sub.group || '—'}</span>
-                      </div>
-                      <button type="button" class="btn-primary manage-sub-btn" data-sub-index="${index}">Управление</button>
+            
+            <div class="detail-section">
+              <h4>Абонементы</h4>
+              ${client.subscriptions.length ? client.subscriptions.filter(s => s.isPaid && new Date(s.endDate) >= new Date()).map((sub, index) => {
+      const template = getSubscriptionTemplates().find(t => t.id === sub.templateId);
+      return `
+                  <div class="subscription-item" data-sub-index="${index}">
+                    <div class="detail-item">
+                      <span class="detail-label">Номер:</span>
+                      <span class="detail-value">#${sub.subscriptionNumber}</span>
                     </div>
-                  `;
-  }).join('') : '<div class="no-data">Нет активных абонементов</div>'}
-              </div>
+                    <div class="detail-item">
+                      <span class="detail-label">Тип:</span>
+                      <span class="detail-value">${template ? template.type : 'Неизвестный'}</span>
+                    </div>
+                    <div class="detail-item">
+                      <span class="detail-label">Период:</span>
+                      <span class="detail-value">${sub.startDate} — ${sub.endDate}</span>
+                    </div>
+                    <div class="detail-item">
+                      <span class="detail-label">Осталось занятий:</span>
+                      <span class="detail-value">${sub.remainingClasses === Infinity ? 'Безлимит' : sub.remainingClasses}</span>
+                    </div>
+                    <div class="detail-item">
+                      <span class="detail-label">Стоимость:</span>
+                      <span class="detail-value">${sub.price ? sub.price + ' сум' : 'Не указана'}</span>
+                    </div>
+                  </div>
+                `;
+    }).join('') : `
+                <div class="detail-item">
+                  <span class="no-data">Абонементы не оформлены</span>
+                </div>
+              `}
             </div>
           </div>
         </div>
+        
+        <div class="client-details-actions">
+          <button type="button" id="client-edit-details-btn" class="btn-secondary">Редактировать</button>
+          <button type="button" id="client-close-btn" class="btn-secondary">Закрыть</button>
+        </div>
       </div>
-      <div class="client-details-footer">
-        <button type="button" class="btn-secondary close-btn">Закрыть</button>
-      </div>
-    </div>
-  `;
+    `;
 
   document.getElementById('main-content').appendChild(modal);
 
-  const closeModal = () => modal.remove();
-  setupModalClose(modal, closeModal);
+  const tabButtons = modal.querySelectorAll('.tab-button');
+  const tabContents = modal.querySelectorAll('.tab-content');
 
-  modal.querySelector('.client-details-close').addEventListener('click', closeModal);
-  modal.querySelector('.close-btn').addEventListener('click', closeModal);
-
-  modal.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      modal.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      modal.querySelectorAll('.tab-content').forEach(content => content.style.display = 'none');
-      modal.querySelector(`#tab-${btn.dataset.tab}`).style.display = 'block';
+  tabButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      tabButtons.forEach(btn => btn.classList.remove('active'));
+      tabContents.forEach(content => content.classList.remove('active'));
+      button.classList.add('active');
+      modal.querySelector(`#tab-${button.dataset.tab}`).classList.add('active');
     });
   });
 
-  modal.querySelector('.manage-groups-btn').addEventListener('click', () => {
-    showGroupForm('Управление группами', client, getGroups(), (groups, groupHistory) => {
-      updateClient(client.id, { ...client, groups, groupHistory });
+  setupModalClose(modal, () => modal.remove());
+
+  const photo = modal.querySelector('.client-photo-large, .client-photo-placeholder-large');
+  if (client.photo) {
+    photo.addEventListener('click', () => {
+      showPhotoZoomModal(client.photo);
+    });
+  }
+
+  const editBtn = document.getElementById('client-edit-details-btn');
+  if (editBtn) {
+    editBtn.addEventListener('click', () => {
       modal.remove();
-      loadClients();
-      showToast('Группы обновлены', 'success');
+      showClientForm('Редактировать клиента', client, (data) => {
+        updateClient(client.id, data);
+        if (typeof renderClients === 'function') renderClients();
+        showToast('Данные клиента обновлены', 'success');
+      });
     });
-  });
+  }
 
-  modal.querySelectorAll('.manage-sub-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      showSubscriptionManagement(client);
-    });
-  });
+  document.getElementById('client-close-btn').addEventListener('click', () => modal.remove());
 }
 
 export function formatDate(dateString) {
@@ -1512,96 +1546,100 @@ export function showRelationDictionary(callback) {
 export function showSubscriptionManagement(client) {
   const fullName = `${client.surname} ${client.name} ${client.patronymic || ''}`;
   const modal = document.createElement('div');
-  modal.className = 'subscription-management-modal two-column-modal';
+  modal.className = 'subscription-management-modal';
   modal.innerHTML = `
-    <div class="subscription-management-content">
-      <div class="subscription-management-header">
-        <h2>Абонементы: ${fullName}</h2>
-        <button type="button" class="subscription-management-close">×</button>
-      </div>
-      <div class="subscription-management-body">
-        <div class="history-section">
-          <h3>История абонементов</h3>
-          <table class="subscription-history-table">
-            <thead>
-              <tr>
-                <th>№</th>
-                <th>Тип</th>
-                <th>Статус</th>
-                <th>Период</th>
-                <th>Занятий</th>
-                <th>Стоимость</th>
-                <th>Продления</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${client.contract.subscriptions.length ? client.contract.subscriptions.map((sub, index) => {
+  <div class="subscription-management-content">
+    <div class="subscription-management-header">
+      <h2>Абонементы: ${fullName}</h2>
+      <button type="button" class="subscription-management-close">×</button>
+    </div>
+    
+    <div class="subscription-management-body">
+      <div class="subscription-history-section">
+        <h3>История</h3>
+        <table class="subscription-history-table">
+          <thead>
+            <tr>
+              <th>№</th>
+              <th>Тип</th>
+              <th>Статус</th>
+              <th>Период</th>
+              <th>Занятий</th>
+              <th>Стоимость</th>
+              <th>Продления</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${client.subscriptions.length ? client.subscriptions.map((sub, index) => {
     const template = getSubscriptionTemplates().find(t => t.id === sub.templateId);
     const isActive = sub.isPaid && new Date(sub.endDate) >= new Date();
     return `
-                  <tr class="subscription-row ${isActive ? 'active' : 'inactive'}">
-                    <td>#${sub.subscriptionNumber}</td>
-                    <td>${template ? template.type : 'Неизвестный'}</td>
-                    <td><span class="status-${isActive ? 'active' : 'inactive'}">${isActive ? 'Акт.' : 'Неакт.'}</span></td>
-                    <td>${sub.startDate} — ${sub.endDate}</td>
-                    <td>${sub.remainingClasses === Infinity ? '∞' : sub.remainingClasses}</td>
-                    <td>${sub.price ? sub.price + ' сум' : 'Не указана'}</td>
-                    <td>
-                      ${sub.renewalHistory?.length ?
+              <tr class="subscription-row ${isActive ? 'active' : 'inactive'}">
+                <td>#${sub.subscriptionNumber}</td>
+                <td>${template ? template.type : 'Неизвестный'}</td>
+                <td><span class="status-${isActive ? 'active' : 'inactive'}">${isActive ? 'Акт.' : 'Неакт.'}</span></td>
+                <td>${sub.startDate} — ${sub.endDate}</td>
+                <td>${sub.remainingClasses === Infinity ? '∞' : sub.remainingClasses}</td>
+                <td>${sub.price ? sub.price + ' сум' : 'Не указана'}</td>
+                <td>
+                  ${sub.renewalHistory?.length ?
         `<span class="renewal-count" title="${sub.renewalHistory.map(entry => {
           const date = new Date(entry.date || entry).toLocaleDateString('ru-RU');
           return entry.fromTemplate ? `${date}: ${entry.fromTemplate} → ${entry.toTemplate}` : date;
         }).join('\n')}">${sub.renewalHistory.length}</span>`
         : '—'}
-                    </td>
-                  </tr>
-                `;
+                </td>
+              </tr>
+            `;
   }).join('') : `
-                  <tr>
-                    <td colspan="7" class="no-data">Нет абонементов</td>
-                  </tr>
-                `}
-            </tbody>
-          </table>
-        </div>
-        <div class="management-section">
-          <h3>Текущий абонемент</h3>
-          ${client.contract.subscriptions.find(s => s.isPaid && new Date(s.endDate) >= new Date()) ? (() => {
-      const sub = client.contract.subscriptions.find(s => s.isPaid && new Date(s.endDate) >= new Date());
+            <tr>
+              <td colspan="7" class="no-data">Нет абонементов</td>
+            </tr>
+          `}
+          </tbody>
+        </table>
+      </div>
+      
+      <div class="active-subscription-section">
+        <h3>Текущий</h3>
+        ${client.subscriptions.find(s => s.isPaid && new Date(s.endDate) >= new Date()) ? (() => {
+      const sub = client.subscriptions.find(s => s.isPaid && new Date(s.endDate) >= new Date());
       const template = getSubscriptionTemplates().find(t => t.id === sub.templateId);
       return `
-              <div class="subscription-item active-sub">
-                <div class="detail-item">
-                  <span class="detail-label">Номер:</span>
-                  <span class="detail-value">#${sub.subscriptionNumber}</span>
-                </div>
-                <div class="detail-item">
-                  <span class="detail-label">Тип:</span>
-                  <span class="detail-value">${template ? template.type : 'Неизвестный'}</span>
-                </div>
-                <div class="detail-item">
-                  <span class="detail-label">Период:</span>
-                  <span class="detail-value">${sub.startDate} — ${sub.endDate}</span>
-                </div>
-                <div class="detail-item">
-                  <span class="detail-label">Осталось занятий:</span>
-                  <span class="detail-value">${sub.remainingClasses === Infinity ? '∞' : sub.remainingClasses}</span>
-                </div>
-                <div class="detail-item">
-                  <span class="detail-label">Способ оплаты:</span>
-                  <span class="detail-value">${sub.payment ? sub.payment.method : 'Не указан'}</span>
-                </div>
-                <button type="button" class="btn-primary renew-sub-btn" data-sub-index="${client.contract.subscriptions.indexOf(sub)}">Продлить</button>
-              </div>
-            `;
+          <div class="subscription-item active-sub">
+            <div class="detail-item">
+              <span class="detail-label">№:</span>
+              <span class="detail-value">#${sub.subscriptionNumber}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Тип:</span>
+              <span class="detail-value">${template ? template.type : 'Неизвестный'}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Период:</span>
+              <span class="detail-value">${sub.startDate} — ${sub.endDate}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Занятий:</span>
+              <span class="detail-value">${sub.remainingClasses === Infinity ? '∞' : sub.remainingClasses}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Стоимость:</span>
+              <span class="detail-value">${sub.price ? sub.price + ' сум' : 'Не указана'}</span>
+            </div>
+            <button type="button" class="btn-primary renew-sub-btn" data-sub-index="${client.subscriptions.indexOf(sub)}">Продлить</button>
+          </div>
+        `;
     })() : `
-              <div class="no-data">Нет активного абонемента</div>
-            `}
-          <button type="button" class="btn-primary new-sub-btn">Новый абонемент</button>
+        <div class="detail-item">
+          <span class="no-data">Нет активного абонемента</span>
         </div>
+      `}
+      <button type="button" class="btn-primary new-sub-btn">Новый</button>
       </div>
     </div>
-  `;
+  </div>
+`;
 
   document.getElementById('main-content').appendChild(modal);
 
@@ -1613,12 +1651,12 @@ export function showSubscriptionManagement(client) {
   modal.querySelectorAll('.renew-sub-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const index = parseInt(btn.dataset.subIndex);
-      const sub = client.contract.subscriptions[index];
+      const sub = client.subscriptions[index];
       showRenewSubscriptionForm('Продление абонемента', client, sub, (data) => {
-        client.contract.subscriptions[index] = { ...sub, ...data };
+        client.subscriptions[index] = { ...sub, ...data };
         updateClient(client.id, client);
         modal.remove();
-        loadClients();
+        if (typeof renderClients === 'function') renderClients();
         showToast('Абонемент продлён', 'success');
       });
     });
@@ -1634,21 +1672,21 @@ export function showSubscriptionManagement(client) {
       classTime: '09:00',
       group: '',
       remainingClasses: 0,
+      price: 0,
       isPaid: true,
-      payment: null,
       renewalHistory: [],
-      subscriptionNumber: generateUniqueSubscriptionNumber(client.contract),
+      subscriptionNumber: generateUniqueSubscriptionNumber(client),
       clientId: client.id
     };
     showSubscriptionForm('Новый абонемент', newSub, [client], getGroups(), (data) => {
       const template = getSubscriptionTemplates().find(t => t.id === data.templateId);
-      client.contract.subscriptions.push({
+      client.subscriptions.push({
         ...data,
         remainingClasses: template ? template.remainingClasses : data.remainingClasses || 0
       });
       updateClient(client.id, client);
       modal.remove();
-      loadClients();
+      if (typeof renderClients === 'function') renderClients();
       showToast('Новый абонемент создан', 'success');
     });
   });
@@ -1657,194 +1695,143 @@ export function showSubscriptionManagement(client) {
 export function showSubscriptionForm(title, sub, clients, groups, callback) {
   const modal = document.createElement('div');
   modal.className = 'subscription-form-modal';
-  const client = clients.find(c => c.id === sub.clientId) || { surname: '', name: '' };
   modal.innerHTML = `
-    <div class="subscription-form-content">
-      <div class="subscription-form-header">
-        <h2>${title}</h2>
-        <button type="button" class="subscription-form-close">×</button>
-      </div>
-      <div class="subscription-form-body">
-        <div class="form-grid">
-          <div class="form-group">
-            <label for="subscription-client" class="required">Клиент</label>
-            <select id="subscription-client" required disabled>
-              <option value="${sub.clientId}">${client.surname} ${client.name}</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="subscription-template" class="required">Тип абонемента</label>
-            <select id="subscription-template" required>
-              <option value="">Выберите тип</option>
-              ${getSubscriptionTemplates().map(t => `<option value="${t.id}" ${sub.templateId === t.id ? 'selected' : ''}>${t.type}</option>`).join('')}
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="subscription-classes-per-week" class="required">Занятий в неделю</label>
-            <input type="number" id="subscription-classes-per-week" value="${sub.classesPerWeek || ''}" min="0" max="7" required>
-          </div>
-          <div class="form-group">
-            <label for="subscription-class-time" class="required">Время занятия</label>
-            <input type="time" id="subscription-class-time" value="${sub.classTime || '09:00'}" required>
-          </div>
-          <div class="form-group">
-            <label for="subscription-start-date" class="required">Дата начала</label>
-            <input type="date" id="subscription-start-date" value="${sub.startDate || ''}" required>
-          </div>
-          <div class="form-group">
-            <label for="subscription-end-date" class="required">Дата окончания</label>
-            <input type="date" id="subscription-end-date" value="${sub.endDate || ''}" required>
-          </div>
-          <div class="form-group full-width">
-            <label>Дни недели</label>
-            <div class="days-of-week-selector">
-              ${['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map(day => `
-                <button type="button" class="day-button ${sub.daysOfWeek?.includes(day) ? 'selected' : ''}" data-day="${day}">${day}</button>
-              `).join('')}
-            </div>
-          </div>
-          <div class="form-group">
-            <label for="subscription-group">Группа</label>
-            <select id="subscription-group">
-              <option value="">Без группы</option>
-              ${groups.map(g => `<option value="${g}" ${sub.group === g ? 'selected' : ''}>${g}</option>`).join('')}
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="checkbox-label">
-              <input type="checkbox" id="subscription-is-paid" ${sub.isPaid !== false ? 'checked' : ''}>
-              <span class="checkmark"></span>
-              Оплачен
-            </label>
-          </div>
-          <div class="form-group full-width" id="payment-section" style="display: ${sub.isPaid !== false ? 'block' : 'none'};">
-            <label for="payment-method" class="required">Способ оплаты</label>
-            <select id="payment-method" required>
-              <option value="">Выберите способ</option>
-              <option value="cash">Наличные</option>
-              <option value="cash_register">Касса (нал/карта)</option>
-              <option value="bank_transfer">Расчётный счёт</option>
-            </select>
-            <div id="payment-details"></div>
+  <div class="subscription-form-content">
+    <div class="subscription-form-header">
+      <h2>${title}</h2>
+      <button type="button" class="subscription-form-close">×</button>
+    </div>
+    <div class="subscription-form-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="subscription-client" class="required">Клиент</label>
+          <select id="subscription-client" required disabled>
+            <option value="${sub.clientId}">${clients.find(c => c.id === sub.clientId).name}</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="subscription-template" class="required">Тип абонемента</label>
+          <select id="subscription-template" required>
+            <option value="">Выберите тип абонемента</option>
+            ${getSubscriptionTemplates().map(template => `
+              <option value="${template.id}" ${sub.templateId === template.id ? 'selected' : ''}>
+                ${template.type}
+              </option>
+            `).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="subscription-classes-per-week" class="required">Занятий в неделю</label>
+          <input type="number" id="subscription-classes-per-week" 
+                value="${sub.classesPerWeek || ''}" 
+                min="0" max="7" required>
+        </div>
+        <div class="form-group">
+          <label for="subscription-class-time" class="required">Время занятия</label>
+          <input type="time" id="subscription-class-time" 
+                value="${sub.classTime || '09:00'}" required>
+        </div>
+        <div class="form-group">
+          <label for="subscription-start-date" class="required">Дата начала</label>
+          <input type="date" id="subscription-start-date" 
+                value="${sub.startDate || ''}" required>
+        </div>
+        <div class="form-group">
+          <label for="subscription-end-date" class="required">Дата окончания</label>
+          <input type="date" id="subscription-end-date" 
+                value="${sub.endDate || ''}" required>
+        </div>
+        <div class="form-group full-width">
+          <label>Дни недели занятий</label>
+          <div class="days-of-week-selector">
+            ${['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map(day => `
+              <button type="button" class="day-button${sub.daysOfWeek?.includes(day) ? ' selected' : ''}" 
+                      data-day="${day}">${day}</button>
+            `).join('')}
           </div>
         </div>
-      </div>
-      <div class="subscription-form-footer">
-        <button type="button" id="subscription-cancel-btn" class="btn-secondary">Отмена</button>
-        <button type="button" id="subscription-save-btn" class="btn-primary">Сохранить</button>
+        <div class="form-group">
+          <label for="subscription-group">Группа (опционально)</label>
+          <select id="subscription-group">
+            <option value="">Без привязки к группе</option>
+            ${groups.map(group => `
+              <option value="${group}" ${sub.group === group ? 'selected' : ''}>${group}</option>
+            `).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="subscription-is-paid" ${sub.isPaid !== false ? 'checked' : ''}>
+            <span class="checkmark"></span>
+            Абонемент оплачен
+          </label>
+          <small class="field-hint">Влияет на активность абонемента</small>
+        </div>
       </div>
     </div>
-  `;
+    <div class="subscription-form-footer">
+      <button type="button" id="subscription-cancel-btn" class="btn-secondary">Отмена</button>
+      <button type="button" id="subscription-save-btn" class="btn-primary">Сохранить</button>
+    </div>
+  </div>
+`;
 
   document.getElementById('main-content').appendChild(modal);
 
   const closeModal = () => modal.remove();
   setupModalClose(modal, closeModal);
+
   modal.querySelector('.subscription-form-close').addEventListener('click', closeModal);
 
   const dayButtons = modal.querySelectorAll('.day-button');
-  dayButtons.forEach(btn => btn.addEventListener('click', () => btn.classList.toggle('selected')));
+  dayButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      button.classList.toggle('selected');
+    });
+  });
 
-  const startInput = modal.querySelector('#subscription-start-date');
-  const endInput = modal.querySelector('#subscription-end-date');
-  startInput.addEventListener('change', () => {
-    if (startInput.value && !endInput.value) {
-      const start = new Date(startInput.value);
-      start.setDate(start.getDate() + 30);
-      endInput.value = start.toISOString().split('T')[0];
+  const startDateInput = document.getElementById('subscription-start-date');
+  const endDateInput = document.getElementById('subscription-end-date');
+
+  startDateInput.addEventListener('change', () => {
+    if (startDateInput.value && !endDateInput.value) {
+      const startDate = new Date(startDateInput.value);
+      startDate.setDate(startDate.getDate() + 30);
+      endDateInput.value = startDate.toISOString().split('T')[0];
     }
   });
 
-  const isPaidCheckbox = modal.querySelector('#subscription-is-paid');
-  const paymentSection = modal.querySelector('#payment-section');
-  isPaidCheckbox.addEventListener('change', () => {
-    paymentSection.style.display = isPaidCheckbox.checked ? 'block' : 'none';
-  });
-
-  const paymentMethodSelect = modal.querySelector('#payment-method');
-  const paymentDetailsDiv = modal.querySelector('#payment-details');
-  paymentMethodSelect.addEventListener('change', () => {
-    paymentDetailsDiv.innerHTML = '';
-    const method = paymentMethodSelect.value;
-    if (method === 'cash' || method === 'bank_transfer') {
-      paymentDetailsDiv.innerHTML = `
-        <label for="payment-amount">Сумма</label>
-        <input type="number" id="payment-amount" placeholder="Введите сумму" required>
-        ${method === 'bank_transfer' ? `
-          <label for="payment-reference">Ссылка/номер</label>
-          <input type="text" id="payment-reference" placeholder="Введите ссылку или номер">
-        ` : ''}
-      `;
-    } else if (method === 'cash_register') {
-      paymentDetailsDiv.innerHTML = `
-        <label for="payment-cash">Наличные</label>
-        <input type="number" id="payment-cash" placeholder="Сумма наличными" required>
-        <label for="payment-card">Карта/терминал</label>
-        <input type="number" id="payment-card" placeholder="Сумма по карте" required>
-      `;
-    }
-  });
-
-  modal.querySelector('#subscription-save-btn').addEventListener('click', () => {
-    const templateId = modal.querySelector('#subscription-template').value;
-    const classesPerWeek = parseInt(modal.querySelector('#subscription-classes-per-week').value);
-    const daysOfWeek = Array.from(modal.querySelectorAll('.day-button.selected')).map(b => b.dataset.day);
-    const startDate = modal.querySelector('#subscription-start-date').value;
-    const endDate = modal.querySelector('#subscription-end-date').value;
-    const classTime = modal.querySelector('#subscription-class-time').value;
-    const group = modal.querySelector('#subscription-group').value;
-    const isPaid = modal.querySelector('#subscription-is-paid').checked;
+  document.getElementById('subscription-save-btn').addEventListener('click', () => {
+    const clientId = sub.clientId;
+    const templateId = document.getElementById('subscription-template').value;
+    const classesPerWeek = parseInt(document.getElementById('subscription-classes-per-week').value);
+    const daysOfWeek = Array.from(modal.querySelectorAll('.day-button.selected'))
+      .map(button => button.getAttribute('data-day'));
+    const startDate = document.getElementById('subscription-start-date').value;
+    const endDate = document.getElementById('subscription-end-date').value;
+    const classTime = document.getElementById('subscription-class-time').value;
+    const group = document.getElementById('subscription-group').value;
+    const isPaid = document.getElementById('subscription-is-paid').checked;
 
     if (!templateId || isNaN(classesPerWeek) || !startDate || !endDate || !classTime) {
       showToast('Заполните все обязательные поля!', 'error');
       return;
     }
 
-    if (new Date(endDate) <= new Date(startDate)) {
-      showToast('Дата окончания должна быть позже начала!', 'error');
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (end <= start) {
+      showToast('Дата окончания должна быть позже даты начала!', 'error');
       return;
     }
 
     if (classesPerWeek > 0 && daysOfWeek.length === 0) {
-      showToast('Выберите дни недели!', 'error');
+      showToast('Выберите дни недели для занятий!', 'error');
       return;
     }
 
-    let payment = null;
-    if (isPaid) {
-      const method = paymentMethodSelect.value;
-      if (!method) {
-        showToast('Выберите способ оплаты!', 'error');
-        return;
-      }
-      payment = {
-        method,
-        date: new Date().toISOString(),
-        details: {}
-      };
-      if (method === 'cash' || method === 'bank_transfer') {
-        const amount = parseFloat(modal.querySelector('#payment-amount').value);
-        if (isNaN(amount) || amount <= 0) {
-          showToast('Введите корректную сумму!', 'error');
-          return;
-        }
-        payment.details.amount = amount;
-        if (method === 'bank_transfer') {
-          payment.details.reference = modal.querySelector('#payment-reference').value.trim();
-        }
-      } else if (method === 'cash_register') {
-        const cash = parseFloat(modal.querySelector('#payment-cash').value);
-        const card = parseFloat(modal.querySelector('#payment-card').value);
-        if (isNaN(cash) || cash < 0 || isNaN(card) || card < 0) {
-          showToast('Введите корректные суммы для наличных и карты!', 'error');
-          return;
-        }
-        payment.details.cash = cash;
-        payment.details.card = card;
-      }
-    }
-
     callback({
+      clientId,
       templateId,
       startDate,
       endDate,
@@ -1853,140 +1840,153 @@ export function showSubscriptionForm(title, sub, clients, groups, callback) {
       classTime,
       group,
       isPaid,
-      payment,
       renewalHistory: sub.renewalHistory || [],
       subscriptionNumber: sub.subscriptionNumber
     });
 
     closeModal();
+
+    const subscriptionManagementModal = document.querySelector('.subscription-management-modal');
+    if (subscriptionManagementModal) {
+      const client = clients.find(c => c.id === sub.clientId);
+      subscriptionManagementModal.remove();
+      showSubscriptionManagement(client);
+    }
   });
 
-  modal.querySelector('#subscription-cancel-btn').addEventListener('click', closeModal);
+  document.getElementById('subscription-cancel-btn').addEventListener('click', closeModal);
 }
 
 export function showRenewSubscriptionForm(title, client, sub, callback) {
   const subscriptionTemplate = getSubscriptionTemplates().find(t => t.id === sub.templateId);
-  const defaultEndDate = new Date(Math.max(new Date('2025-09-17'), new Date(sub.endDate)));
+  const defaultEndDate = new Date(Math.max(new Date(), new Date(sub.endDate)));
   defaultEndDate.setDate(defaultEndDate.getDate() + 30);
 
   const modal = document.createElement('div');
-  modal.className = 'renew-subscription-modal two-column-modal';
+  modal.className = 'renew-subscription-modal';
   modal.innerHTML = `
-    <div class="renew-subscription-content">
-      <div class="renew-header">
-        <h2>${title}</h2>
-        <button type="button" class="renew-close">×</button>
-      </div>
-      <div class="renew-body">
-        <div class="history-section">
-          <h3>Текущий абонемент</h3>
-          <div class="info-grid">
-            <div class="info-item">
-              <span class="label">Номер:</span>
-              <span class="value">#${sub.subscriptionNumber}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">Тип:</span>
-              <span class="value">${subscriptionTemplate ? subscriptionTemplate.type : 'Неизвестный'}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">Период:</span>
-              <span class="value">${sub.startDate} — ${sub.endDate}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">Осталось занятий:</span>
-              <span class="value ${sub.remainingClasses <= 3 && sub.remainingClasses !== Infinity ? 'low-classes' : ''}">${sub.remainingClasses === Infinity ? '∞' : sub.remainingClasses}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">Оплата:</span>
-              <span class="value">${sub.payment ? sub.payment.method : 'Не оплачено'}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">Статус:</span>
-              <span class="value status-${sub.isPaid && new Date(sub.endDate) >= new Date() ? 'active' : 'inactive'}">${sub.isPaid && new Date(sub.endDate) >= new Date() ? 'Активный' : 'Неактивный'}</span>
-            </div>
+  <div class="renew-subscription-content">
+    <div class="renew-header">
+      <h2>${title}</h2>
+      <button type="button" class="renew-close">×</button>
+    </div>
+    <div class="renew-body">
+      <div class="current-subscription-info">
+        <h3><img src="images/icon-subscription-info.svg" alt="Текущий абонемент" class="icon"> Текущий абонемент</h3>
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="label">Клиент:</span>
+            <span class="value">${client.surname} ${client.name}</span>
           </div>
-          ${sub.renewalHistory && sub.renewalHistory.length ? `
-            <div class="renewal-history-section">
-              <h4>История продлений</h4>
-              <div class="renewal-list">
-                ${sub.renewalHistory.map(entry => {
+          <div class="info-item">
+            <span class="label">Номер абонемента:</span>
+            <span class="value">#${sub.subscriptionNumber}</span>
+          </div>
+          <div class="info-item">
+            <span class="label">Тип:</span>
+            <span class="value">${subscriptionTemplate ? subscriptionTemplate.type : 'Неизвестный'}</span>
+          </div>
+          <div class="info-item">
+            <span class="label">Период:</span>
+            <span class="value">${sub.startDate} — ${sub.endDate}</span>
+          </div>
+          <div class="info-item">
+            <span class="label">Осталось занятий:</span>
+            <span class="value ${sub.remainingClasses <= 3 && sub.remainingClasses !== Infinity ? 'low-classes' : ''}">
+              ${sub.remainingClasses === Infinity ? '∞' : sub.remainingClasses}
+            </span>
+          </div>
+          <div class="info-item">
+            <span class="label">Статус:</span>
+            <span class="value status-${sub.isPaid && new Date(sub.endDate) >= new Date() ? 'active' : 'inactive'}">
+              ${sub.isPaid && new Date(sub.endDate) >= new Date() ? 'Активный' : 'Неактивный'}
+            </span>
+          </div>
+        </div>
+        ${sub.renewalHistory && sub.renewalHistory.length ? `
+          <div class="renewal-history-section">
+            <h4>История продлений:</h4>
+            <div class="renewal-list">
+              ${sub.renewalHistory.map(entry => {
     const date = new Date(entry.date || entry).toLocaleDateString('ru-RU');
     return entry.fromTemplate ?
       `<span class="renewal-item">${date}: ${entry.fromTemplate} → ${entry.toTemplate}</span>` :
       `<span class="renewal-item">${date}</span>`;
   }).join('')}
-              </div>
             </div>
-          ` : ''}
-        </div>
-        <div class="management-section">
-          <h3>Параметры продления</h3>
-          <div class="form-grid">
-            <div class="form-group">
-              <label for="renew-template" class="required">Тип абонемента</label>
-              <select id="renew-template" required>
-                <option value="${sub.templateId}">${subscriptionTemplate ? subscriptionTemplate.type : 'Текущий'}</option>
-                ${getSubscriptionTemplates().filter(t => t.id !== sub.templateId).map(t => `<option value="${t.id}">${t.type}</option>`).join('')}
-              </select>
+          </div>
+        ` : ''}
+      </div>
+      
+      <div class="renew-form-section">
+        <h3><img src="images/icon-renew.svg" alt="Продление" class="icon"> Продление</h3>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="renew-template" class="required">Тип абонемента</label>
+            <select id="renew-template" required>
+              <option value="">Выберите тип абонемента</option>
+              ${getSubscriptionTemplates().map(template => `
+                <option value="${template.id}" ${sub.templateId === template.id ? 'selected' : ''}>
+                  ${template.type}
+                </option>
+              `).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="renew-classes-per-week" class="required">Занятий в неделю</label>
+            <input type="number" id="renew-classes-per-week" 
+                  value="${sub.classesPerWeek || ''}" 
+                  min="0" max="7" required>
+          </div>
+          <div class="form-group">
+            <label for="renew-class-time" class="required">Время занятия</label>
+            <input type="time" id="renew-class-time" 
+                  value="${sub.classTime || '09:00'}" required>
+          </div>
+          <div class="form-group">
+            <label for="renew-start-date" class="required">Дата начала</label>
+            <input type="date" id="renew-start-date" 
+                  value="${sub.startDate || ''}" required>
+          </div>
+          <div class="form-group">
+            <label for="renew-end-date" class="required">Дата окончания</label>
+            <input type="date" id="renew-end-date" 
+                  value="${defaultEndDate.toISOString().split('T')[0]}" required>
+          </div>
+          <div class="form-group full-width">
+            <label>Дни недели занятий</label>
+            <div class="days-of-week-selector">
+              ${['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map(day => `
+                <button type="button" class="day-button${sub.daysOfWeek?.includes(day) ? ' selected' : ''}" 
+                        data-day="${day}">${day}</button>
+              `).join('')}
             </div>
-            <div class="form-group">
-              <label for="renew-classes-per-week" class="required">Занятий в неделю</label>
-              <input type="number" id="renew-classes-per-week" value="${sub.classesPerWeek || ''}" min="0" max="7" required>
-            </div>
-            <div class="form-group">
-              <label for="renew-class-time" class="required">Время занятия</label>
-              <input type="time" id="renew-class-time" value="${sub.classTime || '09:00'}" required>
-            </div>
-            <div class="form-group">
-              <label for="renew-start-date" class="required">Дата начала</label>
-              <input type="date" id="renew-start-date" value="${sub.startDate || ''}" required>
-            </div>
-            <div class="form-group">
-              <label for="renew-end-date" class="required">Дата окончания</label>
-              <input type="date" id="renew-end-date" value="${defaultEndDate.toISOString().split('T')[0]}" required>
-            </div>
-            <div class="form-group full-width">
-              <label>Дни недели</label>
-              <div class="days-of-week-selector">
-                ${['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map(day => `
-                  <button type="button" class="day-button ${sub.daysOfWeek?.includes(day) ? 'selected' : ''}" data-day="${day}">${day}</button>
-                `).join('')}
-              </div>
-            </div>
-            <div class="form-group">
-              <label for="renew-group">Группа</label>
-              <select id="renew-group">
-                <option value="">Без группы</option>
-                ${getGroups().map(g => `<option value="${g}" ${sub.group === g ? 'selected' : ''}>${g}</option>`).join('')}
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="checkbox-label">
-                <input type="checkbox" id="renew-is-paid" ${sub.isPaid !== false ? 'checked' : ''}>
-                <span class="checkmark"></span>
-                Оплачен
-              </label>
-            </div>
-            <div class="form-group full-width" id="renew-payment-section" style="display: ${sub.isPaid !== false ? 'block' : 'none'};">
-              <label for="renew-payment-method" class="required">Способ оплаты</label>
-              <select id="renew-payment-method" required>
-                <option value="">Выберите способ</option>
-                <option value="cash">Наличные</option>
-                <option value="cash_register">Касса (нал/карта)</option>
-                <option value="bank_transfer">Расчётный счёт</option>
-              </select>
-              <div id="renew-payment-details"></div>
-            </div>
+          </div>
+          <div class="form-group">
+            <label for="renew-group">Группа (опционально)</label>
+            <select id="renew-group">
+              <option value="">Без привязки к группе</option>
+              ${getGroups().map(group => `
+                <option value="${group}" ${sub.group === group ? 'selected' : ''}>${group}</option>
+              `).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="renew-is-paid" ${sub.isPaid !== false ? 'checked' : ''}>
+              <span class="checkmark"></span>
+              Абонемент оплачен
+            </label>
           </div>
         </div>
       </div>
-      <div class="renew-footer">
-        <button type="button" id="renew-cancel-btn" class="btn-secondary">Отмена</button>
-        <button type="button" id="renew-save-btn" class="btn-primary">Продлить</button>
-      </div>
     </div>
-  `;
+    <div class="renew-footer">
+      <button type="button" id="renew-cancel-btn" class="btn-secondary">Отмена</button>
+      <button type="button" id="renew-save-btn" class="btn-primary">Продлить</button>
+    </div>
+  </div>
+`;
 
   document.getElementById('main-content').appendChild(modal);
 
@@ -2011,36 +2011,6 @@ export function showRenewSubscriptionForm(title, client, sub, callback) {
       const startDate = new Date(startDateInput.value);
       startDate.setDate(startDate.getDate() + 30);
       endDateInput.value = startDate.toISOString().split('T')[0];
-    }
-  });
-
-  const isPaidCheckbox = document.getElementById('renew-is-paid');
-  const paymentSection = document.getElementById('renew-payment-section');
-  isPaidCheckbox.addEventListener('change', () => {
-    paymentSection.style.display = isPaidCheckbox.checked ? 'block' : 'none';
-  });
-
-  const paymentMethodSelect = document.getElementById('renew-payment-method');
-  const paymentDetailsDiv = document.getElementById('renew-payment-details');
-  paymentMethodSelect.addEventListener('change', () => {
-    paymentDetailsDiv.innerHTML = '';
-    const method = paymentMethodSelect.value;
-    if (method === 'cash' || method === 'bank_transfer') {
-      paymentDetailsDiv.innerHTML = `
-        <label for="renew-payment-amount">Сумма</label>
-        <input type="number" id="renew-payment-amount" placeholder="Введите сумму" required>
-        ${method === 'bank_transfer' ? `
-          <label for="renew-payment-reference">Ссылка/номер</label>
-          <input type="text" id="renew-payment-reference" placeholder="Введите ссылку или номер">
-        ` : ''}
-      `;
-    } else if (method === 'cash_register') {
-      paymentDetailsDiv.innerHTML = `
-        <label for="renew-payment-cash">Наличные</label>
-        <input type="number" id="renew-payment-cash" placeholder="Сумма наличными" required>
-        <label for="renew-payment-card">Карта/терминал</label>
-        <input type="number" id="renew-payment-card" placeholder="Сумма по карте" required>
-      `;
     }
   });
 
@@ -2072,40 +2042,6 @@ export function showRenewSubscriptionForm(title, client, sub, callback) {
       return;
     }
 
-    let payment = null;
-    if (isPaid) {
-      const method = paymentMethodSelect.value;
-      if (!method) {
-        showToast('Выберите способ оплаты!', 'error');
-        return;
-      }
-      payment = {
-        method,
-        date: new Date().toISOString(),
-        details: {}
-      };
-      if (method === 'cash' || method === 'bank_transfer') {
-        const amount = parseFloat(document.getElementById('renew-payment-amount').value);
-        if (isNaN(amount) || amount <= 0) {
-          showToast('Введите корректную сумму!', 'error');
-          return;
-        }
-        payment.details.amount = amount;
-        if (method === 'bank_transfer') {
-          payment.details.reference = document.getElementById('renew-payment-reference').value.trim();
-        }
-      } else if (method === 'cash_register') {
-        const cash = parseFloat(document.getElementById('renew-payment-cash').value);
-        const card = parseFloat(document.getElementById('renew-payment-card').value);
-        if (isNaN(cash) || cash < 0 || isNaN(card) || card < 0) {
-          showToast('Введите корректные суммы для наличных и карты!', 'error');
-          return;
-        }
-        payment.details.cash = cash;
-        payment.details.card = card;
-      }
-    }
-
     const template = getSubscriptionTemplates().find(t => t.id === templateId);
     const renewalEntry = {
       date: new Date().toISOString(),
@@ -2122,7 +2058,6 @@ export function showRenewSubscriptionForm(title, client, sub, callback) {
       classTime,
       group,
       isPaid,
-      payment,
       subscriptionNumber: sub.subscriptionNumber,
       remainingClasses: template ? template.remainingClasses : sub.remainingClasses,
       renewalHistory: [...(sub.renewalHistory || []), renewalEntry]
@@ -2133,24 +2068,175 @@ export function showRenewSubscriptionForm(title, client, sub, callback) {
 }
 
 export function showGroupForm(title, client, groups, callback) {
+  console.log(`showGroupForm: client=${client.id}, groups=${groups}`);
   const modal = document.createElement('div');
-  modal.className = 'group-form-modal two-column-modal';
+  modal.className = 'group-form-modal';
   let selectedGroups = [...(client.groups || [])];
   let groupHistory = [...(client.groupHistory || [])];
 
-  function renderHistory() {
-    return groupHistory.length ? groupHistory.map(entry => `
-      <li>${formatDate(entry.date)}: ${entry.action === 'added' ? 'Добавлен в' : 'Удалён из'} ${entry.group}</li>
-    `).join('') : '<div class="no-data">Нет истории переходов</div>';
+  function formatDate(dateString) {
+    if (!dateString) return 'Никогда';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now - date);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 1) return 'Сегодня';
+    if (diffDays === 2) return 'Вчера';
+    if (diffDays <= 7) return `${diffDays - 1} дн. назад`;
+    if (diffDays <= 30) return `${Math.floor(diffDays / 7)} нед. назад`;
+    return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  }
+
+  function renderGroupHistory() {
+    const historyContainer = modal.querySelector('.group-history-container');
+    historyContainer.innerHTML = `
+      <h3>История групп</h3>
+      ${groupHistory.length ? `
+        <table class="group-history-table">
+          <thead>
+            <tr>
+              <th>Дата</th>
+              <th>Действие</th>
+              <th>Группа</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${groupHistory.map(entry => `
+              <tr>
+                <td>${formatDate(entry.date)}</td>
+                <td>${entry.action === 'added' ? 'Добавлен' : 'Удалён'}</td>
+                <td>${entry.group}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      ` : `
+        <div class="no-data">Нет истории групп</div>
+      `}
+    `;
   }
 
   function renderGroups(searchTerm = '') {
-    const filteredGroups = groups.filter(g => g.toLowerCase().includes(searchTerm.toLowerCase())).sort((a, b) => a.localeCompare(b));
-    return filteredGroups.map(group => `
-      <div class="group-item ${selectedGroups.includes(group) ? 'selected' : ''}" data-group="${group}">
-        ${group}
-      </div>
-    `).join('');
+    const groupList = modal.querySelector('.groups-list');
+    const filteredGroups = groups
+      .filter(group => group.toLowerCase().includes(searchTerm.toLowerCase()))
+      .sort((a, b) => a.localeCompare(b));
+    groupList.innerHTML = `
+      <table class="group-selection-table">
+        <thead>
+          <tr>
+            <th><input type="checkbox" id="select-all-groups"></th>
+            <th>Название группы</th>
+            <th>Дата начала</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${filteredGroups.map(group => {
+      const isSelected = selectedGroups.includes(group);
+      const historyEntry = groupHistory.find(entry => entry.group === group && entry.action === 'added');
+      const startDate = historyEntry ? historyEntry.date.split('T')[0] : new Date().toISOString().split('T')[0];
+      return `
+              <tr class="group-row" data-group="${group}">
+                <td><input type="checkbox" value="${group}" ${isSelected ? 'checked' : ''}></td>
+                <td>${group}</td>
+                <td><input type="date" class="start-date-input" value="${isSelected ? startDate : ''}" ${!isSelected ? 'disabled' : ''}></td>
+              </tr>
+            `;
+    }).join('')}
+        </tbody>
+      </table>
+    `;
+
+    const selectAllCheckbox = modal.querySelector('#select-all-groups');
+    const checkboxes = modal.querySelectorAll('.group-row input[type="checkbox"]');
+    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+    const someChecked = Array.from(checkboxes).some(cb => cb.checked);
+    selectAllCheckbox.checked = allChecked;
+    selectAllCheckbox.indeterminate = someChecked && !allChecked;
+
+    selectAllCheckbox.addEventListener('change', (e) => {
+      const checked = e.target.checked;
+      checkboxes.forEach(cb => {
+        cb.checked = checked;
+        const row = cb.closest('.group-row');
+        const group = cb.value;
+        const dateInput = row.querySelector('.start-date-input');
+        dateInput.disabled = !checked;
+        if (checked && !selectedGroups.includes(group)) {
+          showDateSelectionModal('Дата начала участия в группе', (startDate) => {
+            if (startDate) {
+              selectedGroups.push(group);
+              groupHistory.push({ date: startDate, action: 'added', group });
+              addClientToGroup(client.id, group, startDate);
+              dateInput.value = startDate;
+              dateInput.disabled = false;
+              renderGroupHistory();
+              showToast(`Клиент добавлен в группу ${group} с ${formatDate(startDate)}`, 'success');
+            } else {
+              cb.checked = false;
+              dateInput.disabled = true;
+            }
+            renderGroups(searchTerm);
+          });
+        } else if (!checked) {
+          selectedGroups = selectedGroups.filter(g => g !== group);
+          groupHistory.push({ date: new Date().toISOString(), action: 'removed', group });
+          removeClientFromGroup(client.id, group);
+          dateInput.disabled = true;
+          renderGroupHistory();
+        }
+      });
+      renderGroups(searchTerm);
+    });
+
+    groupList.querySelectorAll('.group-row input[type="checkbox"]').forEach(checkbox => {
+      checkbox.addEventListener('change', (e) => {
+        const group = e.target.value;
+        const row = e.target.closest('.group-row');
+        const dateInput = row.querySelector('.start-date-input');
+        if (e.target.checked) {
+          if (!selectedGroups.includes(group)) {
+            showDateSelectionModal('Дата начала участия в группе', (startDate) => {
+              if (startDate) {
+                selectedGroups.push(group);
+                groupHistory.push({ date: startDate, action: 'added', group });
+                addClientToGroup(client.id, group, startDate);
+                dateInput.value = startDate;
+                dateInput.disabled = false;
+                renderGroupHistory();
+                showToast(`Клиент добавлен в группу ${group} с ${formatDate(startDate)}`, 'success');
+              } else {
+                e.target.checked = false;
+                dateInput.disabled = true;
+                renderGroups(searchTerm);
+              }
+            });
+          }
+        } else {
+          selectedGroups = selectedGroups.filter(g => g !== group);
+          groupHistory.push({ date: new Date().toISOString(), action: 'removed', group });
+          removeClientFromGroup(client.id, group);
+          dateInput.disabled = true;
+          renderGroupHistory();
+        }
+        renderGroups(searchTerm);
+      });
+    });
+
+    groupList.querySelectorAll('.start-date-input').forEach(input => {
+      input.addEventListener('change', (e) => {
+        const group = e.target.closest('.group-row').dataset.group;
+        const existingEntry = groupHistory.find(entry => entry.group === group && entry.action === 'added');
+        if (existingEntry) {
+          existingEntry.date = e.target.value;
+        } else {
+          groupHistory.push({ date: e.target.value, action: 'added', group });
+        }
+        addClientToGroup(client.id, group, e.target.value);
+        renderGroupHistory();
+      });
+    });
   }
 
   modal.innerHTML = `
@@ -2159,18 +2245,19 @@ export function showGroupForm(title, client, groups, callback) {
         <h2>${title}</h2>
         <button type="button" class="group-form-close">×</button>
       </div>
-      <div class="group-form-body">
-        <div class="history-section">
-          <h3>История переходов</h3>
-          <ul class="history-list">${renderHistory()}</ul>
+      <div class="group-form-body split-layout">
+        <div class="group-history-section">
+          <div class="group-history-container"></div>
         </div>
-        <div class="management-section">
-          <h3>Управление группами</h3>
+        <div class="group-selection-section">
+          <div class="client-info">
+            <span>Клиент: ${client.surname} ${client.name}</span>
+          </div>
           <div class="group-search-container">
             <input type="text" id="group-search" placeholder="Поиск группы...">
           </div>
           <div class="groups-list-container">
-            <div class="groups-list">${renderGroups()}</div>
+            <div class="groups-list"></div>
           </div>
         </div>
       </div>
@@ -2191,84 +2278,69 @@ export function showGroupForm(title, client, groups, callback) {
 
   const searchInput = modal.querySelector('#group-search');
   searchInput.addEventListener('input', (e) => {
-    modal.querySelector('.groups-list').innerHTML = renderGroups(e.target.value);
-    attachGroupListeners();
+    renderGroups(e.target.value);
   });
-
-  function attachGroupListeners() {
-    modal.querySelectorAll('.group-item').forEach(item => {
-      item.addEventListener('click', () => {
-        const group = item.dataset.group;
-        const action = selectedGroups.includes(group) ? 'removed' : 'added';
-        showGroupTransitionForm(client, group, action, (transitionDate) => {
-          if (transitionDate) {
-            if (action === 'added') {
-              if (!selectedGroups.includes(group)) {
-                selectedGroups.push(group);
-                groupHistory.push({ date: transitionDate, action: 'added', group });
-              }
-            } else {
-              selectedGroups = selectedGroups.filter(g => g !== group);
-              groupHistory.push({ date: transitionDate, action: 'removed', group });
-            }
-            modal.querySelector('.history-list').innerHTML = renderHistory();
-            item.classList.toggle('selected', selectedGroups.includes(group));
-            showToast(`${action === 'added' ? 'Добавлен' : 'Удалён'} в ${group} с ${transitionDate}`, 'success');
-          }
-        });
-      });
-    });
-  }
-
-  attachGroupListeners();
 
   modal.querySelector('#group-save-btn').addEventListener('click', () => {
-    callback(selectedGroups, groupHistory);
-    closeModal();
-    showToast('Группы обновлены', 'success');
-  });
-}
-
-function showGroupTransitionForm(client, group, action, callback) {
-  const modal = document.createElement('div');
-  modal.className = 'group-transition-modal';
-  modal.innerHTML = `
-    <div class="group-transition-content">
-      <h2>${action === 'added' ? 'Дата добавления' : 'Дата удаления'}</h2>
-      <p>Группа: ${group}</p>
-      <input type="date" id="transition-date" value="${new Date('2025-09-17').toISOString().split('T')[0]}" required>
-      <div class="group-transition-actions">
-        <button type="button" class="btn-secondary" id="transition-cancel">Отмена</button>
-        <button type="button" class="btn-primary" id="transition-confirm">Подтвердить</button>
-      </div>
-    </div>
-  `;
-
-  document.getElementById('main-content').appendChild(modal);
-
-  const closeModal = () => modal.remove();
-  setupModalClose(modal, closeModal);
-
-  modal.querySelector('#transition-cancel').addEventListener('click', closeModal);
-
-  modal.querySelector('#transition-confirm').addEventListener('click', () => {
-    const transitionDate = modal.querySelector('#transition-date').value;
-    if (transitionDate) {
-      callback(transitionDate);
-      closeModal();
-    } else {
-      showToast('Выберите дату!', 'error');
+    console.log(`Сохранение групп для клиента ${client.id}:`, selectedGroups);
+    const finalGroups = selectedGroups.map(group => {
+      const historyEntry = groupHistory.find(entry => entry.group === group && entry.action === 'added');
+      return { name: group, startDate: historyEntry ? historyEntry.date : new Date().toISOString() };
+    });
+    callback(finalGroups.map(g => g.name), groupHistory);
+    if (typeof renderClients === 'function') {
+      renderClients();
     }
+    closeModal();
   });
-}
 
-function generateUniqueSubscriptionNumber(contract) {
-  const existingNumbers = contract.subscriptions.map(sub => sub.subscriptionNumber);
-  let number = contract.subscriptions.length + 1;
-  let newNumber = `SUB-${String(number).padStart(3, '0')}`;
-  while (existingNumbers.includes(newNumber)) {
-    number++;
-    newNumber = `SUB-${String(number).padStart(3, '0')}`;
+  function showDateSelectionModal(title, callback) {
+    const dateModal = document.createElement('div');
+    dateModal.className = 'date-modal';
+    dateModal.innerHTML = `
+      <div class="date-modal-content">
+        <h2>${title}</h2>
+        <input type="date" id="start-date-input" required>
+        <div class="date-modal-actions">
+          <button class="btn-primary" id="date-confirm-btn">Подтвердить</button>
+          <button class="btn-secondary" id="date-cancel-btn">Отмена</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(dateModal);
+
+    const input = dateModal.querySelector('#start-date-input');
+    input.value = new Date().toISOString().split('T')[0];
+
+    dateModal.querySelector('#date-confirm-btn').addEventListener('click', () => {
+      if (input.value) {
+        callback(input.value);
+        dateModal.remove();
+      } else {
+        showToast('Выберите дату!', 'error');
+      }
+    });
+
+    dateModal.querySelector('#date-cancel-btn').addEventListener('click', () => {
+      callback(null);
+      dateModal.remove();
+    });
+
+    dateModal.addEventListener('click', (e) => {
+      if (e.target === dateModal) {
+        callback(null);
+        dateModal.remove();
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        callback(null);
+        dateModal.remove();
+      }
+    }, { once: true });
   }
-  return newNumber;
+
+  renderGroupHistory();
+  renderGroups();
 }

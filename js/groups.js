@@ -1,18 +1,11 @@
-// groups.js (updated for history and date-based transition)
 import { getTrainers } from './employees.js';
-import { getClients, addGroupToClient, removeGroupFromClient } from './clients.js';
+import { getClients, addGroupToClient, removeGroupFromClient, getClientById } from './clients.js';
 
 // Загрузка групп из localStorage
 let groups = JSON.parse(localStorage.getItem('groups')) || [
-  { id: 'group1', name: 'Йога для начинающих', trainer: 'Анна Иванова', clients: ['Иван Сергеев'] },
+  { id: 'group1', name: 'Йога для начинающих', trainer: 'Анна Иванова', clients: [{ name: 'Иван Сергеев', startDate: '2025-09-01' }] },
   { id: 'group2', name: 'Пилатес продвинутый', trainer: 'Мария Петрова', clients: [] },
-  { id: 'group3', name: 'Зумба вечеринка1', trainer: 'Олег Смирнов', clients: ['Алексей Попов'] },
-  { id: 'group4', name: 'Зумба вечеринка2', trainer: 'Олег Смирнов', clients: ['Алексей Попов'] },
-  { id: 'group5', name: 'Зумба вечеринка4', trainer: 'Олег Смирнов', clients: ['Алексей Попов'] },
-  { id: 'group6', name: 'Зумба вечеринка5', trainer: 'Олег Смирнов', clients: ['Алексей Попов'] },
-  { id: 'group7', name: 'Зумба вечеринка6', trainer: 'Олег Смирнов', clients: ['Алексей Попов'] },
-  { id: 'group8', name: 'Зумба вечеринка7', trainer: 'Олег Смирнов', clients: ['Алексей Попов'] },
-  { id: 'group9', name: 'Зумба вечеринка8', trainer: 'Олег Смирнов', clients: ['Алексей Попов'] },
+  { id: 'group3', name: 'Зумба вечеринка1', trainer: 'Олег Смирнов', clients: [{ name: 'Алексей Попов', startDate: '2025-09-01' }] },
 ];
 
 function saveGroups() {
@@ -31,21 +24,29 @@ export function getGroupByName(name) {
   return groups.find(group => group.name === name);
 }
 
-export function addClientToGroup(groupId, clientName, startDate) {
-  const group = getGroupById(groupId);
-  if (group && !group.clients.includes(clientName)) {
-    group.clients.push({ name: clientName, startDate });
-    addGroupToClient(clientName, group.name, 'added', startDate);
+export function addClientToGroup(clientId, groupName, startDate = new Date().toISOString()) {
+  console.log(`addClientToGroup: clientId=${clientId}, groupName=${groupName}, startDate=${startDate}`);
+  const group = groups.find(g => g.name === groupName);
+  if (group && !group.clients.some(c => c.name === clientId)) {
+    group.clients.push({ name: clientId, startDate });
+    addGroupToClient(clientId, groupName, 'added', startDate);
     saveGroups();
+    console.log(`Клиент ${clientId} добавлен в группу ${groupName} с датой ${startDate}`);
+  } else {
+    console.log(`Клиент ${clientId} уже в группе ${groupName} или группа не найдена`);
   }
 }
 
-export function removeClientFromGroup(groupId, clientName) {
-  const group = getGroupById(groupId);
+export function removeClientFromGroup(clientId, groupName) {
+  console.log(`removeClientFromGroup: clientId=${clientId}, groupName=${groupName}`);
+  const group = groups.find(g => g.name === groupName);
   if (group) {
-    group.clients = group.clients.filter(c => c.name !== clientName);
-    removeGroupFromClient(clientName, group.name);
+    group.clients = group.clients.filter(c => c.name !== clientId);
+    removeGroupFromClient(clientId, groupName);
     saveGroups();
+    console.log(`Клиент ${clientId} удалён из группы ${groupName}`);
+  } else {
+    console.log(`Группа ${groupName} не найдена`);
   }
 }
 
@@ -57,10 +58,10 @@ export function addNewGroup(data) {
     id: `group${Date.now()}`,
     name: data.name,
     trainer: data.trainer,
-    clients: data.clients || []
+    clients: data.clients.map(name => ({ name, startDate: new Date().toISOString().split('T')[0] })) || []
   };
   groups.push(newGroup);
-  newGroup.clients.forEach(clientName => addClientToGroup(newGroup.id, clientName, new Date().toISOString().split('T')[0]));
+  newGroup.clients.forEach(c => addClientToGroup(newGroup.id, c.name, c.startDate));
   saveGroups();
   return newGroup;
 }
@@ -120,10 +121,10 @@ export function loadGroups() {
   const mainContent = document.getElementById('main-content');
   mainContent.innerHTML = '';
 
-  const header = document.createElement('header');
+  const header = document.createElement('div');
   header.className = 'header';
   header.innerHTML = `
-    <h1><img src="./images/icon-group.svg" alt="Группы"> Группы</h1>
+    <h1><img class="width" src="./images/icon-group.svg" alt="Группы"> Группы</h1>
   `;
   mainContent.appendChild(header);
 
@@ -151,6 +152,7 @@ export function loadGroups() {
     </table>
   `;
   mainContent.appendChild(groupTable);
+
   let sortField = 'name';
   let sortOrder = 1;
 
@@ -218,16 +220,10 @@ export function loadGroups() {
         alert('Группа с таким именем уже существует!');
         return;
       }
-      const newGroup = {
-        id: `group${Date.now()}`,
-        name: data.name,
-        trainer: data.trainer,
-        clients: data.clients || []
-      };
-      groups.push(newGroup);
-      newGroup.clients.forEach(clientName => addClientToGroup(newGroup.id, clientName));
-      saveGroups();
-      renderGroups();
+      const newGroup = addNewGroup(data);
+      if (newGroup) {
+        renderGroups();
+      }
     });
   });
 
@@ -235,6 +231,10 @@ export function loadGroups() {
     if (e.target.closest('.group-delete-btn')) {
       const groupId = e.target.closest('.group-delete-btn').getAttribute('data-id');
       const group = getGroupById(groupId);
+      if (!group) {
+        console.error('Группа не найдена для удаления:', groupId);
+        return;
+      }
       showConfirmModal(`Удалить группу "${group.name}"?`, () => {
         group.clients.forEach(client => removeClientFromGroup(groupId, client.name));
         groups = groups.filter(g => g.id !== groupId);
@@ -244,6 +244,10 @@ export function loadGroups() {
     } else if (e.target.closest('.group-edit-btn')) {
       const groupId = e.target.closest('.group-edit-btn').getAttribute('data-id');
       const group = getGroupById(groupId);
+      if (!group) {
+        console.error('Группа не найдена для редактирования:', groupId);
+        return;
+      }
       const trainers = getTrainers();
       if (trainers.length === 0) {
         alert('Нет доступных тренеров. Добавьте тренеров в разделе "Сотрудники".');
@@ -257,7 +261,7 @@ export function loadGroups() {
         const oldClients = group.clients.map(c => c.name).slice();
         group.name = data.name;
         group.trainer = data.trainer;
-        group.clients = data.clients.map(name => ({ name, startDate: new Date().toISOString().split('T')[0] })) || [];
+        group.clients = data.clients.map(name => ({ name, startDate: group.clients.find(c => c.name === name)?.startDate || new Date().toISOString().split('T')[0] }));
         oldClients.filter(c => !group.clients.some(gc => gc.name === c)).forEach(c => removeClientFromGroup(groupId, c));
         group.clients.filter(c => !oldClients.includes(c.name)).forEach(c => addClientToGroup(groupId, c.name, c.startDate));
         saveGroups();
@@ -266,10 +270,19 @@ export function loadGroups() {
     } else if (e.target.closest('.group-clients-btn')) {
       const groupId = e.target.closest('.group-clients-btn').getAttribute('data-id');
       const group = getGroupById(groupId);
+      if (!group) {
+        console.error('Группа не найдена для управления клиентами:', groupId);
+        alert('Ошибка: Группа не найдена.');
+        return;
+      }
       const clients = getClients();
       showClientManagementModal(`Управление клиентами: ${group.name}`, group, clients, (selectedClients) => {
+        console.log('Сохранение клиентов:', selectedClients);
         const oldClients = group.clients.map(c => c.name).slice();
-        group.clients = selectedClients.map(name => ({ name, startDate: new Date().toISOString().split('T')[0] }));
+        group.clients = selectedClients.map(name => ({
+          name,
+          startDate: group.clients.find(c => c.name === name)?.startDate || new Date().toISOString().split('T')[0]
+        }));
         oldClients.filter(c => !selectedClients.includes(c)).forEach(c => removeClientFromGroup(groupId, c));
         selectedClients.filter(c => !oldClients.includes(c)).forEach(c => addClientToGroup(groupId, c, new Date().toISOString().split('T')[0]));
         saveGroups();
@@ -279,76 +292,71 @@ export function loadGroups() {
   });
 
   function showClientManagementModal(title, group, clients, callback) {
+    console.log(`showClientManagementModal: group=${group.name}, clients=`, clients);
     const modal = document.createElement('div');
     modal.className = 'modal';
     modal.innerHTML = `
-      <div class="modal-content">
-        <h2>${escapeHtml(title)}</h2>
-        <div class="client-management-container">
-          <div class="history-panel">
-            <h3>История переходов</h3>
-            <div class="history-list" id="history-list"></div>
+    <div class="modal-content">
+      <h2>${escapeHtml(title)}</h2>
+      <div class="client-management-container">
+        <div class="client-selector">
+          <div class="client-search-container">
+            <input type="text" id="group-client-search" placeholder="Поиск клиента (ФИО или телефон)">
           </div>
-          <div class="client-selector">
-            <div class="client-search-container">
-              <input type="text" id="group-client-search" placeholder="Поиск клиента (ФИО или телефон)">
-            </div>
-            <div class="client-table-container" style="max-height: 400px; overflow-y: auto;">
-              <table class="client-table">
-                <thead>
-                  <tr>
-                    <th></th>
-                    <th data-sort="name">ФИО</th>
-                    <th data-sort="phone">Телефон</th>
-                    <th>Статус</th>
-                  </tr>
-                </thead>
-                <tbody id="client-table-body"></tbody>
-              </table>
-            </div>
-            <div class="client-selector-selected">
-              <label>Выбранные:</label>
-              <div class="selected-chips"></div>
-            </div>
+          <div class="client-table-container">
+            <table class="client-table">
+              <thead>
+                <tr>
+                  <th><input type="checkbox" id="select-all-clients"></th>
+                  <th data-sort="name">ФИО</th>
+                  <th data-sort="phone">Телефон</th>
+                  <th>Статус</th>
+                  <th>Дата начала</th>
+                </tr>
+              </thead>
+              <tbody id="client-table-body"></tbody>
+            </table>
           </div>
-        </div>
-        <div class="modal-actions">
-          <button class="btn-primary" id="group-save-btn">Сохранить</button>
-          <button class="btn-secondary" id="group-cancel-btn">Отмена</button>
+          <div class="client-selector-selected">
+            <label>Выбранные:</label>
+            <div class="selected-chips"></div>
+          </div>
         </div>
       </div>
-    `;
+      <div class="modal-actions">
+        <button class="btn-primary" id="group-save-btn">Сохранить</button>
+        <button class="btn-secondary" id="group-cancel-btn">Отмена</button>
+      </div>
+    </div>
+  `;
     document.body.appendChild(modal);
 
     const searchInput = modal.querySelector('#group-client-search');
     const tableBody = modal.querySelector('#client-table-body');
     const selectedChips = modal.querySelector('.selected-chips');
     const tableHead = modal.querySelector('.client-table thead');
-    const historyList = modal.querySelector('#history-list');
+    const selectAllCheckbox = modal.querySelector('#select-all-clients');
     let currentClients = group.clients.map(c => c.name).slice();
     let clientSortField = 'name';
     let clientSortOrder = 1;
 
     function getClientFullName(client) {
-      return client.surname ? `${client.name} ${client.surname}` : client.name;
+      const parts = [
+        client.surname?.trim() || '',
+        client.name?.trim() || '',
+        client.patronymic?.trim() || ''
+      ].filter(part => part);
+      return parts.join(' ') || 'Без имени';
     }
 
-    function renderHistory() {
-      historyList.innerHTML = clients
-        .filter(c => c.groupHistory.length > 0)
-        .map(client => `
-          <div class="history-entry">
-            <h4>${getClientFullName(client)}</h4>
-            <ul>
-              ${client.groupHistory.map(entry => `<li>${formatDate(entry.date)}: ${entry.action === 'added' ? 'Добавлен' : 'Удален'} в ${entry.group}</li>`).join('')}
-            </ul>
-          </div>
-        `).join('');
+    function formatDate(dateString) {
+      if (!dateString) return '—';
+      const date = new Date(dateString);
+      return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
     }
-
-    renderHistory();
 
     function renderClientTable() {
+      console.log('Обновление таблицы, currentClients:', currentClients);
       const q = searchInput.value.trim().toLowerCase();
       const filteredClients = clients
         .filter(c => !q || getClientFullName(c).toLowerCase().includes(q) || (c.phone || '').toLowerCase().includes(q))
@@ -359,38 +367,103 @@ export function loadGroups() {
         });
       tableBody.innerHTML = filteredClients.map(client => {
         const fullName = getClientFullName(client);
+        const isSelected = currentClients.includes(client.id);
+        const clientInGroup = group.clients.find(c => c.name === client.id);
+        const startDate = clientInGroup ? clientInGroup.startDate : '';
         return `
-          <tr class="client-row" data-name="${escapeHtml(client.name)}">
-            <td><input type="checkbox" value="${escapeHtml(client.name)}" ${currentClients.includes(client.name) ? 'checked' : ''} ${client.blacklisted ? 'disabled' : ''}></td>
-            <td>${escapeHtml(fullName)}</td>
-            <td>${escapeHtml(client.phone || '')}</td>
-            <td>${client.blacklisted ? 'В чёрном списке' : 'Активен'}</td>
-          </tr>
-        `;
+        <tr class="client-row ${isSelected ? 'selected' : ''}" data-id="${escapeHtml(client.id)}">
+          <td><input type="checkbox" value="${escapeHtml(client.id)}" ${isSelected ? 'checked' : ''} ${client.blacklisted ? 'disabled' : ''}></td>
+          <td>${escapeHtml(fullName)}</td>
+          <td>${escapeHtml(client.phone || '—')}</td>
+          <td>${client.blacklisted ? 'В чёрном списке' : 'Активен'}</td>
+          <td><input type="date" class="start-date-input" value="${isSelected ? startDate.split('T')[0] : ''}" ${!isSelected ? 'disabled' : ''}></td>
+        </tr>
+      `;
       }).join('');
       refreshSelectedChips();
+      updateSelectAllCheckbox();
+
+      // Обработчики для изменения даты
+      tableBody.querySelectorAll('.start-date-input').forEach(input => {
+        input.addEventListener('change', (e) => {
+          const clientId = e.target.closest('.client-row').dataset.id;
+          const newDate = e.target.value;
+          if (newDate && group && group.id) {
+            const clientInGroup = group.clients.find(c => c.name === clientId);
+            if (clientInGroup) {
+              clientInGroup.startDate = newDate;
+              addGroupToClient(clientId, group.name, 'added', newDate); // Обновляем дату в clients.js
+              saveGroups();
+              showToast(`Дата для клиента ${clientId} в группе ${group.name} обновлена`, 'success');
+            }
+          }
+        });
+      });
     }
 
     function refreshSelectedChips() {
       selectedChips.innerHTML = currentClients.map(c => {
-        const client = clients.find(client => client.name === c);
+        const client = clients.find(client => client.id === c);
         const fullName = client ? getClientFullName(client) : c;
         return `
-          <span class="chip" data-name="${escapeHtml(c)}">${escapeHtml(fullName)} <button type="button" class="chip-remove" data-name="${escapeHtml(c)}">×</button></span>
-        `;
+        <span class="chip" data-id="${escapeHtml(c)}">${escapeHtml(fullName)} <button type="button" class="chip-remove" data-id="${escapeHtml(c)}">×</button></span>
+      `;
       }).join('');
+    }
+
+    function updateSelectAllCheckbox() {
+      const checkboxes = tableBody.querySelectorAll('input[type="checkbox"]:not(:disabled)');
+      const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+      const someChecked = Array.from(checkboxes).some(cb => cb.checked);
+      selectAllCheckbox.checked = allChecked;
+      selectAllCheckbox.indeterminate = someChecked && !allChecked;
     }
 
     renderClientTable();
 
     searchInput.addEventListener('input', renderClientTable);
 
+    selectAllCheckbox.addEventListener('change', (e) => {
+      const checked = e.target.checked;
+      tableBody.querySelectorAll('input[type="checkbox"]:not(:disabled)').forEach(cb => {
+        const clientId = cb.value;
+        if (checked && !currentClients.includes(clientId)) {
+          showDateSelectionModal('Дата начала участия в группе', (startDate) => {
+            if (startDate) {
+              currentClients.push(clientId);
+              if (group && group.id) {
+                group.clients.push({ name: clientId, startDate });
+                addGroupToClient(clientId, group.name, 'added', startDate);
+                saveGroups();
+                showToast(`Клиент ${clientId} добавлен в группу с ${formatDate(startDate)}`, 'success');
+              } else {
+                console.error('Группа не определена или отсутствует ID:', group);
+                cb.checked = false;
+              }
+              renderClientTable();
+            } else {
+              cb.checked = false;
+              renderClientTable();
+            }
+          });
+        } else if (!checked) {
+          currentClients = currentClients.filter(c => c !== clientId);
+          if (group && group.id) {
+            group.clients = group.clients.filter(c => c.name !== clientId);
+            removeGroupFromClient(clientId, group.name);
+            saveGroups();
+          }
+          renderClientTable();
+        }
+      });
+    });
+
     tableBody.addEventListener('click', (ev) => {
       const row = ev.target.closest('.client-row');
       if (!row) return;
       const checkbox = row.querySelector('input[type="checkbox"]');
       if (!checkbox || checkbox.disabled) return;
-      if (ev.target === checkbox || ev.target.closest('label') === checkbox.parentElement) return;
+      if (ev.target === checkbox) return;
       checkbox.checked = !checkbox.checked;
       const changeEvent = new Event('change', { bubbles: true });
       checkbox.dispatchEvent(changeEvent);
@@ -398,29 +471,54 @@ export function loadGroups() {
 
     tableBody.addEventListener('change', (ev) => {
       if (ev.target.matches('input[type="checkbox"]')) {
-        const name = ev.target.value;
+        const clientId = ev.target.value;
         if (ev.target.checked) {
-          if (!currentClients.includes(name)) {
-            // Show date selection modal for new addition
+          if (!currentClients.includes(clientId)) {
             showDateSelectionModal('Дата начала участия в группе', (startDate) => {
               if (startDate) {
-                currentClients.push(name);
-                refreshSelectedChips();
-                showToast('Клиент добавлен в группу с ' + startDate, 'success');
+                console.log('Клиент добавлен:', clientId, 'Дата:', startDate);
+                currentClients.push(clientId);
+                if (group && group.id) {
+                  group.clients.push({ name: clientId, startDate });
+                  addGroupToClient(clientId, group.name, 'added', startDate);
+                  saveGroups();
+                  showToast(`Клиент ${clientId} добавлен в группу с ${formatDate(startDate)}`, 'success');
+                } else {
+                  console.error('Группа не определена или отсутствует ID:', group);
+                  showToast('Ошибка: Группа не найдена', 'error');
+                  ev.target.checked = false;
+                  renderClientTable();
+                  return;
+                }
+                renderClientTable();
+              } else {
+                console.log('Дата не выбрана для клиента:', clientId);
+                ev.target.checked = false;
+                renderClientTable();
               }
             });
           }
         } else {
-          currentClients = currentClients.filter(c => c !== name);
-          refreshSelectedChips();
+          currentClients = currentClients.filter(c => c !== clientId);
+          if (group && group.id) {
+            group.clients = group.clients.filter(c => c.name !== clientId);
+            removeGroupFromClient(clientId, group.name);
+            saveGroups();
+          }
+          renderClientTable();
         }
       }
     });
 
     selectedChips.addEventListener('click', (ev) => {
       if (ev.target.classList.contains('chip-remove')) {
-        const name = ev.target.getAttribute('data-name');
-        currentClients = currentClients.filter(c => c !== name);
+        const clientId = ev.target.getAttribute('data-id');
+        currentClients = currentClients.filter(c => c !== clientId);
+        if (group && group.id) {
+          group.clients = group.clients.filter(c => c.name !== clientId);
+          removeGroupFromClient(clientId, group.name);
+          saveGroups();
+        }
         renderClientTable();
       }
     });
@@ -439,7 +537,9 @@ export function loadGroups() {
       }
     });
 
-    modal.querySelector('#group-save-btn').addEventListener('click', () => {
+    modal.querySelector('#group-save-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      console.log('Кнопка Сохранить нажата, currentClients:', currentClients);
       callback(currentClients);
       modal.remove();
     });
@@ -449,26 +549,32 @@ export function loadGroups() {
     });
 
     modal.addEventListener('click', (e) => {
-      if (e.target === modal) modal.remove();
+      if (e.target === modal) {
+        console.log('Закрытие модального окна по клику на фон');
+        modal.remove();
+      }
     });
 
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') modal.remove();
+      if (e.key === 'Escape') {
+        console.log('Закрытие модального окна по Escape');
+        modal.remove();
+      }
     }, { once: true });
 
     function showDateSelectionModal(title, callback) {
       const dateModal = document.createElement('div');
       dateModal.className = 'date-modal';
       dateModal.innerHTML = `
-        <div class="date-modal-content">
-          <h2>${title}</h2>
-          <input type="date" id="start-date-input" required>
-          <div class="date-modal-actions">
-            <button id="date-confirm-btn">Подтвердить</button>
-            <button id="date-cancel-btn">Отмена</button>
-          </div>
+      <div class="date-modal-content">
+        <h2>${escapeHtml(title)}</h2>
+        <input type="date" id="start-date-input" required>
+        <div class="date-modal-actions">
+          <button class="btn-primary" id="date-confirm-btn">Подтвердить</button>
+          <button class="btn-secondary" id="date-cancel-btn">Отмена</button>
         </div>
-      `;
+      </div>
+    `;
       document.body.appendChild(dateModal);
 
       const input = dateModal.querySelector('#start-date-input');
@@ -476,22 +582,35 @@ export function loadGroups() {
 
       dateModal.querySelector('#date-confirm-btn').addEventListener('click', () => {
         if (input.value) {
+          console.log('Дата подтверждена:', input.value);
           callback(input.value);
           dateModal.remove();
+        } else {
+          showToast('Выберите дату!', 'error');
         }
       });
 
       dateModal.querySelector('#date-cancel-btn').addEventListener('click', () => {
+        console.log('Отмена выбора даты');
         dateModal.remove();
         callback(null);
       });
 
       dateModal.addEventListener('click', (e) => {
         if (e.target === dateModal) {
+          console.log('Закрытие модального окна даты по клику на фон');
           dateModal.remove();
           callback(null);
         }
       });
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          console.log('Закрытие модального окна даты по Escape');
+          dateModal.remove();
+          callback(null);
+        }
+      }, { once: true });
     }
   }
 
@@ -499,8 +618,8 @@ export function loadGroups() {
     const modal = document.createElement('div');
     modal.className = 'modal';
     modal.innerHTML = `
-      <div class="modal-content confirm-modal">
-        <h2>Подтверждение</h2>
+      <div class="modal-content group-confirm-modal">
+        <h2>Подтверждение удаления</h2>
         <p>${escapeHtml(message)}</p>
         <div class="modal-actions">
           <button class="btn-primary" id="confirm-btn">Да</button>
