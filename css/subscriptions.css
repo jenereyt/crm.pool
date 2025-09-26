@@ -362,7 +362,7 @@
 .renew-body,
 .subscription-form-body {
   display: flex;
-  flex-direction: column;
+  justify-content: center;
   gap: 12px;
 }
 
@@ -464,7 +464,6 @@
 .form-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 10px;
 }
 
 .form-group {
@@ -473,6 +472,7 @@
 }
 
 .form-group.full-width {
+  margin-bottom: 5px  ;
   grid-column: 1 / -1;
 }
 
@@ -536,7 +536,6 @@
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  margin-top: 12px;
 }
 
 .btn-primary {
@@ -581,7 +580,7 @@
 .subscription-form-content select {
   width: 100%;
   padding: 6px;
-  margin-bottom: 8px;
+  margin-bottom: 5px;
   border: 1px solid var(--border-color);
   border-radius: 4px;
   font-size: 0.85em;
@@ -717,9 +716,9 @@
     grid-template-columns: 1fr;
   }
 
-  .form-grid {
+  /* .form-grid {
     gap: 8px;
-  }
+  } */
 
   .form-group label,
   .info-item {

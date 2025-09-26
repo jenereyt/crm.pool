@@ -105,15 +105,15 @@ export function loadReports() {
         </thead>
         <tbody>
           ${Object.entries(paymentStats).map(([method, stat]) => {
-            const methodLabel = method === 'cash_register_cash' ? 'Касса (наличные)' :
-              method === 'cash_register_card' ? 'Касса (карта)' :
-                method === 'cash' ? 'Наличные' : 'Расчетный счет';
-            const details = allSubs.filter(sub => sub.paymentMethod === method).map(sub => {
-              const template = templates.find(t => t.id === sub.templateId);
-              const client = getClients().find(c => c.id === sub.clientId);
-              return `${client ? `${client.surname} ${client.name}` : 'Неизвестный клиент'} - ${template ? template.type : 'Неизвестный'} (#${sub.subscriptionNumber})`;
-            }).join('<br>');
-            return `
+      const methodLabel = method === 'cash_register_cash' ? 'Касса (наличные)' :
+        method === 'cash_register_card' ? 'Касса (карта)' :
+          method === 'cash' ? 'Наличные' : 'Расчетный счет';
+      const details = allSubs.filter(sub => sub.paymentMethod === method).map(sub => {
+        const template = templates.find(t => t.id === sub.templateId);
+        const client = getClients().find(c => c.id === sub.clientId);
+        return `${client ? `${client.surname} ${client.name}` : 'Неизвестный клиент'} - ${template ? template.type : 'Неизвестный'} (#${sub.subscriptionNumber})`;
+      }).join('<br>');
+      return `
               <tr>
                 <td>${methodLabel}</td>
                 <td>${stat.count}</td>
@@ -121,7 +121,7 @@ export function loadReports() {
                 <td>${details || 'Нет деталей'}</td>
               </tr>
             `;
-          }).join('')}
+    }).join('')}
           <tr class="total-row">
             <td><strong>Итого</strong></td>
             <td><strong>${allSubs.length}</strong></td>
@@ -156,7 +156,6 @@ export function loadReports() {
 
     const totalClasses = Object.values(trainerStats).reduce((acc, stat) => acc + stat.count, 0);
 
-    // Фильтр по группам
     const groupFilter = `
       <div class="group-filter">
         <label>Группа: </label>
@@ -186,15 +185,15 @@ export function loadReports() {
         </thead>
         <tbody>
           ${Object.entries(trainerStats).map(([trainer, stat]) => {
-            const groupFilterValue = document.getElementById('group-filter')?.value || '';
-            const filteredClasses = groupFilterValue
-              ? stat.classes.filter(cls => cls.group === groupFilterValue)
-              : stat.classes;
-            const displayCount = groupFilterValue ? filteredClasses.length : stat.count;
-            const sortedClasses = filteredClasses.sort((a, b) => new Date(a.date) - new Date(b.date));
-            const previewDetails = sortedClasses.slice(0, 3).map(cls => `${cls.name} (${formatDate(cls.date)})`).join('<br>');
-            const allDetails = sortedClasses.map(cls => `${cls.name} (${formatDate(cls.date)}, группа: ${cls.group})`).join('<br>');
-            return `
+      const groupFilterValue = document.getElementById('group-filter')?.value || '';
+      const filteredClasses = groupFilterValue
+        ? stat.classes.filter(cls => cls.group === groupFilterValue)
+        : stat.classes;
+      const displayCount = groupFilterValue ? filteredClasses.length : stat.count;
+      const sortedClasses = filteredClasses.sort((a, b) => new Date(a.date) - new Date(b.date));
+      const previewDetails = sortedClasses.slice(0, 3).map(cls => `${cls.name} (${formatDate(cls.date)})`).join('<br>');
+      const allDetails = sortedClasses.map(cls => `${cls.name} (${formatDate(cls.date)}, группа: ${cls.group})`).join('<br>');
+      return `
               <tr>
                 <td>${trainer}</td>
                 <td>${displayCount}</td>
@@ -204,7 +203,7 @@ export function loadReports() {
                 </td>
               </tr>
             `;
-          }).join('')}
+    }).join('')}
           <tr class="total-row">
             <td><strong>Итого</strong></td>
             <td><strong>${totalClasses}</strong></td>
@@ -214,7 +213,6 @@ export function loadReports() {
       </table>
     `;
 
-    // Обработчик для фильтра по группам
     const groupFilterSelect = reportsSection.querySelector('#group-filter');
     if (groupFilterSelect) {
       groupFilterSelect.addEventListener('change', () => {
@@ -222,7 +220,6 @@ export function loadReports() {
       });
     }
 
-    // Обработчик для кнопок "Подробнее"
     reportsSection.querySelectorAll('.details-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const details = decodeURIComponent(btn.dataset.details);
@@ -258,87 +255,112 @@ export function loadReports() {
     }, { once: true });
   }
 
+  function escapeCSVValue(value) {
+    if (value === null || value === undefined) return '';
+    const stringValue = String(value);
+    if (stringValue.includes(';') || stringValue.includes('"') || stringValue.includes('\n') || stringValue.includes(',')) {
+      return `"${stringValue.replace(/"/g, '""')}"`;
+    }
+    return stringValue;
+  }
+
   function exportToCSV(tab) {
     const period = getPeriod();
     if (!period) return;
 
     const { start, end } = period;
-    let csvContent = 'data:text/csv;charset=utf-8,';
-    let rows = [];
+    let csvRows = [];
 
-    if (tab === 'payments') {
-      const activeSubs = getActiveSubscriptions();
-      const inactiveSubs = getInactiveSubscriptions();
-      const allSubs = [...activeSubs, ...inactiveSubs].filter(sub => {
-        const subDate = new Date(sub.startDate);
-        return subDate >= new Date(start) && subDate <= new Date(end);
-      });
+    try {
+      if (tab === 'payments') {
+        const activeSubs = getActiveSubscriptions();
+        const inactiveSubs = getInactiveSubscriptions();
+        const allSubs = [...activeSubs, ...inactiveSubs].filter(sub => {
+          const subDate = new Date(sub.startDate);
+          return subDate >= new Date(start) && subDate <= new Date(end);
+        });
 
-      rows.push(['Способ оплаты', 'Количество', 'Сумма (сум)', 'Детали']);
-      const paymentStats = {
-        'cash_register_cash': { count: 0, sum: 0 },
-        'cash_register_card': { count: 0, sum: 0 },
-        'cash': { count: 0, sum: 0 },
-        'bank_account': { count: 0, sum: 0 }
-      };
+        // Add header for payments
+        csvRows.push(['Способ оплаты', 'Клиент', 'Абонемент', 'Номер абонемента', 'Сумма (сум)', 'Дата начала']);
 
-      allSubs.forEach(sub => {
-        if (sub.paymentMethod && paymentStats[sub.paymentMethod]) {
-          const template = templates.find(t => t.id === sub.templateId);
-          const price = template ? template.price || 0 : 0;
-          paymentStats[sub.paymentMethod].count++;
-          paymentStats[sub.paymentMethod].sum += price;
-        }
-      });
-
-      Object.entries(paymentStats).forEach(([method, stat]) => {
-        const methodLabel = method === 'cash_register_cash' ? 'Касса (наличные)' :
-          method === 'cash_register_card' ? 'Касса (карта)' :
-            method === 'cash' ? 'Наличные' : 'Расчетный счет';
-        const details = allSubs.filter(sub => sub.paymentMethod === method).map(sub => {
+        // Add individual subscription rows
+        allSubs.forEach(sub => {
           const template = templates.find(t => t.id === sub.templateId);
           const client = getClients().find(c => c.id === sub.clientId);
-          return `${client ? `${client.surname} ${client.name}` : 'Неизвестный клиент'} - ${template ? template.type : 'Неизвестный'} (#${sub.subscriptionNumber})`;
-        }).join('; ');
-        rows.push([methodLabel, stat.count, stat.sum, details || 'Нет деталей']);
-      });
-      rows.push(['Итого', allSubs.length, Object.values(paymentStats).reduce((acc, stat) => acc + stat.sum, 0), '']);
-    } else if (tab === 'employees') {
-      const trainers = getTrainers();
-      const trainerStats = {};
-      trainers.forEach(trainer => trainerStats[trainer] = { count: 0, classes: [] });
+          const methodLabel = sub.paymentMethod === 'cash_register_cash' ? 'Касса (наличные)' :
+            sub.paymentMethod === 'cash_register_card' ? 'Касса (карта)' :
+              sub.paymentMethod === 'cash' ? 'Наличные' :
+                sub.paymentMethod === 'bank_account' ? 'Расчетный счет' : 'Неизвестно';
+          const price = template ? template.price || 0 : 0;
+          csvRows.push([
+            methodLabel,
+            client ? `${client.surname} ${client.name}` : 'Неизвестный клиент',
+            template ? template.type : 'Неизвестный',
+            sub.subscriptionNumber || '—',
+            price,
+            formatDate(sub.startDate)
+          ]);
+        });
 
-      const filteredSchedule = scheduleData.filter(cls => {
-        const clsDate = new Date(cls.date);
-        return clsDate >= new Date(start) && clsDate <= new Date(end);
-      });
+        // Add summary row
+        const totalSum = allSubs.reduce((acc, sub) => {
+          const template = templates.find(t => t.id === sub.templateId);
+          return acc + (template ? template.price || 0 : 0);
+        }, 0);
+        csvRows.push(['Итого', '', '', allSubs.length, totalSum, '']);
+      } else if (tab === 'employees') {
+        const trainers = getTrainers();
+        const trainerStats = {};
+        trainers.forEach(trainer => trainerStats[trainer] = { count: 0, classes: [] });
 
-      filteredSchedule.forEach(cls => {
-        if (trainers.includes(cls.trainer)) {
-          trainerStats[cls.trainer].count++;
-          trainerStats[cls.trainer].classes.push({ name: cls.name, date: cls.date, group: cls.group || 'Без группы' });
-        }
-      });
+        const filteredSchedule = scheduleData.filter(cls => {
+          const clsDate = new Date(cls.date);
+          return clsDate >= new Date(start) && clsDate <= new Date(end);
+        });
 
-      rows.push(['Тренер', 'Количество занятий', 'Детали']);
-      Object.entries(trainerStats).forEach(([trainer, stat]) => {
-        const groupFilterValue = document.getElementById('group-filter')?.value || '';
-        const filteredClasses = groupFilterValue ? stat.classes.filter(cls => cls.group === groupFilterValue) : stat.classes;
-        const displayCount = groupFilterValue ? filteredClasses.length : stat.count;
-        const details = filteredClasses.map(cls => `${cls.name} (${formatDate(cls.date)}, группа: ${cls.group})`).join('; ');
-        rows.push([trainer, displayCount, details || 'Нет деталей']);
-      });
-      rows.push(['Итого', Object.values(trainerStats).reduce((acc, stat) => acc + stat.count, 0), '']);
+        filteredSchedule.forEach(cls => {
+          if (trainers.includes(cls.trainer)) {
+            trainerStats[cls.trainer].count++;
+            trainerStats[cls.trainer].classes.push({ name: cls.name, date: cls.date, group: cls.group || 'Без группы' });
+          }
+        });
+
+        // Add header for employees
+        csvRows.push(['Тренер', 'Название занятия', 'Дата', 'Группа']);
+
+        // Add individual class rows
+        Object.entries(trainerStats).forEach(([trainer, stat]) => {
+          const groupFilterValue = document.getElementById('group-filter')?.value || '';
+          const filteredClasses = groupFilterValue ? stat.classes.filter(cls => cls.group === groupFilterValue) : stat.classes;
+          filteredClasses.sort((a, b) => new Date(a.date) - new Date(b.date)).forEach(cls => {
+            csvRows.push([
+              trainer,
+              cls.name,
+              formatDate(cls.date),
+              cls.group
+            ]);
+          });
+        });
+
+        // Add summary row
+        const totalClasses = Object.values(trainerStats).reduce((acc, stat) => acc + stat.count, 0);
+        csvRows.push(['Итого', '', totalClasses, '']);
+      }
+
+      // Convert rows to CSV format with semicolon delimiter
+      const csvContent = '\uFEFF' + csvRows.map(row => row.map(escapeCSVValue).join(';')).join('\n');
+      const encodedUri = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvContent);
+      const link = document.createElement('a');
+      link.setAttribute('href', encodedUri);
+      link.setAttribute('download', `report_${tab}_${start}_${end}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast('Отчет успешно экспортирован в CSV', 'success');
+    } catch (error) {
+      console.error('Ошибка при экспорте CSV:', error);
+      showToast('Ошибка при экспорте CSV. Попробуйте снова.', 'error');
     }
-
-    csvContent += rows.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `report_${tab}_${start}_${end}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
   }
 
   renderPayments();

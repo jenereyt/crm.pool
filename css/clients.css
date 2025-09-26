@@ -1915,10 +1915,6 @@ img[class*='icon'] {
   color: var(--gray-600);
 }
 
-.renew-body {
-  padding: 0.5rem;
-}
-
 .current-subscription-info {
   background: var(--gray-50);
   padding: 0.5rem;
