@@ -98,11 +98,16 @@ export async function loadRooms() {
       const roomId = e.target.closest('.room-delete-btn').getAttribute('data-id');
       if (confirm('Удалить зал?')) {
         try {
-          const response = await fetch(`${server}/room/${roomId}`, {
+          const response = await fetch(`${server}/rooms/${roomId}`, {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: roomId }),
           });
-          if (!response.ok) throw new Error('Failed to delete room');
+          if (!response.ok) {
+            const errorData = await response.text();
+            console.error('Error response:', response.status, errorData);
+            throw new Error('Failed to delete room');
+          }
           await renderRooms();
         } catch (error) {
           console.error('Error deleting room:', error);
@@ -112,20 +117,27 @@ export async function loadRooms() {
     } else if (e.target.closest('.room-edit-btn')) {
       const roomId = e.target.closest('.room-edit-btn').getAttribute('data-id');
       try {
-        const response = await fetch(`${server}/room/${roomId}`, {
+        const response = await fetch(`${server}/rooms/${roomId}`, {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
         });
-        if (!response.ok) throw new Error('Failed to fetch room');
+        if (!response.ok) {
+          const errorData = await response.text();
+          console.error('Error response:', response.status, errorData);
+          throw new Error('Failed to fetch room');
+        }
         const room = await response.json();
         showRoomForm('Редактировать зал', room, async (data) => {
           try {
-            const response = await fetch(`${server}/room/${roomId}`, {
+            const response = await fetch(`${server}/rooms/${roomId}`, {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ name: data.name }),
+              body: JSON.stringify({ id: roomId, name: data.name }),
             });
-            if (!response.ok) throw new Error('Failed to update room');
+            if (!response.ok) {
+              const errorData = await response.text();
+              console.error('Error response:', response.status, errorData);
+              throw new Error('Failed to update room');
+            }
             await renderRooms();
           } catch (error) {
             console.error('Error updating room:', error);

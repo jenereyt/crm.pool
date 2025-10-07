@@ -36,27 +36,48 @@ export function getClientById(id) {
 }
 
 export async function addClient(client) {
-  const newClient = {
-    id: `client${Date.now()}`, // Временный ID
-    ...client,
-    created_at: new Date().toISOString(),
+  const payload = {
+    surname: client.surname,
+    name: client.name,
+    patronymic: client.patronymic || '',
+    phone: client.phone || '',
+    birth_date: client.birth_date,
+    gender: client.gender,
+    parents: client.parents || [],
+    diagnoses: client.diagnoses || [],
+    features: client.features || '',
+    blacklisted: false,
+    groups: client.groups || [],
     group_history: [],
     subscriptions: [],
-    parents: client.parents || [],
-    groups: client.groups || []
+    photo: client.photo || ''
   };
+
+  const newClient = {
+    id: `client${Date.now()}`,
+    ...payload,
+    created_at: new Date().toISOString(),
+  };
+
   clientsData.push(newClient);
   localStorage.setItem('clientsData', JSON.stringify(clientsData));
 
   try {
+    console.log('Sending payload to server:', payload);
+
     const response = await fetch(`${server}/clients`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(client)
+      body: JSON.stringify(payload)
     });
-    if (!response.ok) throw new Error('Failed to add client');
+
+    if (!response.ok) {
+      const errorBody = await response.json();
+      console.error('Server error details:', errorBody);
+      throw new Error(`Failed to add client: ${response.status} - ${errorBody.message || 'Unknown error'}`);
+    }
+
     const serverClient = await response.json();
-    // Обновляем локальный клиент с серверными данными
     Object.assign(newClient, serverClient);
     localStorage.setItem('clientsData', JSON.stringify(clientsData));
     showToast('Клиент добавлен и синхронизирован с сервером', 'success');
@@ -77,13 +98,44 @@ export async function updateClient(id, data) {
     });
     localStorage.setItem('clientsData', JSON.stringify(clientsData));
 
+    const updatedPayload = {
+      surname: client.surname,
+      name: client.name,
+      patronymic: client.patronymic || '',
+      phone: client.phone || '',
+      birth_date: client.birth_date,
+      gender: client.gender,
+      parents: Array.isArray(client.parents) ? client.parents : [],
+      diagnoses: Array.isArray(client.diagnoses) ? client.diagnoses : [],
+      features: client.features || '',
+      blacklisted: client.blacklisted !== undefined ? client.blacklisted : false,
+      groups: Array.isArray(client.groups) ? client.groups : [],
+      group_history: Array.isArray(client.group_history) ? client.group_history : [],
+      subscriptions: Array.isArray(client.subscriptions) ? client.subscriptions : [],
+      photo: client.photo || ''
+    };
+
     try {
+      console.log('Updating with payload:', updatedPayload);
+
       const response = await fetch(`${server}/clients/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
+        body: JSON.stringify(updatedPayload)
       });
-      if (!response.ok) throw new Error('Failed to update client');
+
+      if (!response.ok) {
+        let errorMessage = `Failed to update: ${response.status}`;
+        try {
+          const errorBody = await response.json();
+          console.error('Server error details:', errorBody);
+          errorMessage += ` - ${errorBody.message || 'Unknown error'}`;
+        } catch (parseError) {
+          console.error('Could not parse error body:', parseError);
+        }
+        throw new Error(errorMessage);
+      }
+
       const serverClient = await response.json();
       Object.assign(client, serverClient);
       localStorage.setItem('clientsData', JSON.stringify(clientsData));
@@ -95,7 +147,6 @@ export async function updateClient(id, data) {
   }
   return client;
 }
-
 export async function removeClient(id) {
   clientsData = clientsData.filter(c => c.id !== id);
   localStorage.setItem('clientsData', JSON.stringify(clientsData));
