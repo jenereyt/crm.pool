@@ -1,236 +1,31 @@
 import { getSubscriptionTemplates } from './subscriptions.js';
 import { getGroups, addClientToGroup, removeClientFromGroup } from './groups.js';
+import { server } from './server.js'; // Adjust the path if server.js is elsewhere
 
-// Глобальный массив для истории групп (сохраняется в localStorage)
+
 let groupHistoryData = JSON.parse(localStorage.getItem('groupHistoryData')) || [];
 
-export let clientsData = [
-  {
-    id: 'client1',
-    surname: 'Иванов',
-    name: 'Иван',
-    patronymic: 'Иванович',
-    phone: '+7 (123) 456-78-90',
-    birthDate: '1990-01-01',
-    gender: 'male',
-    parents: [
-      {
-        fullName: 'Анна Иванова',
-        phone: '+7 (987) 654-32-10',
-        relation: 'Мать'
-      }
-    ],
-    diagnosis: [{ name: 'Нет', notes: '' }],
-    features: 'Требуется индивидуальный подход',
-    blacklisted: false,
-    groups: ['Йога для начинающих'],
-    groupHistory: [
-      { date: '2025-08-01', action: 'added', group: 'Йога для начинающих' }
-    ],
-    subscriptions: [
-      {
-        templateId: 'template1',
-        startDate: '2025-08-01',
-        endDate: '2025-09-30',
-        classesPerWeek: 2,
-        daysOfWeek: ['Пн', 'Ср'],
-        classTime: '10:00',
-        group: 'Йога для начинающих',
-        remainingClasses: 1,
-        price: 8000,
-        isPaid: true,
-        renewalHistory: [
-          { date: '2025-08-15', fromTemplate: 'Стандартный', toTemplate: 'Премиум' },
-          { date: '2025-08-20' }
-        ],
-        subscriptionNumber: 'SUB-001'
-      },
-      {
-        templateId: 'template2',
-        startDate: '2025-07-01',
-        endDate: '2025-07-31',
-        classesPerWeek: 3,
-        daysOfWeek: ['Пн', 'Вт', 'Чт'],
-        classTime: '09:00',
-        group: 'Фитнес',
-        remainingClasses: 0,
-        price: 12000,
-        isPaid: true,
-        renewalHistory: [
-          { date: '2025-07-10' }
-        ],
-        subscriptionNumber: 'SUB-002'
-      },
-      {
-        templateId: 'template1',
-        startDate: '2025-06-01',
-        endDate: '2025-06-30',
-        classesPerWeek: 1,
-        daysOfWeek: ['Пт'],
-        classTime: '18:00',
-        group: 'Йога',
-        remainingClasses: Infinity,
-        price: 15000,
-        isPaid: false,
-        renewalHistory: [],
-        subscriptionNumber: 'SUB-003'
-      },
-      {
-        templateId: 'template3',
-        startDate: '2025-05-01',
-        endDate: '2025-05-31',
-        classesPerWeek: 4,
-        daysOfWeek: ['Пн', 'Ср', 'Пт', 'Сб'],
-        classTime: '11:00',
-        group: 'Пилатес',
-        remainingClasses: 5,
-        price: 10000,
-        isPaid: true,
-        renewalHistory: [
-          { date: '2025-05-05', fromTemplate: 'Базовый', toTemplate: 'Расширенный' },
-          { date: '2025-05-20', fromTemplate: 'Расширенный', toTemplate: 'Премиум' }
-        ],
-        subscriptionNumber: 'SUB-004'
-      }
-    ],
-    photo: '',
-    createdAt: '2025-01-15T10:00:00Z'
-  },
-  {
-    id: 'client2',
-    surname: 'Петрова',
-    name: 'Мария',
-    patronymic: 'Сергеевна',
-    phone: '+7 (234) 567-89-01',
-    birthDate: '2005-05-05',
-    gender: 'female',
-    parents: [],
-    diagnosis: [{ name: 'Сколиоз', notes: 'Легкая степень' }],
-    features: '',
-    blacklisted: false,
-    groups: [],
-    groupHistory: [],
-    subscriptions: [
-      {
-        templateId: 'template1',
-        startDate: '2025-08-01',
-        endDate: '2025-09-30',
-        classesPerWeek: 0,
-        daysOfWeek: [],
-        classTime: '09:00',
-        group: '',
-        remainingClasses: 1,
-        price: 7000,
-        isPaid: true,
-        renewalHistory: [],
-        subscriptionNumber: 'SUB-005'
-      }
-    ],
-    photo: '',
-    createdAt: '2025-02-20T14:30:00Z'
-  },
-  {
-    id: 'client3',
-    surname: 'Сидоров',
-    name: 'Алексей',
-    patronymic: 'Петрович',
-    phone: '+7 (345) 678-90-12',
-    birthDate: '1985-03-15',
-    gender: 'male',
-    parents: [],
-    diagnosis: [{ name: 'Нет', notes: '' }],
-    features: '',
-    blacklisted: false,
-    groups: ['Фитнес'],
-    groupHistory: [],
-    subscriptions: [
-      {
-        templateId: 'template2',
-        startDate: '2025-09-01',
-        endDate: '2025-09-30',
-        classesPerWeek: 3,
-        daysOfWeek: ['Пн', 'Ср', 'Пт'],
-        classTime: '18:00',
-        group: 'Фитнес',
-        remainingClasses: 1,
-        price: 13000,
-        isPaid: true,
-        renewalHistory: [],
-        subscriptionNumber: 'SUB-006'
-      }
-    ],
-    photo: '',
-    createdAt: '2025-03-10T09:00:00Z'
-  },
-  {
-    id: 'client4',
-    surname: 'Кузнецова',
-    name: 'Ольга',
-    patronymic: 'Викторовна',
-    phone: '+7 (456) 789-01-23',
-    birthDate: '1992-07-20',
-    gender: 'female',
-    parents: [],
-    diagnosis: [{ name: 'Нет', notes: '' }],
-    features: 'Предпочитает утренние занятия',
-    blacklisted: false,
-    groups: ['Пилатес'],
-    groupHistory: [],
-    subscriptions: [
-      {
-        templateId: 'template1',
-        startDate: '2025-09-01',
-        endDate: '2025-09-30',
-        classesPerWeek: 2,
-        daysOfWeek: ['Вт', 'Чт'],
-        classTime: '09:00',
-        group: 'Пилатес',
-        remainingClasses: 1,
-        price: 8500,
-        isPaid: true,
-        renewalHistory: [],
-        subscriptionNumber: 'SUB-007'
-      }
-    ],
-    photo: '',
-    createdAt: '2025-04-15T12:00:00Z'
-  },
-  {
-    id: 'client5',
-    surname: 'Смирнов',
-    name: 'Дмитрий',
-    patronymic: 'Александрович',
-    phone: '+7 (567) 890-12-34',
-    birthDate: '1988-11-11',
-    gender: 'male',
-    parents: [],
-    diagnosis: [{ name: 'Гипертония', notes: 'Контролируемая' }],
-    features: '',
-    blacklisted: false,
-    groups: ['Зумба вечеринка'],
-    groupHistory: [],
-    subscriptions: [
-      {
-        templateId: 'template2',
-        startDate: '2025-09-01',
-        endDate: '2025-09-30',
-        classesPerWeek: 3,
-        daysOfWeek: ['Пн', 'Ср', 'Пт'],
-        classTime: '19:00',
-        group: 'Зумба вечеринка',
-        remainingClasses: 1,
-        price: 12500,
-        isPaid: true,
-        renewalHistory: [],
-        subscriptionNumber: 'SUB-008'
-      }
-    ],
-    photo: '',
-    createdAt: '2025-05-20T15:00:00Z'
-  }
-];
+// Массив клиентов (инициализируется из localStorage)
+let clientsData = JSON.parse(localStorage.getItem('clientsData')) || [];
+
 let commonDiagnoses = ['Сколиоз', 'Кифоз', 'Лордоз', 'Остеохондроз', 'Артрит', 'Астма', 'Диабет', 'Нет', 'Гипертония', 'Аллергия'];
 let commonRelations = ['Бабушка', 'Брат', 'Дедушка', 'Другая степень родства', 'Мать', 'Мачеха', 'Отец', 'Отчим', 'Сестра', 'Тетя', 'Дядя'];
+
+// Функция для синхронизации с сервером (async fetch)
+async function syncClientsWithServer() {
+  try {
+    const response = await fetch(`${server}/clients`);
+    if (!response.ok) throw new Error('Failed to fetch clients');
+    const serverData = await response.json();
+    clientsData = serverData;
+    localStorage.setItem('clientsData', JSON.stringify(clientsData));
+    return serverData;
+  } catch (error) {
+    console.error('Error syncing with server:', error);
+    showToast('Ошибка синхронизации с сервером. Используются локальные данные.', 'error');
+    return clientsData;
+  }
+}
 
 export function getClients() {
   return clientsData;
@@ -240,33 +35,81 @@ export function getClientById(id) {
   return clientsData.find(c => c.id === id) || null;
 }
 
-export function addClient(client) {
+export async function addClient(client) {
   const newClient = {
-    id: `client${Date.now()}`,
+    id: `client${Date.now()}`, // Временный ID
     ...client,
-    createdAt: new Date().toISOString(),
-    groupHistory: [],
+    created_at: new Date().toISOString(),
+    group_history: [],
     subscriptions: [],
     parents: client.parents || [],
     groups: client.groups || []
   };
   clientsData.push(newClient);
+  localStorage.setItem('clientsData', JSON.stringify(clientsData));
+
+  try {
+    const response = await fetch(`${server}/clients`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(client)
+    });
+    if (!response.ok) throw new Error('Failed to add client');
+    const serverClient = await response.json();
+    // Обновляем локальный клиент с серверными данными
+    Object.assign(newClient, serverClient);
+    localStorage.setItem('clientsData', JSON.stringify(clientsData));
+    showToast('Клиент добавлен и синхронизирован с сервером', 'success');
+  } catch (error) {
+    console.error('Error adding client to server:', error);
+    showToast('Ошибка добавления на сервер. Клиент сохранён локально.', 'error');
+  }
+
   return newClient;
 }
 
-export function updateClient(id, data) {
+export async function updateClient(id, data) {
   const client = clientsData.find(c => c.id === id);
   if (client) {
     Object.assign(client, {
       ...data,
       groups: Array.isArray(data.groups) ? data.groups : client.groups || []
     });
+    localStorage.setItem('clientsData', JSON.stringify(clientsData));
+
+    try {
+      const response = await fetch(`${server}/clients/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (!response.ok) throw new Error('Failed to update client');
+      const serverClient = await response.json();
+      Object.assign(client, serverClient);
+      localStorage.setItem('clientsData', JSON.stringify(clientsData));
+      showToast('Клиент обновлён и синхронизирован с сервером', 'success');
+    } catch (error) {
+      console.error('Error updating client on server:', error);
+      showToast('Ошибка обновления на сервер. Изменения сохранены локально.', 'error');
+    }
   }
   return client;
 }
 
-export function removeClient(id) {
+export async function removeClient(id) {
   clientsData = clientsData.filter(c => c.id !== id);
+  localStorage.setItem('clientsData', JSON.stringify(clientsData));
+
+  try {
+    const response = await fetch(`${server}/clients/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete client');
+    showToast('Клиент удалён с сервера', 'success');
+  } catch (error) {
+    console.error('Error deleting client from server:', error);
+    showToast('Ошибка удаления с сервера. Клиент удалён локально.', 'error');
+  }
 }
 
 export function addGroupToClient(clientId, group, action = 'added', date = new Date().toISOString()) {
@@ -278,11 +121,16 @@ export function addGroupToClient(clientId, group, action = 'added', date = new D
   }
   if (!client.groups.includes(group)) {
     client.groups.push(group);
-    client.groupHistory.push({ date, action, group });
+    client.group_history.push({ date, action, group });
     groupHistoryData.push({ clientId, date, action, group });
     localStorage.setItem('groupHistoryData', JSON.stringify(groupHistoryData));
+    localStorage.setItem('clientsData', JSON.stringify(clientsData));
     addClientToGroup(clientId, group, date); // Синхронизация с groups.js
     console.log(`Клиент ${clientId} добавлен в группу ${group} с датой ${date}`);
+    // Отправляем обновление на сервер асинхронно
+    updateClient(clientId, client).then(() => {
+      console.log('Group update synced with server');
+    });
     // Вызываем renderClients, если функция доступна
     if (typeof renderClients === 'function') {
       renderClients();
@@ -301,11 +149,16 @@ export function removeGroupFromClient(clientId, group) {
   }
   if (client.groups.includes(group)) {
     client.groups = client.groups.filter(g => g !== group);
-    client.groupHistory.push({ date: new Date().toISOString(), action: 'removed', group });
+    client.group_history.push({ date: new Date().toISOString(), action: 'removed', group });
     groupHistoryData.push({ clientId, date: new Date().toISOString(), action: 'removed', group });
     localStorage.setItem('groupHistoryData', JSON.stringify(groupHistoryData));
+    localStorage.setItem('clientsData', JSON.stringify(clientsData));
     removeClientFromGroup(clientId, group); // Синхронизация с groups.js
     console.log(`Клиент ${clientId} удалён из группы ${group}`);
+    // Отправляем обновление на сервер асинхронно
+    updateClient(clientId, client).then(() => {
+      console.log('Group removal synced with server');
+    });
     // Вызываем renderClients, если функция доступна
     if (typeof renderClients === 'function') {
       renderClients();
@@ -343,7 +196,7 @@ export function showClientForm(title, client, callback) {
     phone: p.phone || '',
     relation: p.relation || ''
   }))] : [];
-  let diagnoses = client.diagnosis ? [...client.diagnosis] : [];
+  let diagnoses = client.diagnoses ? [...client.diagnoses] : []; // Изменено на diagnoses
   const isEdit = !!client.id;
 
   function calculateAge(birthDate) {
@@ -580,7 +433,7 @@ export function showClientForm(title, client, callback) {
         <div class="form-grid">
           <div class="form-group">
             <label for="client-birthdate" class="required">Дата рождения</label>
-            <input type="date" id="client-birthdate" value="${client.birthDate || ''}" required>
+            <input type="date" id="client-birthdate" value="${client.birth_date || ''}" required> <!-- Изменено на birth_date -->
             <span class="field-error" id="birthdate-error"></span>
           </div>
           <div class="form-group">
@@ -794,7 +647,7 @@ export function showClientForm(title, client, callback) {
     const name = document.getElementById('client-name').value.trim();
     const patronymic = document.getElementById('client-patronymic').value.trim();
     const phone = document.getElementById('client-phone').value.trim();
-    const birthDate = document.getElementById('client-birthdate').value;
+    const birth_date = document.getElementById('client-birthdate').value; // Изменено
     const gender = document.getElementById('client-gender').value;
     const features = document.getElementById('client-features').value.trim();
 
@@ -817,10 +670,10 @@ export function showClientForm(title, client, callback) {
       name,
       patronymic,
       phone,
-      birthDate,
+      birth_date,
       gender,
       parents: updatedParents,
-      diagnosis: updatedDiagnoses,
+      diagnoses: updatedDiagnoses, // Изменено
       features,
       photo,
       groups: []
@@ -833,7 +686,15 @@ export function showClientForm(title, client, callback) {
   setTimeout(() => document.getElementById('client-surname').focus(), 100);
 }
 
-export function loadClients() {
+export async function loadClients() {
+  // Сначала загружаем из localStorage
+  clientsData = JSON.parse(localStorage.getItem('clientsData')) || [];
+  // Затем синхронизируем с сервером асинхронно
+  syncClientsWithServer().then(updatedData => {
+    clientsData = updatedData;
+    if (typeof renderClients === 'function') renderClients();
+  });
+
   const mainContent = document.getElementById('main-content');
   mainContent.innerHTML = '';
 
@@ -937,9 +798,9 @@ export function loadClients() {
         case 'name':
           return `${a.surname} ${a.name}`.localeCompare(`${b.surname} ${b.name}`);
         case 'date-desc':
-          return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+          return new Date(b.created_at || 0) - new Date(a.created_at || 0);
         case 'date-asc':
-          return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
+          return new Date(a.created_at || 0) - new Date(b.created_at || 0);
         default:
           return 0;
       }
@@ -977,7 +838,7 @@ export function loadClients() {
     clientList.innerHTML = filteredClients
       .map(client => {
         const fullName = `${client.surname} ${client.name} ${client.patronymic || ''}`;
-        const hasDiagnosis = client.diagnosis && client.diagnosis.length > 0 && !(client.diagnosis.length === 1 && client.diagnosis[0].name === 'Нет');
+        const hasDiagnosis = client.diagnoses && client.diagnoses.length > 0 && !(client.diagnoses.length === 1 && client.diagnoses[0].name === 'Нет'); // Изменено
         const status = getSubscriptionStatus(client);
         const statusClass = {
           'active': 'status-active',
@@ -1013,7 +874,7 @@ export function loadClients() {
                   <span class="client-phone">${client.phone}</span>
                   ${hasDiagnosis ? `
                     <div class="diagnosis-badge">
-                      ${client.diagnosis.map(d => `<span class="diagnosis-tag">${d.name}${d.notes ? ` (${d.notes})` : ''}</span>`).join('')}
+                      ${client.diagnoses.map(d => `<span class="diagnosis-tag">${d.name}${d.notes ? ` (${d.notes})` : ''}</span>`).join('')}
                     </div>
                   ` : ''}
                 </div>
@@ -1076,14 +937,14 @@ export function loadClients() {
   document.getElementById('sort-by').addEventListener('change', renderClients);
 
   document.getElementById('client-add-btn').addEventListener('click', () => {
-    showClientForm('Добавить клиента', {}, (data) => {
-      addClient(data);
+    showClientForm('Добавить клиента', {}, async (data) => {
+      await addClient(data);
       renderClients();
       showToast('Клиент успешно добавлен', 'success');
     });
   });
 
-  clientList.addEventListener('click', (e) => {
+  clientList.addEventListener('click', async (e) => { // Добавляем async
     const target = e.target;
     const clientCard = target.closest('.client-card');
     const clientId = clientCard ? clientCard.getAttribute('data-id') : null;
@@ -1095,21 +956,23 @@ export function loadClients() {
       e.stopPropagation();
 
       if (actionBtn.classList.contains('edit-btn')) {
-        showClientForm('Редактировать клиента', client, (data) => {
-          updateClient(clientId, data);
+        showClientForm('Редактировать клиента', client, async (data) => {
+          await updateClient(clientId, data);
           renderClients();
           showToast('Данные клиента обновлены', 'success');
         });
       } else if (actionBtn.classList.contains('blacklist-btn')) {
         client.blacklisted = !client.blacklisted;
+        await updateClient(clientId, client); // Теперь await работает корректно
         renderClients();
         showToast(client.blacklisted ? 'Клиент добавлен в чёрный список' : 'Клиент удалён из чёрного списка', 'info');
       } else if (actionBtn.classList.contains('subscription-btn')) {
         showSubscriptionManagement(client);
       } else if (actionBtn.classList.contains('group-btn')) {
-        showGroupForm('Управление группами', client, getGroups(), (groups, history) => {
+        showGroupForm('Управление группами', client, getGroups(), async (groups, history) => {
           client.groups = groups;
-          client.groupHistory = history;
+          client.group_history = history;
+          await updateClient(clientId, client);
           renderClients();
           showToast('Группы клиента обновлены', 'success');
         });
@@ -1117,8 +980,8 @@ export function loadClients() {
         showConfirmDialog(
           'Удалить клиента?',
           `Вы уверены, что хотите удалить клиента "${client.surname} ${client.name}"? Это действие нельзя отменить.`,
-          () => {
-            removeClient(clientId);
+          async () => {
+            await removeClient(clientId);
             renderClients();
             showToast('Клиент удалён', 'success');
           }
@@ -1225,7 +1088,7 @@ export function showClientDetails(client) {
               </div>
               <div class="detail-item">
                 <span class="detail-label">Дата рождения:</span>
-                <span class="detail-value">${client.birthDate || 'Не указана'}</span>
+                <span class="detail-value">${client.birth_date || 'Не указана'}</span> <!-- Изменено -->
               </div>
               <div class="detail-item">
                 <span class="detail-label">Пол:</span>
@@ -1245,9 +1108,9 @@ export function showClientDetails(client) {
               <h4>Медицинская информация</h4>
               <div class="detail-item">
                 <span class="detail-label">Диагнозы:</span>
-                <div class="detail-value ${client.diagnosis && client.diagnosis.some(d => d.name !== 'Нет') ? 'has-diagnosis' : ''}">
-                  ${client.diagnosis && client.diagnosis.length > 0 ?
-      client.diagnosis.map(d => `${d.name}${d.notes ? ` (${d.notes})` : ''}`).join('<br>') : 'Нет'}
+                <div class="detail-value ${client.diagnoses && client.diagnoses.some(d => d.name !== 'Нет') ? 'has-diagnosis' : ''}">
+                  ${client.diagnoses && client.diagnoses.length > 0 ?
+      client.diagnoses.map(d => `${d.name}${d.notes ? ` (${d.notes})` : ''}`).join('<br>') : 'Нет'}
                 </div>
               </div>
               ${client.features ? `
@@ -1262,7 +1125,7 @@ export function showClientDetails(client) {
               <h4>Активность</h4>
               <div class="detail-item">
                 <span class="detail-label">Дата регистрации:</span>
-                <span class="detail-value">${formatDate(client.createdAt)}</span>
+                <span class="detail-value">${formatDate(client.created_at)}</span>
               </div>
             </div>
           </div>
@@ -1281,11 +1144,11 @@ export function showClientDetails(client) {
     }
                 </div>
               </div>
-              ${client.groupHistory.length ? `
+              ${client.group_history.length ? `
                 <div class="detail-item">
                   <span class="detail-label">История групп:</span>
                   <div class="renewal-history">
-                    ${client.groupHistory.map(entry => `
+                    ${client.group_history.map(entry => `
                       <span class="renewal-entry">${formatDate(entry.date)}: ${entry.action === 'added' ? 'Добавлен в' : 'Удален из'} ${entry.group}</span>
                     `).join('')}
                   </div>
@@ -1364,8 +1227,8 @@ export function showClientDetails(client) {
   if (editBtn) {
     editBtn.addEventListener('click', () => {
       modal.remove();
-      showClientForm('Редактировать клиента', client, (data) => {
-        updateClient(client.id, data);
+      showClientForm('Редактировать клиента', client, async (data) => {
+        await updateClient(client.id, data);
         if (typeof renderClients === 'function') renderClients();
         showToast('Данные клиента обновлены', 'success');
       });
@@ -1652,9 +1515,9 @@ export function showSubscriptionManagement(client) {
     btn.addEventListener('click', () => {
       const index = parseInt(btn.dataset.subIndex);
       const sub = client.subscriptions[index];
-      showRenewSubscriptionForm('Продление абонемента', client, sub, (data) => {
+      showRenewSubscriptionForm('Продление абонемента', client, sub, async (data) => {
         client.subscriptions[index] = { ...sub, ...data };
-        updateClient(client.id, client);
+        await updateClient(client.id, client);
         modal.remove();
         if (typeof renderClients === 'function') renderClients();
         showToast('Абонемент продлён', 'success');
@@ -1678,13 +1541,13 @@ export function showSubscriptionManagement(client) {
       subscriptionNumber: generateUniqueSubscriptionNumber(client),
       clientId: client.id
     };
-    showSubscriptionForm('Новый абонемент', newSub, [client], getGroups(), (data) => {
+    showSubscriptionForm('Новый абонемент', newSub, [client], getGroups(), async (data) => {
       const template = getSubscriptionTemplates().find(t => t.id === data.templateId);
       client.subscriptions.push({
         ...data,
         remainingClasses: template ? template.remainingClasses : data.remainingClasses || 0
       });
-      updateClient(client.id, client);
+      await updateClient(client.id, client);
       modal.remove();
       if (typeof renderClients === 'function') renderClients();
       showToast('Новый абонемент создан', 'success');
@@ -1848,7 +1711,7 @@ export function showSubscriptionForm(title, sub, clients, groups, callback) {
 
     const subscriptionManagementModal = document.querySelector('.subscription-management-modal');
     if (subscriptionManagementModal) {
-      const client = clients.find(c => c.id === sub.clientId);
+      const client = clients.find(c => c.id === sub.clientId); // Предполагаем, что clients - это clientsData
       subscriptionManagementModal.remove();
       showSubscriptionManagement(client);
     }
@@ -2072,7 +1935,7 @@ export function showGroupForm(title, client, groups, callback) {
   const modal = document.createElement('div');
   modal.className = 'group-form-modal';
   let selectedGroups = [...(client.groups || [])];
-  let groupHistory = [...(client.groupHistory || [])];
+  let groupHistory = [...(client.group_history || [])]; // Изменено на group_history
 
   function formatDate(dateString) {
     if (!dateString) return 'Никогда';

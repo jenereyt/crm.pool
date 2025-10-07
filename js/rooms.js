@@ -1,13 +1,21 @@
-let rooms = [
-  { id: 'room1', name: 'Большой бассейн' },
-  { id: 'room2', name: 'Малый бассейн' },
-];
+import { server } from './server.js'; // Adjust the path if server.js is elsewhere
 
-export function getRooms() {
-  return Array.isArray(rooms) ? rooms : [];
+export async function getRooms() {
+  try {
+    const response = await fetch(`${server}/rooms`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!response.ok) throw new Error('Failed to fetch rooms');
+    const rooms = await response.json();
+    return Array.isArray(rooms) ? rooms : [];
+  } catch (error) {
+    console.error('Error fetching rooms:', error);
+    return [];
+  }
 }
 
-export function loadRooms() {
+export async function loadRooms() {
   const mainContent = document.getElementById('main-content');
   mainContent.innerHTML = '';
 
@@ -33,7 +41,8 @@ export function loadRooms() {
   roomTable.className = 'room-table';
   mainContent.appendChild(roomTable);
 
-  function renderRooms() {
+  async function renderRooms() {
+    const rooms = await getRooms();
     const filter = document.getElementById('room-filter').value.toLowerCase();
     roomTable.innerHTML = `
       <table>
@@ -64,30 +73,69 @@ export function loadRooms() {
     `;
   }
 
-  renderRooms();
+  await renderRooms();
 
   document.getElementById('room-filter').addEventListener('input', renderRooms);
   document.getElementById('room-add-btn').addEventListener('click', () => {
-    showRoomForm('Добавить зал', {}, (data) => {
-      rooms.push({ id: `room${Date.now()}`, name: data.name });
-      renderRooms();
+    showRoomForm('Добавить зал', {}, async (data) => {
+      try {
+        const response = await fetch(`${server}/rooms`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: data.name }),
+        });
+        if (!response.ok) throw new Error('Failed to add room');
+        await renderRooms();
+      } catch (error) {
+        console.error('Error adding room:', error);
+        alert('Ошибка при добавлении зала!');
+      }
     });
   });
 
-  roomTable.addEventListener('click', (e) => {
+  roomTable.addEventListener('click', async (e) => {
     if (e.target.closest('.room-delete-btn')) {
       const roomId = e.target.closest('.room-delete-btn').getAttribute('data-id');
       if (confirm('Удалить зал?')) {
-        rooms = rooms.filter(room => room.id !== roomId);
-        renderRooms();
+        try {
+          const response = await fetch(`${server}/room/${roomId}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+          });
+          if (!response.ok) throw new Error('Failed to delete room');
+          await renderRooms();
+        } catch (error) {
+          console.error('Error deleting room:', error);
+          alert('Ошибка при удалении зала!');
+        }
       }
     } else if (e.target.closest('.room-edit-btn')) {
       const roomId = e.target.closest('.room-edit-btn').getAttribute('data-id');
-      const room = rooms.find(r => r.id === roomId);
-      showRoomForm('Редактировать зал', room, (data) => {
-        room.name = data.name;
-        renderRooms();
-      });
+      try {
+        const response = await fetch(`${server}/room/${roomId}`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        if (!response.ok) throw new Error('Failed to fetch room');
+        const room = await response.json();
+        showRoomForm('Редактировать зал', room, async (data) => {
+          try {
+            const response = await fetch(`${server}/room/${roomId}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ name: data.name }),
+            });
+            if (!response.ok) throw new Error('Failed to update room');
+            await renderRooms();
+          } catch (error) {
+            console.error('Error updating room:', error);
+            alert('Ошибка при обновлении зала!');
+          }
+        });
+      } catch (error) {
+        console.error('Error fetching room for edit:', error);
+        alert('Ошибка при получении данных зала!');
+      }
     }
   });
 
