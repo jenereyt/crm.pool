@@ -1,6 +1,6 @@
 // main.js (updated to use clientIds and dynamic date)
 import { getClients, showClientForm, addClient, showClientDetails } from './clients.js';
-import { scheduleData, setupModalClose, getRooms } from './schedule.js';
+import { scheduleData, setupModalClose } from './schedule.js';
 
 export function loadHome() {
   const mainContent = document.getElementById('main-content');

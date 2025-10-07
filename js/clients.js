@@ -1,5 +1,5 @@
 import { getSubscriptionTemplates } from './subscriptions.js';
-import { getGroups, addClientToGroup, removeClientFromGroup } from './groups.js';
+import { getGroups, addClientToGroup, removeClientFromGroup, getGroupById } from './groups.js';
 import { server } from './server.js'; // Adjust the path if server.js is elsewhere
 
 
@@ -98,6 +98,9 @@ export async function updateClient(id, data) {
     });
     localStorage.setItem('clientsData', JSON.stringify(clientsData));
 
+    // Clean up invalid group_history entries before sending
+    client.group_history = client.group_history.filter(entry => entry.group);
+
     const updatedPayload = {
       surname: client.surname,
       name: client.name,
@@ -109,15 +112,18 @@ export async function updateClient(id, data) {
       diagnoses: Array.isArray(client.diagnoses) ? client.diagnoses : [],
       features: client.features || '',
       blacklisted: client.blacklisted !== undefined ? client.blacklisted : false,
-      groups: Array.isArray(client.groups) ? client.groups : [],
-      group_history: Array.isArray(client.group_history) ? client.group_history : [],
+      groups: Array.isArray(client.groups) ? client.groups : [], // Массив строк с id групп
+      group_history: Array.isArray(client.group_history) ? client.group_history.map(entry => ({
+        date: entry.date,
+        action: entry.action,
+        group_id: entry.group // Переименовываем group в group_id
+      })) : [],
       subscriptions: Array.isArray(client.subscriptions) ? client.subscriptions : [],
       photo: client.photo || ''
     };
 
     try {
-      console.log('Updating with payload:', updatedPayload);
-
+      console.log('Updating with payload:', JSON.stringify(updatedPayload, null, 2));
       const response = await fetch(`${server}/clients/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -128,8 +134,8 @@ export async function updateClient(id, data) {
         let errorMessage = `Failed to update: ${response.status}`;
         try {
           const errorBody = await response.json();
-          console.error('Server error details:', errorBody);
-          errorMessage += ` - ${errorBody.message || 'Unknown error'}`;
+          console.error('Server error details:', JSON.stringify(errorBody, null, 2));
+          errorMessage += ` - ${errorBody.message || JSON.stringify(errorBody.detail) || 'Unknown error'}`;
         } catch (parseError) {
           console.error('Could not parse error body:', parseError);
         }
@@ -147,6 +153,7 @@ export async function updateClient(id, data) {
   }
   return client;
 }
+
 export async function removeClient(id) {
   clientsData = clientsData.filter(c => c.id !== id);
   localStorage.setItem('clientsData', JSON.stringify(clientsData));
@@ -163,59 +170,53 @@ export async function removeClient(id) {
   }
 }
 
-export function addGroupToClient(clientId, group, action = 'added', date = new Date().toISOString()) {
-  console.log(`addGroupToClient: clientId=${clientId}, group=${group}, date=${date}`);
+export function addGroupToClient(clientId, groupId, action = 'added', date = new Date().toISOString()) {
+  console.log(`addGroupToClient: clientId=${clientId}, groupId=${groupId}, date=${date}`);
   const client = getClientById(clientId);
   if (!client) {
     console.error(`Клиент с ID ${clientId} не найден`);
     return;
   }
-  if (!client.groups.includes(group)) {
-    client.groups.push(group);
-    client.group_history.push({ date, action, group });
-    groupHistoryData.push({ clientId, date, action, group });
+  if (!client.groups.includes(groupId)) {
+    client.groups.push(groupId);
+    client.group_history.push({ date, action, group: groupId });
+    groupHistoryData.push({ clientId, date, action, group: groupId });
     localStorage.setItem('groupHistoryData', JSON.stringify(groupHistoryData));
     localStorage.setItem('clientsData', JSON.stringify(clientsData));
-    addClientToGroup(clientId, group, date); // Синхронизация с groups.js
-    console.log(`Клиент ${clientId} добавлен в группу ${group} с датой ${date}`);
-    // Отправляем обновление на сервер асинхронно
+    console.log(`Клиент ${clientId} добавлен в группу ${groupId} с датой ${date}`);
     updateClient(clientId, client).then(() => {
       console.log('Group update synced with server');
     });
-    // Вызываем renderClients, если функция доступна
     if (typeof renderClients === 'function') {
       renderClients();
     }
   } else {
-    console.log(`Клиент ${clientId} уже в группе ${group}`);
+    console.log(`Клиент ${clientId} уже в группе ${groupId}`);
   }
 }
 
-export function removeGroupFromClient(clientId, group) {
-  console.log(`removeGroupFromClient: clientId=${clientId}, group=${group}`);
+export function removeGroupFromClient(clientId, groupId) {
+  console.log(`removeGroupFromClient: clientId=${clientId}, groupId=${groupId}`);
   const client = getClientById(clientId);
   if (!client) {
     console.error(`Клиент с ID ${clientId} не найден`);
     return;
   }
-  if (client.groups.includes(group)) {
-    client.groups = client.groups.filter(g => g !== group);
-    client.group_history.push({ date: new Date().toISOString(), action: 'removed', group });
-    groupHistoryData.push({ clientId, date: new Date().toISOString(), action: 'removed', group });
+  if (client.groups.includes(groupId)) {
+    client.groups = client.groups.filter(g => g !== groupId);
+    client.group_history.push({ date: new Date().toISOString(), action: 'removed', group: groupId });
+    groupHistoryData.push({ clientId, date: new Date().toISOString(), action: 'removed', group: groupId });
     localStorage.setItem('groupHistoryData', JSON.stringify(groupHistoryData));
     localStorage.setItem('clientsData', JSON.stringify(clientsData));
-    removeClientFromGroup(clientId, group); // Синхронизация с groups.js
-    console.log(`Клиент ${clientId} удалён из группы ${group}`);
-    // Отправляем обновление на сервер асинхронно
+    console.log(`Клиент ${clientId} удалён из группы ${groupId}`);
     updateClient(clientId, client).then(() => {
       console.log('Group removal synced with server');
     });
-    // Вызываем renderClients, если функция доступна
     if (typeof renderClients === 'function') {
       renderClients();
     }
   } else {
-    console.log(`Клиент ${clientId} не состоит в группе ${group}`);
+    console.log(`Клиент ${clientId} не состоит в группе ${groupId}`);
   }
 }
 

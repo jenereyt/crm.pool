@@ -1,10 +1,12 @@
+// classes.js (исправленная версия)
 
+// Импорты остаются без изменений
 import { getTrainers } from './employees.js';
 import { getGroups, getGroupByName } from './groups.js';
 import { getClients } from './clients.js';
-import { scheduleData } from './schedule.js';
 import { getRooms } from './rooms.js';
 import { getActiveSubscriptions } from './subscriptions.js';
+import { getSchedules, addSchedule, updateSchedule, deleteSchedule } from './schedule.js'; // Импортируем функции для работы с API
 
 export function getClientFullName(client) {
   if (!client) return 'Без имени';
@@ -26,6 +28,12 @@ export function escapeHtml(s) {
 }
 
 export function showClassForm(title, cls = {}, trainers, groups, rooms, clients, subscriptions, callback) {
+  if (!rooms || !Array.isArray(rooms)) {
+    console.error('Залы не являются массивом:', rooms);
+    alert('Ошибка: Залы не загружены. Попробуйте позже.');
+    return;
+  }
+
   const modal = document.createElement('div');
   modal.className = 'class-modal';
   modal.innerHTML = `
@@ -34,7 +42,7 @@ export function showClassForm(title, cls = {}, trainers, groups, rooms, clients,
       <input type="text" id="class-name" placeholder="Название занятия" value="${escapeHtml(cls.name || '')}" required>
       <select id="class-room" required>
         <option value="">Выберите зал</option>
-        ${Array.isArray(rooms) ? rooms.map(room => `<option value="${room.id}" ${cls.roomId === room.id ? 'selected' : ''}>${escapeHtml(room.name)}</option>`).join('') : ''}
+        ${rooms && Array.isArray(rooms) ? rooms.map(room => `<option value="${room.id}" ${cls.room_id === room.id ? 'selected' : ''}>${escapeHtml(room.name)}</option>`).join('') : '<option value="" disabled>Залы не загружены</option>'}
       </select>
       <select id="class-type" required>
         <option value="">Выберите тип</option>
@@ -44,11 +52,11 @@ export function showClassForm(title, cls = {}, trainers, groups, rooms, clients,
       </select>
       <select id="class-trainer" required>
         <option value="">Выберите тренера</option>
-        ${trainers.map(trainer => `<option value="${escapeHtml(trainer)}" ${cls.trainer === trainer ? 'selected' : ''}>${escapeHtml(trainer)}</option>`).join('')}
+        ${Array.isArray(trainers) ? trainers.map(trainer => `<option value="${escapeHtml(trainer)}" ${cls.trainer === trainer ? 'selected' : ''}>${escapeHtml(trainer)}</option>`).join('') : ''}
       </select>
       <select id="class-group">
         <option value="">Выберите группу (опционально)</option>
-        ${groups.map(group => `<option value="${escapeHtml(group)}" ${cls.group === group ? 'selected' : ''}>${escapeHtml(group)}</option>`).join('')}
+        ${Array.isArray(groups) ? groups.map(group => `<option value="${escapeHtml(group)}" ${cls.group === group ? 'selected' : ''}>${escapeHtml(group)}</option>`).join('') : ''}
       </select>
       <button id="class-select-clients-btn">Выбрать клиентов</button>
       <div id="class-selected-clients" class="selected-clients">
@@ -59,13 +67,13 @@ export function showClassForm(title, cls = {}, trainers, groups, rooms, clients,
         <label>Дни недели:</label>
         <div class="days-of-week-buttons">
           ${['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map(day => `
-            <button type="button" class="day-button${cls.daysOfWeek?.includes(day) ? ' selected' : ''}" data-day="${day}">${day}</button>
+            <button type="button" class="day-button${cls.days_of_week?.includes(day) ? ' selected' : ''}" data-day="${day}">${day}</button>
           `).join('')}
         </div>
       </div>
       <input type="date" id="class-date" value="${cls.date || ''}" required>
-      <input type="time" id="class-start" value="${cls.startTime || ''}" required>
-      <input type="time" id="class-end" value="${cls.endTime || ''}" required>
+      <input type="time" id="class-start" value="${cls.start_time || ''}" required>
+      <input type="time" id="class-end" value="${cls.end_time || ''}" required>
       <div class="class-modal-actions">
         <button id="class-save-btn">Сохранить</button>
         <button id="class-cancel-btn">Отмена</button>
@@ -80,7 +88,7 @@ export function showClassForm(title, cls = {}, trainers, groups, rooms, clients,
     }
   });
 
-  let selectedClientIds = Array.isArray(cls.clientIds) ? cls.clientIds.slice() : [];
+  let selectedClientIds = Array.isArray(cls.client_ids) ? cls.client_ids.slice() : [];
 
   function renderSelectedClients() {
     const selectedEl = modal.querySelector('.selected-chips');
@@ -142,30 +150,40 @@ export function showClassForm(title, cls = {}, trainers, groups, rooms, clients,
 
   modal.querySelector('#class-save-btn').addEventListener('click', () => {
     const name = modal.querySelector('#class-name').value.trim();
-    const roomId = modal.querySelector('#class-room').value;
+    const room_id = modal.querySelector('#class-room').value;
     const type = modal.querySelector('#class-type').value;
     const trainer = modal.querySelector('#class-trainer').value;
-    const group = modal.querySelector('#class-group').value;
-    const daysOfWeek = Array.from(modal.querySelectorAll('.day-button.selected')).map(b => b.getAttribute('data-day'));
+    const group = modal.querySelector('#class-group').value || '';
+    const days_of_week = Array.from(modal.querySelectorAll('.day-button.selected')).map(b => b.getAttribute('data-day'));
     const date = modal.querySelector('#class-date').value;
-    const startTime = modal.querySelector('#class-start').value;
-    const endTime = modal.querySelector('#class-end').value;
+    const start_time = modal.querySelector('#class-start').value;
+    const end_time = modal.querySelector('#class-end').value;
 
-    if (name && roomId && type && trainer && date && startTime && endTime) {
-      const start = new Date(`1970-01-01T${startTime}:00`);
-      const end = new Date(`1970-01-01T${endTime}:00`);
-      if (end <= start) {
-        alert('Время окончания должно быть позже времени начала!');
-        return;
-      }
-      callback({ name, roomId, type, trainer, group, clientIds: selectedClientIds, date, startTime, endTime, daysOfWeek });
-      modal.remove();
-    } else {
+    if (!name || !room_id || !type || !trainer || !date || !start_time || !end_time) {
       modal.querySelectorAll('input, select').forEach(el => {
         if (!el.value.trim()) el.classList.add('error');
       });
-      alert('Заполните все поля корректно!');
+      alert('Заполните все обязательные поля корректно!');
+      return;
     }
+
+    // Проверка формата времени
+    const timeFormat = /^\d{2}:\d{2}$/;
+    if (!timeFormat.test(start_time) || !timeFormat.test(end_time)) {
+      alert('Время должно быть в формате HH:MM');
+      return;
+    }
+
+    // Проверка, что end_time позже start_time
+    const start = new Date(`1970-01-01T${start_time}:00`);
+    const end = new Date(`1970-01-01T${end_time}:00`);
+    if (end <= start) {
+      alert('Время окончания должно быть позже времени начала!');
+      return;
+    }
+
+    callback({ name, room_id, type, trainer, group, client_ids: selectedClientIds, date, start_time, end_time, days_of_week });
+    modal.remove();
   });
 
   modal.querySelector('#class-cancel-btn').addEventListener('click', () => {
@@ -173,7 +191,7 @@ export function showClassForm(title, cls = {}, trainers, groups, rooms, clients,
   });
 }
 
-export async function showJournalModal(cls, clientsList, subscriptions) {
+export async function showJournalModal(cls, clientsList, subscriptions, callback) {
   const modal = document.createElement('div');
   modal.className = 'journal-modal';
   modal.setAttribute('role', 'dialog');
@@ -184,7 +202,7 @@ export async function showJournalModal(cls, clientsList, subscriptions) {
         <h2 id="journal-title">Журнал — ${escapeHtml(cls.name || cls.group || 'Занятие')}</h2>
         <button class="journal-close-btn" aria-label="Закрыть модальное окно">×</button>
       </div>
-      <p><strong>Дата:</strong> ${escapeHtml(cls.date || '—')} ${cls.startTime ? `, ${escapeHtml(cls.startTime)}–${escapeHtml(cls.endTime)}` : ''}</p>
+      <p><strong>Дата:</strong> ${escapeHtml(cls.date || '—')} ${cls.start_time ? `, ${escapeHtml(cls.start_time)}–${escapeHtml(cls.end_time)}` : ''}</p>
       <p><strong>Тренер:</strong> ${escapeHtml(cls.trainer || 'Не указан')}</p>
       <div class="journal-controls">
         <div class="client-search-container">
@@ -228,8 +246,8 @@ export async function showJournalModal(cls, clientsList, subscriptions) {
   });
 
   let journalClients = [];
-  if (Array.isArray(cls.clientIds) && cls.clientIds.length) {
-    journalClients = clientsList.filter(c => cls.clientIds.includes(c.id) && (c.surname?.trim() || c.name?.trim() || c.patronymic?.trim()));
+  if (Array.isArray(cls.client_ids) && cls.client_ids.length) {
+    journalClients = clientsList.filter(c => cls.client_ids.includes(c.id) && (c.surname?.trim() || c.name?.trim() || c.patronymic?.trim()));
   } else if (cls.group) {
     journalClients = clientsList.filter(c => Array.isArray(c.groups) && c.groups.includes(cls.group) && (c.surname?.trim() || c.name?.trim() || c.patronymic?.trim()));
   }
@@ -405,9 +423,7 @@ export async function showJournalModal(cls, clientsList, subscriptions) {
     }
 
     cls.conducted = true;
-    originalAttendance = JSON.parse(JSON.stringify(cls.attendance));
-    changedRows.clear();
-    modal.querySelector('#journal-undo-btn').disabled = true;
+    callback(cls); // Передаём обновлённое занятие в callback
     modal.querySelector('#journal-save-status').textContent = 'Сохранено!';
     setTimeout(() => {
       modal.querySelector('#journal-save-status').textContent = '';
@@ -605,11 +621,11 @@ export async function loadClasses() {
     <input type="date" id="class-date-filter" class="filter-input">
     <select id="class-trainer-filter" class="filter-select">
       <option value="">Все тренеры</option>
-      ${trainers.map(trainer => `<option value="${escapeHtml(trainer)}">${escapeHtml(trainer)}</option>`).join('')}
+      ${Array.isArray(trainers) ? trainers.map(trainer => `<option value="${escapeHtml(trainer)}">${escapeHtml(trainer)}</option>`).join('') : ''}
     </select>
     <select id="class-group-filter" class="filter-select">
       <option value="">Все группы</option>
-      ${groups.map(group => `<option value="${escapeHtml(group)}">${escapeHtml(group)}</option>`).join('')}
+      ${Array.isArray(groups) ? groups.map(group => `<option value="${escapeHtml(group)}">${escapeHtml(group)}</option>`).join('') : ''}
     </select>
     <button class="class-add-btn" id="class-add-btn">Добавить занятие</button>
   `;
@@ -619,19 +635,21 @@ export async function loadClasses() {
   classTable.className = 'class-table';
   mainContent.appendChild(classTable);
 
-  function renderClasses() {
+  async function renderClasses() {
     const dateFilter = document.getElementById('class-date-filter').value;
     const trainerFilter = document.getElementById('class-trainer-filter').value;
     const groupFilter = document.getElementById('class-group-filter').value;
 
     const today = formatDate(new Date());
+    const classes = await getSchedules(); // Получаем занятия через API
 
-    console.log('Занятия с conducted: true', scheduleData.filter(cls => cls.conducted)); // Отладка
+    console.log('Занятия с conducted: true', classes.filter(cls => cls.conducted)); // Отладка
 
-    const filteredClasses = scheduleData
-      .filter(cls => (!dateFilter || cls.date === dateFilter) &&
-        (!trainerFilter || cls.trainer === trainerFilter) &&
-        (!groupFilter || cls.group === groupFilter));
+    const filteredClasses = classes.filter(cls =>
+      (!dateFilter || cls.date === dateFilter) &&
+      (!trainerFilter || cls.trainer === trainerFilter) &&
+      (!groupFilter || cls.group === groupFilter)
+    );
 
     classTable.innerHTML = `
       <table>
@@ -649,21 +667,21 @@ export async function loadClasses() {
         </thead>
         <tbody>
           ${filteredClasses.map(cls => {
-            let rowClass = '';
-            if (cls.conducted) {
-              rowClass = 'conducted';
-            } else if (cls.date < today) {
-              rowClass = 'pending';
-            }
-            return `
+      let rowClass = '';
+      if (cls.conducted) {
+        rowClass = 'conducted';
+      } else if (cls.date < today) {
+        rowClass = 'pending';
+      }
+      return `
               <tr class="class-row ${rowClass}" data-id="${cls.id}">
                 <td>${escapeHtml(cls.name)}</td>
-                <td>${escapeHtml(rooms.find(r => r.id === cls.roomId)?.name || 'Не указан')}</td>
+                <td>${escapeHtml(rooms.find(r => r.id === cls.room_id)?.name || 'Не указан')}</td>
                 <td>${cls.type === 'group' ? 'Групповой' : cls.type === 'individual' ? 'Индивидуальный' : 'Специальный'}</td>
                 <td>${escapeHtml(cls.trainer)}</td>
                 <td>${escapeHtml(cls.group || 'Нет группы')}</td>
                 <td>${escapeHtml(cls.date)}</td>
-                <td>${escapeHtml(cls.startTime)}–${escapeHtml(cls.endTime)}</td>
+                <td>${escapeHtml(cls.start_time)}–${escapeHtml(cls.end_time)}</td>
                 <td>
                   <button class="class-edit-btn" data-id="${cls.id}">
                     <img src="images/icon-edit.svg" alt="Редактировать" class="action-icon">
@@ -674,13 +692,13 @@ export async function loadClasses() {
                 </td>
               </tr>
             `;
-          }).join('')}
+    }).join('')}
         </tbody>
       </table>
     `;
   }
 
-  renderClasses();
+  await renderClasses();
 
   const dateFilter = document.getElementById('class-date-filter');
   const trainerFilter = document.getElementById('class-trainer-filter');
@@ -696,101 +714,102 @@ export async function loadClasses() {
       alert('Нет доступных тренеров. Добавьте тренеров в разделе "Сотрудники".');
       return;
     }
-    showClassForm('Добавить занятие', {}, trainers, groups, rooms, clients, subscriptions, (data) => {
+    showClassForm('Добавить занятие', {}, trainers, groups, rooms, clients, subscriptions, async (data) => {
       const classesToAdd = [];
-      if (data.daysOfWeek && data.daysOfWeek.length > 0) {
+      if (data.days_of_week && data.days_of_week.length > 0) {
         const startDate = new Date(data.date);
         const endDate = new Date(startDate);
         endDate.setMonth(startDate.getMonth() + 1);
         for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
           const dayName = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'][d.getDay()];
-          if (data.daysOfWeek.includes(dayName)) {
+          if (data.days_of_week.includes(dayName)) {
             classesToAdd.push({
-              id: `class${Date.now() + classesToAdd.length}`,
               name: data.name,
-              roomId: data.roomId,
+              room_id: data.room_id,
               type: data.type,
               trainer: data.trainer,
               group: data.group,
-              clientIds: data.clientIds || [],
+              client_ids: data.client_ids || [],
               date: formatDate(d),
-              startTime: data.startTime,
-              endTime: data.endTime,
-              attendance: (data.clientIds || []).reduce((acc, clientId) => {
-                acc[clientId] = { present: true, reason: null };
-                return acc;
-              }, {}),
-              daysOfWeek: data.daysOfWeek,
+              start_time: data.start_time,
+              end_time: data.end_time,
+              days_of_week: data.days_of_week,
               conducted: false
             });
           }
         }
       } else {
         classesToAdd.push({
-          id: `class${Date.now()}`,
           name: data.name,
-          roomId: data.roomId,
+          room_id: data.room_id,
           type: data.type,
           trainer: data.trainer,
           group: data.group,
-          clientIds: data.clientIds || [],
+          client_ids: data.client_ids || [],
           date: data.date,
-          startTime: data.startTime,
-          endTime: data.endTime,
-          attendance: (data.clientIds || []).reduce((acc, clientId) => {
-            acc[clientId] = { present: true, reason: null };
-            return acc;
-          }, {}),
-          daysOfWeek: data.daysOfWeek || [],
+          start_time: data.start_time,
+          end_time: data.end_time,
+          days_of_week: data.days_of_week || [],
           conducted: false
         });
       }
 
-      classesToAdd.forEach(cls => {
-        cls.conducted = false; // Явно установить conducted: false
-        scheduleData.push(cls);
-      });
-      console.log('Добавлены занятия:', classesToAdd); // Отладка
-      console.log('Полное состояние scheduleData:', scheduleData); // Отладка
-      renderClasses();
+      let success = true;
+      for (const cls of classesToAdd) {
+        const result = await addSchedule(cls);
+        if (!result) {
+          success = false;
+        }
+      }
+      if (success) {
+        await renderClasses();
+      }
     });
   });
 
   classTable.addEventListener('click', async (e) => {
     if (e.target.closest('.class-delete-btn')) {
       const classId = e.target.closest('.class-delete-btn').getAttribute('data-id');
-      const cls = scheduleData.find(cls => cls.id === classId);
-      showConfirmModal(`Вы точно хотите удалить занятие "${cls.name}"?`, () => {
-        scheduleData.splice(scheduleData.findIndex(cls => cls.id === classId), 1);
-        renderClasses();
+      const cls = (await getSchedules()).find(cls => cls.id === classId);
+      showConfirmModal(`Вы точно хотите удалить занятие "${cls.name}"?`, async () => {
+        const success = await deleteSchedule(classId);
+        if (success) {
+          await renderClasses();
+        }
       });
       return;
     }
 
     if (e.target.closest('.class-edit-btn')) {
       const classId = e.target.closest('.class-edit-btn').getAttribute('data-id');
-      const cls = scheduleData.find(cls => cls.id === classId);
+      const cls = (await getSchedules()).find(cls => cls.id === classId);
       if (trainers.length === 0) {
         alert('Нет доступных тренеров. Добавьте тренеров в разделе "Сотрудники".');
         return;
       }
-      showClassForm('Редактировать занятие', cls, trainers, groups, rooms, clients, subscriptions, (data) => {
-        cls.name = data.name;
-        cls.roomId = data.roomId;
-        cls.type = data.type;
-        cls.trainer = data.trainer;
-        cls.group = data.group;
-        cls.clientIds = data.clientIds;
-        cls.date = data.date;
-        cls.startTime = data.startTime;
-        cls.endTime = data.endTime;
-        cls.daysOfWeek = data.daysOfWeek;
-        cls.attendance = data.clientIds.reduce((acc, clientId) => {
-          const existing = cls.attendance[clientId] || { present: true, reason: null };
-          acc[clientId] = existing;
-          return acc;
-        }, {});
-        renderClasses();
+      showClassForm('Редактировать занятие', cls, trainers, groups, rooms, clients, subscriptions, async (data) => {
+        const updatedData = {
+          name: data.name,
+          room_id: data.room_id,
+          type: data.type,
+          trainer: data.trainer,
+          group: data.group,
+          client_ids: data.client_ids,
+          date: data.date,
+          start_time: data.start_time,
+          end_time: data.end_time,
+          days_of_week: data.days_of_week,
+          attendance: data.client_ids.reduce((acc, clientId) => {
+            const existing = cls.attendance[clientId] || { present: true, reason: null };
+            acc[clientId] = existing;
+            return acc;
+          }, {}),
+          conducted: cls.conducted
+        };
+        const result = await updateSchedule(classId, updatedData);
+        if (result) {
+          await renderClasses();
+        }
       });
       return;
     }
@@ -798,15 +817,21 @@ export async function loadClasses() {
     const row = e.target.closest('.class-row');
     if (row && !e.target.closest('td:last-child')) {
       const classId = row.getAttribute('data-id');
-      const cls = scheduleData.find(c => c.id === classId);
+      const cls = (await getSchedules()).find(c => c.id === classId);
       if (cls) {
         console.log('Открывается журнал для занятия:', cls); // Отладка
-        showJournalModal(cls, clients, subscriptions);
+        showJournalModal(cls, clients, subscriptions, async (updatedClass) => {
+          const result = await updateSchedule(classId, updatedClass);
+          if (result) {
+            await renderClasses();
+          }
+        });
       }
     }
   });
 }
 
-export function getClasses() {
-  return scheduleData ? scheduleData.map(cls => cls.name) : [];
+export async function getClasses() {
+  const classes = await getSchedules();
+  return classes ? classes.map(cls => cls.name) : [];
 }
