@@ -92,14 +92,20 @@ export async function addClient(client) {
 export async function updateClient(id, data) {
   const client = clientsData.find(c => c.id === id);
   if (client) {
-    Object.assign(client, {
-      ...data,
-      groups: Array.isArray(data.groups) ? data.groups : client.groups || []
-    });
+    Object.assign(client, { ...data, groups: Array.isArray(data.groups) ? data.groups : client.groups || [] });
     localStorage.setItem('clientsData', JSON.stringify(clientsData));
 
-    // Clean up invalid group_history entries before sending
-    client.group_history = client.group_history.filter(entry => entry.group);
+    let photoUrl = client.photo || '';
+    if (data.photo instanceof File) {
+      // Если есть конечная точка для загрузки файла, используйте её
+      // const uploadResponse = await fetch(`${server}/upload`, { method: 'POST', body: new FormData().append('file', data.photo) });
+      // photoUrl = (await uploadResponse.json()).url;
+      // Временное решение: конвертируем файл в base64
+      const reader = new FileReader();
+      reader.readAsDataURL(data.photo);
+      await new Promise(resolve => reader.onload = resolve);
+      photoUrl = reader.result;  // Data URL в base64
+    }
 
     const updatedPayload = {
       surname: client.surname,
@@ -112,18 +118,18 @@ export async function updateClient(id, data) {
       diagnoses: Array.isArray(client.diagnoses) ? client.diagnoses : [],
       features: client.features || '',
       blacklisted: client.blacklisted !== undefined ? client.blacklisted : false,
-      groups: Array.isArray(client.groups) ? client.groups : [], // Массив строк с id групп
+      groups: Array.isArray(client.groups) ? client.groups : [],
       group_history: Array.isArray(client.group_history) ? client.group_history.map(entry => ({
         date: entry.date,
         action: entry.action,
-        group_id: entry.group // Переименовываем group в group_id
+        group_id: entry.group
       })) : [],
       subscriptions: Array.isArray(client.subscriptions) ? client.subscriptions : [],
-      photo: client.photo || ''
+      photo: photoUrl
     };
 
     try {
-      console.log('Updating with payload:', JSON.stringify(updatedPayload, null, 2));
+      console.log('Sending payload:', updatedPayload);
       const response = await fetch(`${server}/clients/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -152,7 +158,7 @@ export async function updateClient(id, data) {
     }
   }
   return client;
-}
+}пше
 
 export async function removeClient(id) {
   clientsData = clientsData.filter(c => c.id !== id);

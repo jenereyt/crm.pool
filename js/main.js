@@ -1,8 +1,9 @@
-// main.js (updated to use clientIds and dynamic date)
+// main.js (исправленная версия)
 import { getClients, showClientForm, addClient, showClientDetails } from './clients.js';
 import { scheduleData, setupModalClose } from './schedule.js';
+import { getRooms } from './rooms.js'; // Добавляем импорт getRooms
 
-export function loadHome() {
+export async function loadHome() { // Делаем функцию асинхронной
   const mainContent = document.getElementById('main-content');
   mainContent.innerHTML = '';
 
@@ -60,10 +61,14 @@ export function loadHome() {
   `;
   contentBlocks.appendChild(block4);
 
+  // Получаем данные асинхронно
+  const rooms = await getRooms(); // Используем await для асинхронного вызова
+  const clients = await getClients(); // Предполагаем, что getClients асинхронная
+
   // Логика для Блока 1: Клиенты с 1 уроком
-  const today = new Date(); // Dynamic date
+  const today = new Date();
   const lowClassesClients = [];
-  getClients().forEach(client => {
+  clients.forEach(client => {
     client.subscriptions.forEach(sub => {
       if (sub.remainingClasses === 1 && sub.isPaid && new Date(sub.endDate) >= today) {
         lowClassesClients.push(client);
@@ -120,7 +125,6 @@ export function loadHome() {
     `;
     mainContent.appendChild(modal);
 
-    // Закрытие модального окна при клике вне его без выделения текста
     modal.addEventListener('click', (e) => {
       if (e.target === modal && window.getSelection().toString().length === 0) {
         modal.remove();
@@ -134,7 +138,7 @@ export function loadHome() {
   // Логика для Блока 2: Добавить клиента и недавно добавленные
   const recentClientsList = block2.querySelector('#recent-clients-list');
   const updateRecentClients = () => {
-    const sortedClients = getClients().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    const sortedClients = clients.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     recentClientsList.innerHTML = sortedClients.slice(0, 3).map(client => `
       <li class="recent-client" data-client-id="${client.id}">${client.surname} ${client.name}</li>
     `).join('');
@@ -161,7 +165,7 @@ export function loadHome() {
     const clientItem = e.target.closest('.recent-client');
     if (clientItem && window.getSelection().toString().length === 0) {
       const clientId = clientItem.getAttribute('data-client-id');
-      const client = getClients().find(c => c.id === clientId);
+      const client = clients.find(c => c.id === clientId);
       if (client) {
         import('./clients.js').then(module => {
           mainContent.innerHTML = '';
@@ -173,23 +177,21 @@ export function loadHome() {
   });
 
   // Логика для Блока 3: Текущие занятия
-  const now = new Date(); // Dynamic time
+  const now = new Date();
   const todayStr = formatDate(now);
   const currentClassesList = block3.querySelector('#current-classes-list');
   const noClassesInfo = block3.querySelector('.no-classes-info');
 
-  // Фильтрация расписания для занятий, идущих прямо сейчас
   const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   const currentClasses = scheduleData.filter(c => c.date === todayStr && isClassActiveNow(c, currentTime));
 
   if (currentClasses.length > 0) {
     currentClassesList.innerHTML = currentClasses.map(cls => {
-      const room = getRooms().find(r => r.id === cls.roomId);
+      const room = rooms.find(r => r.id === cls.room_id); // Используем room_id
       const roomName = room ? room.name : 'Неизвестный зал';
       const groupText = cls.type === 'group' && cls.group ? `<br><small>${cls.group}</small>` : '';
-      // Map clientIds to names
-      const clientNames = cls.clientIds ? cls.clientIds.map(id => {
-        const client = getClients().find(c => c.id === id);
+      const clientNames = cls.client_ids ? cls.client_ids.map(id => { // Используем client_ids
+        const client = clients.find(c => c.id === id);
         return client ? `${client.surname} ${client.name}` : 'Неизвестный';
       }) : [];
       return `
@@ -203,14 +205,13 @@ export function loadHome() {
     noClassesInfo.style.display = 'block';
   }
 
-  // Обработчик клика по текущим занятиям (опционально)
   currentClassesList.addEventListener('click', (e) => {
     const classItem = e.target.closest('.current-class');
     if (classItem && window.getSelection().toString().length === 0) {
       const classId = classItem.getAttribute('data-id');
       const cls = scheduleData.find(c => c.id === classId);
       if (cls) {
-        console.log('Выбрано занятие:', cls); // Здесь можно добавить модальное окно с деталями занятия
+        console.log('Выбрано занятие:', cls);
       }
     }
   });
@@ -219,7 +220,6 @@ export function loadHome() {
   const scheduleContainer = block4.querySelector('.schedule-container');
   const hours = Array.from({ length: 15 }, (_, i) => `${String(i + 8).padStart(2, '0')}:00`);
   const todaySchedule = scheduleData.filter(c => c.date === todayStr);
-  const rooms = getRooms();
 
   let html = '<div class="schedule-table"><div class="schedule-row schedule-header"><div class="schedule-time"></div>';
   if (!Array.isArray(rooms)) {
@@ -235,18 +235,17 @@ export function loadHome() {
     html += `<div class="schedule-row"><div class="schedule-time">${hour}</div>`;
     if (Array.isArray(rooms)) {
       rooms.forEach(room => {
-        const classes = todaySchedule.filter(c => c.roomId === room.id && isClassInHour(c, hour));
+        const classes = todaySchedule.filter(c => c.room_id === room.id && isClassInHour(c, hour)); // Используем room_id
         html += `<div class="schedule-cell">`;
         classes.forEach(cls => {
-          const duration = getDuration(cls.startTime, cls.endTime);
-          const startHourIndex = hours.indexOf(cls.startTime);
+          const duration = getDuration(cls.start_time, cls.end_time); // Используем start_time и end_time
+          const startHourIndex = hours.indexOf(cls.start_time);
           if (startHourIndex === hourIndex) {
             const slotKey = `${room.id}-${startHourIndex}`;
             if (!occupiedSlots.has(slotKey)) {
               const groupText = cls.type === 'group' && cls.group ? `<br><small>${cls.group}</small>` : '';
-              // Map clientIds to names
-              const clientNames = cls.clientIds ? cls.clientIds.map(id => {
-                const client = getClients().find(c => c.id === id);
+              const clientNames = cls.client_ids ? cls.client_ids.map(id => { // Используем client_ids
+                const client = clients.find(c => c.id === id);
                 return client ? `${client.surname} ${client.name}` : 'Неизвестный';
               }) : [];
               html += `<div class="schedule-class schedule-${cls.type}" data-id="${cls.id}" style="grid-row: span ${duration}">${cls.name}${groupText}<br><small>${clientNames.length ? clientNames.join(', ') : 'Нет клиентов'}</small></div>`;
@@ -266,8 +265,8 @@ export function loadHome() {
 
   // Вспомогательные функции
   function isClassInHour(cls, hour) {
-    const [startHour] = cls.startTime.split(':').map(Number);
-    const [endHour] = cls.endTime.split(':').map(Number);
+    const [startHour] = cls.start_time.split(':').map(Number); // Используем start_time
+    const [endHour] = cls.end_time.split(':').map(Number); // Используем end_time
     const [checkHour] = hour.split(':').map(Number);
     return checkHour >= startHour && checkHour < endHour;
   }
@@ -286,8 +285,8 @@ export function loadHome() {
   }
 
   function isClassActiveNow(cls, currentTime) {
-    const [startHour, startMin] = cls.startTime.split(':').map(Number);
-    const [endHour, endMin] = cls.endTime.split(':').map(Number);
+    const [startHour, startMin] = cls.start_time.split(':').map(Number); // Используем start_time
+    const [endHour, endMin] = cls.end_time.split(':').map(Number); // Используем end_time
     const [currentHour, currentMin] = currentTime.split(':').map(Number);
     const startMinutes = startHour * 60 + startMin;
     const endMinutes = endHour * 60 + endMin;
