@@ -42,13 +42,6 @@ export async function addEmployee(data) {
     return null;
   }
 
-  const phoneFormat = /^\+7\s\(\d{3}\)\s\d{3}-\d{2}-\d{2}$/;
-  if (!phoneFormat.test(data.phone)) {
-    console.error('Неверный формат телефона:', data.phone);
-    alert('Ошибка: Телефон должен быть в формате +7 (XXX) XXX-XX-XX');
-    return null;
-  }
-
   try {
     const response = await fetch(`${server}/employees`, {
       method: 'POST',
@@ -104,6 +97,17 @@ export async function deleteEmployee(id) {
     alert('Ошибка при удалении сотрудника!');
     return false;
   }
+}
+
+export async function getTrainers() {
+  if (employees.length === 0) {
+    console.log('Предзагрузка сотрудников...');
+    await getEmployees();
+  }
+  return employees.filter(emp => emp.position === 'trainer').map(emp => ({
+    id: emp.id,
+    name: emp.name
+  }));
 }
 
 export async function loadEmployees() {
@@ -236,7 +240,7 @@ export async function loadEmployees() {
           <option value="admin" ${employee.position === 'admin' ? 'selected' : ''}>Администратор</option>
           <option value="manager" ${employee.position === 'manager' ? 'selected' : ''}>Менеджер</option>
         </select>
-        <input type="tel" id="employee-phone" placeholder="Телефон" value="${escapeHtml(employee.phone || '')}" pattern="\\+7\\s\\(\\d{3}\\)\\s\\d{3}-\\d{2}-\\d{2}" required>
+        <input type="tel" id="employee-phone" placeholder="Телефон" value="${escapeHtml(employee.phone || '')}" required>
         <div class="employee-modal-actions">
           <button id="employee-save-btn">Сохранить</button>
           <button id="employee-cancel-btn">Отмена</button>
@@ -259,11 +263,11 @@ export async function loadEmployees() {
         const name = document.getElementById('employee-name').value.trim();
         const position = document.getElementById('employee-position').value;
         const phone = document.getElementById('employee-phone').value.trim();
-        if (name && position && phone.match(/\+7\s\(\d{3}\)\s\d{3}-\d{2}-\d{2}/)) {
+        if (name && position && phone) {
           callback({ name, position, phone });
           modal.remove();
         } else {
-          alert('Заполните все поля корректно! Телефон должен быть в формате +7 (XXX) XXX-XX-XX');
+          alert('Заполните все поля корректно!');
         }
       });
     } else {
@@ -303,10 +307,4 @@ export async function loadEmployees() {
     if (!s) return '';
     return String(s).replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
   }
-}
-
-export function getTrainers() {
-  return employees
-    ? employees.filter(emp => emp.position === 'trainer').map(emp => emp.name)
-    : [];
 }

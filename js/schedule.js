@@ -38,9 +38,9 @@ export async function getScheduleById(id) {
 }
 
 export async function addSchedule(data) {
-  console.log('Data received in addSchedule:', data); // Добавлено для отладки
-  const requiredFields = ['name', 'room_id', 'type', 'trainer', 'date', 'start_time', 'end_time'];
-  const missingFields = requiredFields.filter(field => !data[field] || data[field] === 'string');
+  console.log('Data received in addSchedule:', data);
+  const requiredFields = ['name', 'room_id', 'type', 'trainer_id', 'date', 'start_time', 'end_time'];
+  const missingFields = requiredFields.filter(field => !data[field] || data[field] === '' || data[field] === undefined);
   if (missingFields.length) {
     console.error('Отсутствуют или некорректны поля:', missingFields);
     alert(`Ошибка: Заполните корректно поля: ${missingFields.join(', ')}`);
@@ -62,25 +62,43 @@ export async function addSchedule(data) {
     return null;
   }
 
-  if (isNaN(Number(data.room_id))) {
-    console.error('room_id должен быть числом:', data.room_id);
-    alert('Ошибка: ID зала должен быть числом');
+  if (!data.room_id || typeof data.room_id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(data.room_id)) {
+    console.error('room_id должен быть корректным UUID:', data.room_id);
+    alert('Ошибка: ID зала должен быть корректным UUID');
     return null;
+  }
+
+  // Строгая валидация UUID для trainer_id
+  if (!data.trainer_id || typeof data.trainer_id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(data.trainer_id)) {
+    console.error('trainer_id должен быть корректным UUID:', data.trainer_id);
+    alert('Ошибка: ID тренера должен быть корректным UUID');
+    return null;
+  }
+  // Если сервер не использует UUID, можно временно упростить валидацию:
+  // if (!data.trainer_id || typeof data.trainer_id !== 'string') {
+  //   console.error('trainer_id должен быть строкой:', data.trainer_id);
+  //   alert('Ошибка: ID тренера должен быть указан');
+  //   return null;
+  // }
+
+  const body = {
+    ...data,
+    attendance: (data.client_ids || []).reduce((acc, clientId) => {
+      acc[clientId] = { present: true, reason: null };
+      return acc;
+    }, {}),
+    conducted: false
+  };
+
+  if (!body.group_id) {
+    delete body.group_id;
   }
 
   try {
     const response = await fetch(`${server}/schedules`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...data,
-        room_id: Number(data.room_id),
-        attendance: (data.client_ids || []).reduce((acc, clientId) => {
-          acc[clientId] = { present: true, reason: null };
-          return acc;
-        }, {}),
-        conducted: false
-      })
+      body: JSON.stringify(body)
     });
 
     if (!response.ok) {
@@ -146,14 +164,14 @@ export async function loadSchedule() {
   const header = document.createElement('header');
   header.className = 'header';
   header.innerHTML = `
-    <h1><img src="./images/icon-home.svg" alt="Расписание"> Расписание</h1>
+    <h1><img src="./images/icon-schedule.svg" alt="Расписание"> Расписание</h1>
   `;
   mainContent.appendChild(header);
 
   const filterBar = document.createElement('div');
   filterBar.className = 'filter-bar';
   filterBar.innerHTML = `
-    <input type="date" id="schedule-date-input" class="schedule-date-input" value="2025-09-05">
+    <input type="date" id="schedule-date-input" class="schedule-date-input" value="2025-10-09">
     <select id="schedule-group-filter" class="filter-select">
       <option value="">Все группы</option>
     </select>
@@ -167,17 +185,29 @@ export async function loadSchedule() {
   scheduleContainer.className = 'schedule-container';
   mainContent.appendChild(scheduleContainer);
 
+  // Предзагрузка всех данных
+  console.log('Предзагрузка данных для расписания...');
   const trainers = await getTrainers();
+  console.log('Loaded trainers:', trainers);
+  if (!Array.isArray(trainers) || trainers.length === 0) {
+    console.error('No trainers available or trainers is not an array:', trainers);
+    alert('Ошибка: Тренеры не загружены. Проверьте раздел "Сотрудники".');
+    return;
+  }
   const groups = await getGroups();
   const rooms = await getRooms();
   const clients = await getClients();
   const subscriptions = await getActiveSubscriptions();
+  console.log('Loaded groups:', groups);
+  console.log('Loaded rooms:', rooms);
+  console.log('Loaded clients:', clients);
+  console.log('Loaded subscriptions:', subscriptions);
 
   const groupSelect = document.getElementById('schedule-group-filter');
-  groupSelect.innerHTML += groups.map(group => `<option value="${escapeHtml(group)}">${escapeHtml(group)}</option>`).join('');
+  groupSelect.innerHTML += groups.map(group => `<option value="${group.id}">${escapeHtml(group.name)}</option>`).join('');
 
   let viewMode = 'day';
-  let selectedDate = new Date('2025-09-05');
+  let selectedDate = new Date('2025-10-09');
 
   function getClientFullName(client) {
     if (!client) return 'Без имени';
@@ -195,7 +225,7 @@ export async function loadSchedule() {
     const groupFilter = document.getElementById('schedule-group-filter').value;
     const schedules = await getSchedules();
     const filteredScheduleData = groupFilter
-      ? schedules.filter(c => c.group === groupFilter)
+      ? schedules.filter(c => c.group_id === groupFilter)
       : schedules;
     if (viewMode === 'day') {
       renderDayView(hours, filteredScheduleData);
@@ -232,12 +262,14 @@ export async function loadSchedule() {
             if (startHourIndex === hourIndex) {
               const slotKey = `${room.id}-${startHourIndex}`;
               if (!occupiedSlots.has(slotKey)) {
-                const groupText = cls.type === 'group' && cls.group ? `<br><small>${escapeHtml(cls.group)}</small>` : '';
+                const group = groups.find(g => g.id === cls.group_id);
+                const groupText = cls.type === 'group' && group ? `<br><small>${escapeHtml(group.name)}</small>` : '';
                 const clientNames = cls.client_ids.map(id => {
                   const client = clients.find(c => c.id === id);
                   return client ? getClientFullName(client) : 'Неизвестный клиент';
                 });
-                html += `<div class="schedule-class schedule-${cls.type}" data-id="${cls.id}" style="grid-row: span ${duration}">${escapeHtml(cls.name)}${groupText}<br><small>${clientNames.length ? clientNames.map(c => escapeHtml(c)).join(', ') : 'Нет клиентов'}</small></div>`;
+                const trainer = trainers.find(t => t.id === cls.trainer_id);
+                html += `<div class="schedule-class schedule-${cls.type}" data-id="${cls.id}" style="grid-row: span ${duration}">${escapeHtml(cls.name)}${groupText}<br><small>${trainer ? escapeHtml(trainer.name) : 'Неизвестный тренер'}</small><br><small>${clientNames.length ? clientNames.map(c => escapeHtml(c)).join(', ') : 'Нет клиентов'}</small></div>`;
                 occupiedSlots.set(slotKey, true);
               }
             }
@@ -274,12 +306,14 @@ export async function loadSchedule() {
           const startHourIndex = hours.indexOf(cls.start_time);
           if (startHourIndex === hourIndex) {
             const room = Array.isArray(rooms) ? rooms.find(r => r.id === cls.room_id) : null;
-            const groupText = cls.type === 'group' && cls.group ? `<br><small>${escapeHtml(cls.group)}</small>` : '';
+            const group = groups.find(g => g.id === cls.group_id);
+            const groupText = cls.type === 'group' && group ? `<br><small>${escapeHtml(group.name)}</small>` : '';
             const clientNames = cls.client_ids.map(id => {
               const client = clients.find(c => c.id === id);
               return client ? getClientFullName(client) : 'Неизвестный клиент';
             });
-            html += `<div class="schedule-class schedule-${cls.type}" data-id="${cls.id}" style="grid-row: span ${duration}">${escapeHtml(cls.name)}${groupText}<br><small>${clientNames.length ? clientNames.map(c => escapeHtml(c)).join(', ') : 'Нет клиентов'}</small> (${room ? escapeHtml(room.name) : 'Неизвестный зал'})</div>`;
+            const trainer = trainers.find(t => t.id === cls.trainer_id);
+            html += `<div class="schedule-class schedule-${cls.type}" data-id="${cls.id}" style="grid-row: span ${duration}">${escapeHtml(cls.name)}${groupText}<br><small>${trainer ? escapeHtml(trainer.name) : 'Неизвестный тренер'}</small><br><small>${clientNames.length ? clientNames.map(c => escapeHtml(c)).join(', ') : 'Нет клиентов'}</small> (${room ? escapeHtml(room.name) : 'Неизвестный зал'})</div>`;
           }
         });
         html += `</div>`;
@@ -346,22 +380,22 @@ export async function loadSchedule() {
         <h2>${escapeHtml(cls.name)}</h2>
         <p><strong>Зал:</strong> ${Array.isArray(rooms) && rooms.find(r => r.id === cls.room_id)?.name || 'Не указан'}</p>
         <p><strong>Тип:</strong> ${cls.type === 'group' ? 'Групповой' : cls.type === 'individual' ? 'Индивидуальный' : 'Специальный'}</p>
-        <p><strong>Тренер:</strong> ${escapeHtml(cls.trainer)}</p>
-        <p><strong>Группа:</strong> ${escapeHtml(cls.group || 'Нет группы')}</p>
+        <p><strong>Тренер:</strong> ${trainers.find(t => t.id === cls.trainer_id)?.name || 'Не указан'}</p>
+        <p><strong>Группа:</strong> ${groups.find(g => g.id === cls.group_id)?.name || 'Нет группы'}</p>
         <p><strong>Дни недели:</strong> ${cls.days_of_week?.length ? cls.days_of_week.map(d => escapeHtml(d)).join(', ') : 'Разовое'}</p>
         <p><strong>Дата:</strong> ${escapeHtml(cls.date)}</p>
         <p><strong>Время:</strong> ${escapeHtml(cls.start_time)}–${escapeHtml(cls.end_time)}</p>
         <p><strong>Клиенты:</strong> ${cls.client_ids.length ? cls.client_ids.map(id => {
-      const client = clients.find(c => c.id === id);
-      return client ? escapeHtml(getClientFullName(client)) : 'Неизвестный клиент';
-    }).join(', ') : 'Нет клиентов'}</p>
+          const client = clients.find(c => c.id === id);
+          return client ? escapeHtml(getClientFullName(client)) : 'Неизвестный клиент';
+        }).join(', ') : 'Нет клиентов'}</p>
         <p><strong>Посещаемость:</strong> ${cls.client_ids.length ? cls.client_ids.map(id => {
-      const client = clients.find(c => c.id === id);
-      const name = client ? getClientFullName(client) : 'Неизвестный клиент';
-      const att = cls.attendance[id] || { present: true, reason: null };
-      const status = att.present ? 'Пришёл' : att.reason || 'Не пришёл';
-      return `${escapeHtml(name)}: ${escapeHtml(status)}`;
-    }).join(', ') : 'Нет данных'}</p>
+          const client = clients.find(c => c.id === id);
+          const name = client ? getClientFullName(client) : 'Неизвестный клиент';
+          const att = cls.attendance[id] || { present: true, reason: null };
+          const status = att.present ? 'Пришёл' : att.reason || 'Не пришёл';
+          return `${escapeHtml(name)}: ${escapeHtml(status)}`;
+        }).join(', ') : 'Нет данных'}</p>
         <div class="schedule-modal-actions">
           <button id="schedule-edit-btn">Редактировать</button>
           <button id="schedule-attendance-btn">Отметить посещаемость</button>
@@ -381,12 +415,13 @@ export async function loadSchedule() {
       }
       modal.remove();
       showClassForm('Редактировать занятие', cls, trainers, groups, rooms, clients, subscriptions, async (data) => {
+        console.log('Form data for edit:', data);
         const updatedData = {
           name: data.name,
-          room_id: Number(data.room_id),
+          room_id: data.room_id,
           type: data.type,
-          trainer: data.trainer,
-          group: data.group,
+          trainer_id: data.trainer_id,
+          group_id: data.group_id || null,
           client_ids: data.client_ids,
           date: data.date,
           start_time: data.start_time,
@@ -408,7 +443,7 @@ export async function loadSchedule() {
     document.getElementById('schedule-attendance-btn').addEventListener('click', () => {
       if (window.getSelection().toString().length > 0) return;
       modal.remove();
-      showJournalModal(cls, clients, subscriptions, async (attendance) => {
+      showJournalModal(cls, clients, subscriptions, trainers, async (attendance) => {
         const result = await updateSchedule(cls.id, { ...cls, attendance });
         if (result) {
           await renderSchedule();
@@ -461,12 +496,13 @@ export async function loadSchedule() {
 
   document.getElementById('schedule-add-btn').addEventListener('click', () => {
     if (window.getSelection().toString().length > 0) return;
-    if (trainers.length === 0) {
+    if (!Array.isArray(trainers) || trainers.length === 0) {
+      console.error('No trainers available for form:', trainers);
       alert('Нет доступных тренеров. Добавьте тренеров в разделе "Сотрудники".');
       return;
     }
     showClassForm('Добавить занятие', {}, trainers, groups, rooms, clients, subscriptions, async (data) => {
-      console.log('Form data from showClassForm:', data); // Добавлено для отладки
+      console.log('Form data from showClassForm:', data);
       const classesToAdd = [];
       if (data.days_of_week && data.days_of_week.length > 0) {
         const startDate = new Date(data.date);
@@ -477,14 +513,14 @@ export async function loadSchedule() {
           if (data.days_of_week.includes(dayName)) {
             classesToAdd.push({
               name: data.name,
-              room_id: Number(data.room_id), // Исправлено с roomId на room_id
+              room_id: data.room_id,
               type: data.type,
-              trainer: data.trainer,
-              group: data.group,
+              trainer_id: data.trainer_id,
+              group_id: data.group_id || null,
               client_ids: data.client_ids || [],
               date: formatDate(d),
-              start_time: data.start_time, // Исправлено с startTime на start_time
-              end_time: data.end_time, // Исправлено с endTime на end_time
+              start_time: data.start_time,
+              end_time: data.end_time,
               days_of_week: data.days_of_week
             });
           }
@@ -492,14 +528,14 @@ export async function loadSchedule() {
       } else {
         classesToAdd.push({
           name: data.name,
-          room_id: Number(data.room_id), // Исправлено с roomId на room_id
+          room_id: data.room_id,
           type: data.type,
-          trainer: data.trainer,
-          group: data.group,
+          trainer_id: data.trainer_id,
+          group_id: data.group_id || null,
           client_ids: data.client_ids || [],
           date: data.date,
-          start_time: data.start_time, // Исправлено с startTime на start_time
-          end_time: data.end_time, // Исправлено с endTime на end_time
+          start_time: data.start_time,
+          end_time: data.end_time,
           days_of_week: data.days_of_week || []
         });
       }

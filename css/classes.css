@@ -158,6 +158,16 @@
   border-radius: var(--border-radius);
 }
 
+.class-attendance-btn{
+  background: transparent;
+    border: none;
+    cursor: pointer;
+}
+
+.class-attendance-btn:hover{
+  background-color: #eadd2548;
+}
+
 .action-icon {
   width: 16px;
   height: 16px;

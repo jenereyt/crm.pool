@@ -1,4 +1,3 @@
-
 import { getTrainers } from './employees.js';
 import { getClients, addGroupToClient, removeGroupFromClient, getClientById, updateClient } from './clients.js';
 import { server } from './server.js';
@@ -171,9 +170,48 @@ export async function getGroupById(id) {
   }
 }
 
+// Функция для получения списка групп
 export async function getGroups() {
-  const groups = await fetchGroups();
-  return groups.map(group => group.name);
+  try {
+    // Выполняем запрос к серверу для получения групп
+    const response = await fetch(`${server}/groups`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    // Проверяем, успешен ли запрос
+    if (!response.ok) {
+      throw new Error(`Не удалось загрузить группы: ${response.status} ${response.statusText}`);
+    }
+
+    // Получаем данные в формате JSON
+    const data = await response.json();
+
+    // Проверяем, является ли data массивом, если нет — возвращаем пустой массив
+    const groups = Array.isArray(data) ? data : [];
+
+    // Сохраняем группы в localStorage для использования в оффлайн-режиме
+    localStorage.setItem('groupsData', JSON.stringify(groups));
+    console.log('Группы успешно загружены с сервера:', groups);
+
+    return groups;
+  } catch (error) {
+    // Логируем ошибку
+    console.error('Ошибка при загрузке групп:', error);
+
+    // Пробуем загрузить группы из localStorage
+    const localGroups = JSON.parse(localStorage.getItem('groupsData')) || [];
+
+    // Убедимся, что возвращается массив
+    if (!Array.isArray(localGroups)) {
+      console.warn('Данные групп в localStorage не являются массивом:', localGroups);
+      return [];
+    }
+
+    // Показываем уведомление об ошибке
+    showToast('Ошибка загрузки групп с сервера. Используются локальные данные.', 'warning');
+    return localGroups;
+  }
 }
 
 export async function getGroupNameById(groupId) {
@@ -283,7 +321,7 @@ export function showGroupModal(title, group, trainers, selectedClients, callback
         <input type="text" id="group-name" placeholder="Название группы" value="${escapeHtml(group.name || '')}" required>
         <select id="group-trainer" required>
           <option value="">Выберите тренера</option>
-          ${trainers.map(trainer => `<option value="${escapeHtml(trainer)}" ${group.trainer === trainer ? 'selected' : ''}>${escapeHtml(trainer)}</option>`).join('')}
+          ${trainers.map(trainer => `<option value="${escapeHtml(trainer.name)}" ${group.trainer === trainer.name ? 'selected' : ''}>${escapeHtml(trainer.name)}</option>`).join('')}
         </select>
         <div class="modal-actions">
           <button type="submit" class="btn-primary">Сохранить</button>
@@ -442,7 +480,7 @@ export async function loadGroups() {
 
   if (addGroupBtn) {
     addGroupBtn.addEventListener('click', async () => {
-      const trainers = getTrainers();
+      const trainers = await getTrainers();
       if (trainers.length === 0) {
         alert('Нет доступных тренеров. Добавьте тренеров в разделе "Сотрудники".');
         return;
@@ -491,7 +529,7 @@ export async function loadGroups() {
         alert('Ошибка: Группа не найдена.');
         return;
       }
-      const trainers = getTrainers();
+      const trainers = await getTrainers();
       if (trainers.length === 0) {
         alert('Нет доступных тренеров. Добавьте тренеров в разделе "Сотрудники".');
         return;

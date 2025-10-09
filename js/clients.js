@@ -8,10 +8,112 @@ let groupHistoryData = JSON.parse(localStorage.getItem('groupHistoryData')) || [
 // Массив клиентов (инициализируется из localStorage)
 let clientsData = JSON.parse(localStorage.getItem('clientsData')) || [];
 
-let commonDiagnoses = ['Сколиоз', 'Кифоз', 'Лордоз', 'Остеохондроз', 'Артрит', 'Астма', 'Диабет', 'Нет', 'Гипертония', 'Аллергия'];
-let commonRelations = ['Бабушка', 'Брат', 'Дедушка', 'Другая степень родства', 'Мать', 'Мачеха', 'Отец', 'Отчим', 'Сестра', 'Тетя', 'Дядя'];
+let commonDiagnoses = [];
+let commonRelations = [];
 
-// Функция для синхронизации с сервером (async fetch)
+async function syncRelations() {
+  try {
+    const response = await fetch(`${server}/relations`);
+    if (!response.ok) throw new Error('Failed to fetch relations');
+    const data = await response.json();
+    commonRelations = data.map(r => r.name);
+    localStorage.setItem('commonRelations', JSON.stringify(commonRelations));
+    return commonRelations;
+  } catch (error) {
+    console.error('Error syncing relations with server:', error);
+    showToast('Ошибка синхронизации отношений с сервером. Используются локальные данные.', 'warning');
+    return JSON.parse(localStorage.getItem('commonRelations')) || [];
+  }
+}
+
+async function syncDiagnoses() {
+  try {
+    const response = await fetch(`${server}/diagnoses`);
+    if (!response.ok) throw new Error('Failed to fetch diagnoses');
+    const data = await response.json();
+    commonDiagnoses = data.map(d => d.name);
+    localStorage.setItem('commonDiagnoses', JSON.stringify(commonDiagnoses));
+    return commonDiagnoses;
+  } catch (error) {
+    console.error('Error syncing diagnoses with server:', error);
+    showToast('Ошибка синхронизации диагнозов с сервером. Используются локальные данные.', 'warning');
+    return JSON.parse(localStorage.getItem('commonDiagnoses')) || [];
+  }
+}
+
+async function addRelation(newRelation) {
+  try {
+    const response = await fetch(`${server}/relations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: newRelation })
+    });
+    if (!response.ok) throw new Error('Failed to add relation');
+    await syncRelations(); // Синхронизируем после добавления
+  } catch (error) {
+    console.error('Error adding relation to server:', error);
+    showToast('Ошибка добавления отношения на сервер.', 'error');
+  }
+}
+
+async function updateDiagnosis(oldName, newName) {
+  try {
+    // Skip server call since endpoint is not available
+    const index = commonDiagnoses.indexOf(oldName);
+    if (index !== -1) {
+      commonDiagnoses[index] = newName;
+      localStorage.setItem('commonDiagnoses', JSON.stringify(commonDiagnoses));
+      showToast('Диагноз обновлён локально', 'success');
+    } else {
+      throw new Error('Diagnosis not found');
+    }
+  } catch (error) {
+    console.error('Error updating diagnosis:', error);
+    showToast('Ошибка обновления диагноза', 'error');
+  }
+}
+
+async function updateRelation(oldName, newName) {
+  try {
+    // Skip server call since endpoint is not available
+    const index = commonRelations.indexOf(oldName);
+    if (index !== -1) {
+      commonRelations[index] = newName;
+      localStorage.setItem('commonRelations', JSON.stringify(commonRelations));
+      showToast('Отношение обновлено локально', 'success');
+    } else {
+      throw new Error('Relation not found');
+    }
+  } catch (error) {
+    console.error('Error updating relation:', error);
+    showToast('Ошибка обновления отношения', 'error');
+  }
+}
+
+async function deleteDiagnosis(name) {
+  try {
+    // Skip server call since endpoint is not available
+    commonDiagnoses = commonDiagnoses.filter(d => d !== name);
+    localStorage.setItem('commonDiagnoses', JSON.stringify(commonDiagnoses));
+    showToast('Диагноз удалён локально', 'success');
+  } catch (error) {
+    console.error('Error deleting diagnosis:', error);
+    showToast('Ошибка удаления диагноза', 'error');
+  }
+}
+
+async function deleteRelation(name) {
+  try {
+    // Skip server call since endpoint is not available
+    commonRelations = commonRelations.filter(r => r !== name);
+    localStorage.setItem('commonRelations', JSON.stringify(commonRelations));
+    showToast('Отношение удалено локально', 'success');
+  } catch (error) {
+    console.error('Error deleting relation:', error);
+    showToast('Ошибка удаления отношения', 'error');
+  }
+}
+
 async function syncClientsWithServer() {
   try {
     const response = await fetch(`${server}/clients`);
@@ -50,8 +152,18 @@ export async function addClient(client) {
     groups: client.groups || [],
     group_history: [],
     subscriptions: [],
-    photo: client.photo || ''
+    photo: '' // Изначально пустое
   };
+
+  let photoUrl = '';
+  if (client.photo instanceof File) {
+    const reader = new FileReader();
+    reader.readAsDataURL(client.photo);
+    await new Promise(resolve => reader.onload = resolve);
+    photoUrl = reader.result; // Base64
+    payload.photo = photoUrl;
+    console.log('Photo converted to base64 in addClient:', photoUrl.substring(0, 50) + '...');
+  }
 
   const newClient = {
     id: `client${Date.now()}`,
@@ -61,9 +173,13 @@ export async function addClient(client) {
 
   clientsData.push(newClient);
   localStorage.setItem('clientsData', JSON.stringify(clientsData));
+  console.log('Client added locally with photo:', newClient.photo ? newClient.photo.substring(0, 50) + '...' : 'null');
 
   try {
-    console.log('Sending payload to server:', payload);
+    console.log('Sending payload to server:', {
+      ...payload,
+      photo: payload.photo ? payload.photo.substring(0, 50) + '...' : 'null'
+    });
 
     const response = await fetch(`${server}/clients`, {
       method: 'POST',
@@ -78,6 +194,17 @@ export async function addClient(client) {
     }
 
     const serverClient = await response.json();
+    console.log('Server response:', {
+      ...serverClient,
+      photo: serverClient.photo ? serverClient.photo.substring(0, 50) + '...' : 'null'
+    });
+
+    // Сохраняем photo локально, если сервер не вернул его
+    if (!serverClient.photo && photoUrl) {
+      console.warn('Server did not return photo, keeping local base64');
+      serverClient.photo = photoUrl;
+    }
+
     Object.assign(newClient, serverClient);
     localStorage.setItem('clientsData', JSON.stringify(clientsData));
     showToast('Клиент добавлен и синхронизирован с сервером', 'success');
@@ -91,74 +218,117 @@ export async function addClient(client) {
 
 export async function updateClient(id, data) {
   const client = clientsData.find(c => c.id === id);
-  if (client) {
-    Object.assign(client, { ...data, groups: Array.isArray(data.groups) ? data.groups : client.groups || [] });
-    localStorage.setItem('clientsData', JSON.stringify(clientsData));
-
-    let photoUrl = client.photo || '';
-    if (data.photo instanceof File) {
-      // Если есть конечная точка для загрузки файла, используйте её
-      // const uploadResponse = await fetch(`${server}/upload`, { method: 'POST', body: new FormData().append('file', data.photo) });
-      // photoUrl = (await uploadResponse.json()).url;
-      // Временное решение: конвертируем файл в base64
-      const reader = new FileReader();
-      reader.readAsDataURL(data.photo);
-      await new Promise(resolve => reader.onload = resolve);
-      photoUrl = reader.result;  // Data URL в base64
-    }
-
-    const updatedPayload = {
-      surname: client.surname,
-      name: client.name,
-      patronymic: client.patronymic || '',
-      phone: client.phone || '',
-      birth_date: client.birth_date,
-      gender: client.gender,
-      parents: Array.isArray(client.parents) ? client.parents : [],
-      diagnoses: Array.isArray(client.diagnoses) ? client.diagnoses : [],
-      features: client.features || '',
-      blacklisted: client.blacklisted !== undefined ? client.blacklisted : false,
-      groups: Array.isArray(client.groups) ? client.groups : [],
-      group_history: Array.isArray(client.group_history) ? client.group_history.map(entry => ({
-        date: entry.date,
-        action: entry.action,
-        group_id: entry.group
-      })) : [],
-      subscriptions: Array.isArray(client.subscriptions) ? client.subscriptions : [],
-      photo: photoUrl
-    };
-
-    try {
-      console.log('Sending payload:', updatedPayload);
-      const response = await fetch(`${server}/clients/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedPayload)
-      });
-
-      if (!response.ok) {
-        let errorMessage = `Failed to update: ${response.status}`;
-        try {
-          const errorBody = await response.json();
-          console.error('Server error details:', JSON.stringify(errorBody, null, 2));
-          errorMessage += ` - ${errorBody.message || JSON.stringify(errorBody.detail) || 'Unknown error'}`;
-        } catch (parseError) {
-          console.error('Could not parse error body:', parseError);
-        }
-        throw new Error(errorMessage);
-      }
-
-      const serverClient = await response.json();
-      Object.assign(client, serverClient);
-      localStorage.setItem('clientsData', JSON.stringify(clientsData));
-      showToast('Клиент обновлён и синхронизирован с сервером', 'success');
-    } catch (error) {
-      console.error('Error updating client on server:', error);
-      showToast('Ошибка обновления на сервер. Изменения сохранены локально.', 'error');
-    }
+  if (!client) {
+    console.error('Client not found:', id);
+    return null;
   }
+
+  // Handle photo
+  let photoUrl = client.photo || '';
+  if (data.photo instanceof File) {
+    const reader = new FileReader();
+    reader.readAsDataURL(data.photo);
+    await new Promise(resolve => reader.onload = resolve);
+    photoUrl = reader.result;
+    console.log('Photo converted to base64:', photoUrl.substring(0, 50) + '...');
+  } else if (data.photo === '') {
+    photoUrl = '';
+  }
+
+  // Map parents to server-expected format
+  const updatedParents = (data.parents || []).map(p => ({
+    full_name: p.fullName || '',
+    phone: p.phone || '',
+    relation_id: commonRelations.includes(p.relation) ? p.relation : null
+  }));
+
+  // Update client locally
+  Object.assign(client, {
+    ...data,
+    photo: photoUrl,
+    parents: updatedParents,
+    groups: Array.isArray(data.groups) ? data.groups : client.groups || []
+  });
+  localStorage.setItem('clientsData', JSON.stringify(clientsData));
+  console.log('Client updated locally with photo:', client.photo ? client.photo.substring(0, 50) + '...' : 'null');
+
+  // Prepare payload for server
+  const updatedPayload = {
+    surname: client.surname,
+    name: client.name,
+    patronymic: client.patronymic || '',
+    phone: client.phone || '',
+    birth_date: client.birth_date,
+    gender: client.gender,
+    parents: updatedParents,
+    diagnoses: Array.isArray(client.diagnoses) ? client.diagnoses : [],
+    features: client.features || '',
+    blacklisted: client.blacklisted !== undefined ? client.blacklisted : false,
+    groups: Array.isArray(client.groups) ? client.groups : [],
+    group_history: Array.isArray(client.group_history)
+      ? client.group_history
+        .filter(entry => {
+          if (!entry.group) {
+            console.warn('Invalid group_history entry missing group:', entry);
+            return false;
+          }
+          return true;
+        })
+        .map(entry => ({
+          date: entry.date.split('T')[0], // Convert to date-only
+          action: entry.action,
+          group_id: entry.group
+        }))
+      : [],
+    subscriptions: Array.isArray(client.subscriptions) ? client.subscriptions : [],
+    photo: photoUrl
+  };
+
+  try {
+    console.log('Sending payload to server:', {
+      ...updatedPayload,
+      photo: updatedPayload.photo ? updatedPayload.photo.substring(0, 50) + '...' : 'null'
+    });
+
+    const response = await fetch(`${server}/clients/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updatedPayload)
+    });
+
+    if (!response.ok) {
+      let errorMessage = `Failed to update: ${response.status} ${response.statusText}`;
+      try {
+        const errorBody = await response.json();
+        console.error('Server error details:', JSON.stringify(errorBody, null, 2));
+        errorMessage += ` - ${errorBody.message || JSON.stringify(errorBody.detail) || 'Unknown error'}`;
+      } catch (parseError) {
+        console.error('Could not parse error body:', parseError);
+      }
+      throw new Error(errorMessage);
+    }
+
+    const serverClient = await response.json();
+    console.log('Server response:', {
+      ...serverClient,
+      photo: serverClient.photo ? serverClient.photo.substring(0, 50) + '...' : 'null'
+    });
+
+    if (!serverClient.photo && photoUrl) {
+      console.warn('Server did not return photo, keeping local base64');
+      serverClient.photo = photoUrl;
+    }
+
+    Object.assign(client, serverClient);
+    localStorage.setItem('clientsData', JSON.stringify(clientsData));
+    showToast('Клиент обновлён и синхронизирован с сервером', 'success');
+  } catch (error) {
+    console.error('Error updating client on server:', error);
+    showToast('Ошибка обновления на сервере. Изменения сохранены локально.', 'warning');
+  }
+
   return client;
-}пше
+}
 
 export async function removeClient(id) {
   clientsData = clientsData.filter(c => c.id !== id);
@@ -176,7 +346,7 @@ export async function removeClient(id) {
   }
 }
 
-export function addGroupToClient(clientId, groupId, action = 'added', date = new Date().toISOString()) {
+export function addGroupToClient(clientId, groupId, action = 'added', date = new Date().toISOString().split('T')[0]) {
   console.log(`addGroupToClient: clientId=${clientId}, groupId=${groupId}, date=${date}`);
   const client = getClientById(clientId);
   if (!client) {
@@ -210,8 +380,9 @@ export function removeGroupFromClient(clientId, groupId) {
   }
   if (client.groups.includes(groupId)) {
     client.groups = client.groups.filter(g => g !== groupId);
-    client.group_history.push({ date: new Date().toISOString(), action: 'removed', group: groupId });
-    groupHistoryData.push({ clientId, date: new Date().toISOString(), action: 'removed', group: groupId });
+    const date = new Date().toISOString().split('T')[0]; // Use date-only format
+    client.group_history.push({ date, action: 'removed', group: groupId });
+    groupHistoryData.push({ clientId, date, action: 'removed', group: groupId });
     localStorage.setItem('groupHistoryData', JSON.stringify(groupHistoryData));
     localStorage.setItem('clientsData', JSON.stringify(clientsData));
     console.log(`Клиент ${clientId} удалён из группы ${groupId}`);
@@ -254,7 +425,7 @@ export function showClientForm(title, client, callback) {
     phone: p.phone || '',
     relation: p.relation || ''
   }))] : [];
-  let diagnoses = client.diagnoses ? [...client.diagnoses] : []; // Изменено на diagnoses
+  let diagnoses = client.diagnoses ? [...client.diagnoses] : [];
   const isEdit = !!client.id;
 
   function calculateAge(birthDate) {
@@ -491,7 +662,7 @@ export function showClientForm(title, client, callback) {
         <div class="form-grid">
           <div class="form-group">
             <label for="client-birthdate" class="required">Дата рождения</label>
-            <input type="date" id="client-birthdate" value="${client.birth_date || ''}" required> <!-- Изменено на birth_date -->
+            <input type="date" id="client-birthdate" value="${client.birth_date || ''}" required> 
             <span class="field-error" id="birthdate-error"></span>
           </div>
           <div class="form-group">
@@ -705,15 +876,11 @@ export function showClientForm(title, client, callback) {
     const name = document.getElementById('client-name').value.trim();
     const patronymic = document.getElementById('client-patronymic').value.trim();
     const phone = document.getElementById('client-phone').value.trim();
-    const birth_date = document.getElementById('client-birthdate').value; // Изменено
+    const birth_date = document.getElementById('client-birthdate').value;
     const gender = document.getElementById('client-gender').value;
     const features = document.getElementById('client-features').value.trim();
 
-    let photo = '';
-    const photoImg = photoPreview.querySelector('img:not(.upload-icon)');
-    if (photoImg) {
-      photo = photoImg.src;
-    }
+    const photo = photoInput.files[0] || '';
 
     const updatedParents = parents.filter(p => p.fullName.trim() !== '').map(p => ({
       fullName: p.fullName.trim(),
@@ -731,7 +898,7 @@ export function showClientForm(title, client, callback) {
       birth_date,
       gender,
       parents: updatedParents,
-      diagnoses: updatedDiagnoses, // Изменено
+      diagnoses: updatedDiagnoses,
       features,
       photo,
       groups: []
@@ -745,7 +912,11 @@ export function showClientForm(title, client, callback) {
 }
 
 export async function loadClients() {
-  // Сначала загружаем из localStorage
+  // Сначала синхронизируем справочники
+  await syncDiagnoses();
+  await syncRelations();
+
+  // Затем загружаем из localStorage
   clientsData = JSON.parse(localStorage.getItem('clientsData')) || [];
   // Затем синхронизируем с сервером асинхронно
   syncClientsWithServer().then(updatedData => {
@@ -865,6 +1036,8 @@ export async function loadClients() {
     });
   }
 
+
+
   function renderClients() {
     const search = document.getElementById('client-search').value.toLowerCase();
     const statusFilter = document.getElementById('status-filter').value;
@@ -895,8 +1068,9 @@ export async function loadClients() {
 
     clientList.innerHTML = filteredClients
       .map(client => {
+        console.log('Client photo URL in render:', client.photo ? client.photo.substring(0, 50) + '...' : 'null');
         const fullName = `${client.surname} ${client.name} ${client.patronymic || ''}`;
-        const hasDiagnosis = client.diagnoses && client.diagnoses.length > 0 && !(client.diagnoses.length === 1 && client.diagnoses[0].name === 'Нет'); // Изменено
+        const hasDiagnosis = client.diagnoses && client.diagnoses.length > 0 && !(client.diagnoses.length === 1 && client.diagnoses[0].name === 'Нет');
         const status = getSubscriptionStatus(client);
         const statusClass = {
           'active': 'status-active',
@@ -916,62 +1090,62 @@ export async function loadClients() {
         const remainingClasses = activeSub ? activeSub.remainingClasses : undefined;
 
         return `
-        <div class="client-card ${client.blacklisted ? 'blacklisted' : ''}" data-id="${client.id}">
-          <div class="client-main-info">
-            <div class="client-avatar">
-              ${client.photo ?
+      <div class="client-card ${client.blacklisted ? 'blacklisted' : ''}" data-id="${client.id}">
+        <div class="client-main-info">
+          <div class="client-avatar">
+            ${client.photo ?
             `<img src="${client.photo}" class="client-photo" alt="${fullName}" style="object-fit: cover;">` :
             `<div class="client-photo-placeholder">${client.name.charAt(0).toUpperCase()}</div>`
           }
-              <div class="status-indicator ${statusClass}" title="${statusText}"></div>
-            </div>
-            <div class="client-details">
-              <div class="client-name-section">
-                <h3 class="client-name ${hasDiagnosis ? 'has-diagnosis' : ''}">${fullName}</h3>
-                <div class="client-meta">
-                  <span class="client-phone">${client.phone}</span>
-                  ${hasDiagnosis ? `
-                    <div class="diagnosis-badge">
-                      ${client.diagnoses.map(d => `<span class="diagnosis-tag">${d.name}${d.notes ? ` (${d.notes})` : ''}</span>`).join('')}
-                    </div>
-                  ` : ''}
-                </div>
-              </div>
-              <div class="client-additional-info">
-                <span class="groups-info">
-                  <span class="info-label">Группы:</span>
-                  ${Array.isArray(client.groups) && client.groups.length ? client.groups.map(group => `<span class="group-tag">${group}</span>`).join('') : '<span class="no-groups">Без групп</span>'}
-                </span>
-                ${remainingClasses !== undefined ?
-            `<span class="classes-info">
-                  <span class="info-label">Осталось занятий:</span>
-                  <span class="classes-value ${remainingClasses <= 3 && remainingClasses !== Infinity ? 'low-classes' : ''}">
-                    ${remainingClasses === Infinity ? 'Безлимит' : remainingClasses}
-                  </span>
-                </span>` : ''
-          }
-              </div>
-            </div>
+            <div class="status-indicator ${statusClass}" title="${statusText}"></div>
           </div>
-          <div class="action-buttons-group">
-            <button type="button" class="client-action-btn edit-btn" data-id="${client.id}" title="Редактировать">
-              <img src="images/icon-edit.svg" alt="Редактировать" class="btn-icon">
-            </button>
-            <button type="button" class="client-action-btn subscription-btn" data-id="${client.id}" title="Абонемент">
-              <img src="images/icon-subscriptions.svg" alt="Абонемент" class="btn-icon">
-            </button>
-            <button type="button" class="client-action-btn group-btn" data-id="${client.id}" title="Группы">
-              <img src="images/icon-group.svg" alt="Группы" class="btn-icon">
-            </button>
-            <button type="button" class="client-action-btn blacklist-btn ${client.blacklisted ? 'active' : ''}" data-id="${client.id}" title="${client.blacklisted ? 'Убрать из чёрного списка' : 'В чёрный список'}">
-              <img src="images/icon-delete.svg" alt="${client.blacklisted ? 'Убрать из чёрного списка' : 'В чёрный список'}" class="btn-icon">
-            </button>
-            <button type="button" class="client-action-btn delete-btn" data-id="${client.id}" title="Удалить">
-              <img src="images/trash.svg" alt="Удалить" class="btn-icon">
-            </button>
+          <div class="client-details">
+            <div class="client-name-section">
+              <h3 class="client-name ${hasDiagnosis ? 'has-diagnosis' : ''}">${fullName}</h3>
+              <div class="client-meta">
+                <span class="client-phone">${client.phone}</span>
+                ${hasDiagnosis ? `
+                  <div class="diagnosis-badge">
+                    ${client.diagnoses.map(d => `<span class="diagnosis-tag">${d.name}${d.notes ? ` (${d.notes})` : ''}</span>`).join('')}
+                  </div>
+                ` : ''}
+              </div>
+            </div>
+            <div class="client-additional-info">
+              <span class="groups-info">
+                <span class="info-label">Группы:</span>
+                ${Array.isArray(client.groups) && client.groups.length ? client.groups.map(group => `<span class="group-tag">${group}</span>`).join('') : '<span class="no-groups">Без групп</span>'}
+              </span>
+              ${remainingClasses !== undefined ?
+            `<span class="classes-info">
+                <span class="info-label">Осталось занятий:</span>
+                <span class="classes-value ${remainingClasses <= 3 && remainingClasses !== Infinity ? 'low-classes' : ''}">
+                  ${remainingClasses === Infinity ? 'Безлимит' : remainingClasses}
+                </span>
+              </span>` : ''
+          }
+            </div>
           </div>
         </div>
-      `;
+        <div class="action-buttons-group">
+          <button type="button" class="client-action-btn edit-btn" data-id="${client.id}" title="Редактировать">
+            <img src="images/icon-edit.svg" alt="Редактировать" class="btn-icon">
+          </button>
+          <button type="button" class="client-action-btn subscription-btn" data-id="${client.id}" title="Абонемент">
+            <img src="images/icon-subscriptions.svg" alt="Абонемент" class="btn-icon">
+          </button>
+          <button type="button" class="client-action-btn group-btn" data-id="${client.id}" title="Группы">
+            <img src="images/icon-group.svg" alt="Группы" class="btn-icon">
+          </button>
+          <button type="button" class="client-action-btn blacklist-btn ${client.blacklisted ? 'active' : ''}" data-id="${client.id}" title="${client.blacklisted ? 'Убрать из чёрного списка' : 'В чёрный список'}">
+            <img src="images/icon-delete.svg" alt="${client.blacklisted ? 'Убрать из чёрного списка' : 'В чёрный список'}" class="btn-icon">
+          </button>
+          <button type="button" class="client-action-btn delete-btn" data-id="${client.id}" title="Удалить">
+            <img src="images/trash.svg" alt="Удалить" class="btn-icon">
+          </button>
+        </div>
+      </div>
+    `;
       }).join('');
   }
 
@@ -1003,6 +1177,7 @@ export async function loadClients() {
   });
 
   clientList.addEventListener('click', async (e) => { // Добавляем async
+    e.preventDefault(); // Добавляем preventDefault для предотвращения возможных проблем
     const target = e.target;
     const clientCard = target.closest('.client-card');
     const clientId = clientCard ? clientCard.getAttribute('data-id') : null;
@@ -1021,6 +1196,7 @@ export async function loadClients() {
         });
       } else if (actionBtn.classList.contains('blacklist-btn')) {
         client.blacklisted = !client.blacklisted;
+        console.log('Blacklisted toggled to:', client.blacklisted); // Added for debugging
         await updateClient(clientId, client); // Теперь await работает корректно
         renderClients();
         showToast(client.blacklisted ? 'Клиент добавлен в чёрный список' : 'Клиент удалён из чёрного списка', 'info');
@@ -1317,19 +1493,15 @@ export function showDiagnosisDictionary(callback) {
 
   function renderDiagnosesList(filter = '') {
     const list = modal.querySelector('.diagnoses-list');
-    const filteredDiagnoses = commonDiagnoses.filter(d => d.toLowerCase().includes(filter.toLowerCase()));
+    const filteredDiagnoses = commonDiagnoses.filter(d => String(d).toLowerCase().includes(filter.toLowerCase()));
     list.innerHTML = filteredDiagnoses.map(d => `
       <div class="diagnosis-item ${selectedDiagnosis === d ? 'selected' : ''}" data-diagnosis="${d}">
-        ${d}
+        <span class="diagnosis-text">${d}</span>
+        <button type="button" class="edit-diagnosis-btn" data-diagnosis="${d}">✏️</button>
+        <button type="button" class="delete-diagnosis-btn" data-diagnosis="${d}">🗑️</button>
       </div>
     `).join('');
-
-    list.querySelectorAll('.diagnosis-item').forEach(item => {
-      item.addEventListener('click', () => {
-        selectedDiagnosis = item.dataset.diagnosis;
-        renderDiagnosesList(filter);
-      });
-    });
+    console.log('Список диагнозов отрисован с фильтром:', filter, 'Выбрано:', selectedDiagnosis);
   }
 
   modal.innerHTML = `
@@ -1353,6 +1525,7 @@ export function showDiagnosisDictionary(callback) {
   document.getElementById('main-content').appendChild(modal);
 
   const closeModal = () => {
+    console.log('Закрытие модального окна диагнозов, selectedDiagnosis:', selectedDiagnosis);
     modal.remove();
     callback(null);
   };
@@ -1362,6 +1535,7 @@ export function showDiagnosisDictionary(callback) {
   modal.querySelector('#diagnosis-cancel-btn').addEventListener('click', closeModal);
 
   modal.querySelector('#diagnosis-select-btn').addEventListener('click', () => {
+    console.log('Кнопка "Выбрать" нажата, selectedDiagnosis:', selectedDiagnosis);
     if (selectedDiagnosis) {
       modal.remove();
       callback(selectedDiagnosis);
@@ -1370,18 +1544,61 @@ export function showDiagnosisDictionary(callback) {
     }
   });
 
-  modal.querySelector('#add-new-diagnosis-btn').addEventListener('click', () => {
+  modal.querySelector('#add-new-diagnosis-btn').addEventListener('click', async () => {
     const newDiagnosis = prompt('Введите новый диагноз:');
     if (newDiagnosis && newDiagnosis.trim() && !commonDiagnoses.includes(newDiagnosis.trim())) {
       commonDiagnoses.push(newDiagnosis.trim());
+      localStorage.setItem('commonDiagnoses', JSON.stringify(commonDiagnoses));
       renderDiagnosesList(modal.querySelector('#diagnosis-search').value);
-      showToast('Новый диагноз добавлен', 'success');
+      showToast('Новый диагноз добавлен локально', 'success');
     }
   });
 
+  // Делегирование событий для элементов диагнозов
+  const list = modal.querySelector('.diagnoses-list');
+  list.addEventListener('click', (e) => {
+    const target = e.target;
+    const diagnosisItem = target.closest('.diagnosis-item');
+    if (!diagnosisItem) return;
+
+    const diagnosis = diagnosisItem.dataset.diagnosis;
+    console.log('Клик по элементу диагноза:', diagnosis, 'Цель:', target.tagName, target.className);
+
+    // Выбор, если клик не по кнопкам редактирования или удаления
+    if (!target.classList.contains('edit-diagnosis-btn') && !target.classList.contains('delete-diagnosis-btn')) {
+      selectedDiagnosis = diagnosis;
+      console.log('Выбран диагноз:', selectedDiagnosis);
+      renderDiagnosesList(modal.querySelector('#diagnosis-search').value);
+    } else if (target.classList.contains('edit-diagnosis-btn')) {
+      const oldName = diagnosis;
+      const newName = prompt('Введите новое название диагноза:', oldName);
+      if (newName && newName.trim() && newName !== oldName) {
+        updateDiagnosis(oldName, newName.trim()).then(() => {
+          if (selectedDiagnosis === oldName) selectedDiagnosis = newName.trim();
+          renderDiagnosesList(modal.querySelector('#diagnosis-search').value);
+        });
+      }
+    } else if (target.classList.contains('delete-diagnosis-btn')) {
+      showConfirmDialog(
+        'Удалить диагноз?',
+        `Вы уверены, что хотите удалить диагноз "${diagnosis}"?`,
+        async () => {
+          await deleteDiagnosis(diagnosis);
+          if (selectedDiagnosis === diagnosis) selectedDiagnosis = null;
+          renderDiagnosesList(modal.querySelector('#diagnosis-search').value);
+        }
+      );
+    }
+  });
+
+  // Дебаунсинг ввода поиска
+  let searchTimeout;
   const searchInput = modal.querySelector('#diagnosis-search');
   searchInput.addEventListener('input', (e) => {
-    renderDiagnosesList(e.target.value);
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+      renderDiagnosesList(e.target.value);
+    }, 300);
   });
 
   renderDiagnosesList();
@@ -1394,19 +1611,15 @@ export function showRelationDictionary(callback) {
 
   function renderRelationsList(filter = '') {
     const list = modal.querySelector('.relations-list');
-    const filteredRelations = commonRelations.filter(r => r.toLowerCase().includes(filter.toLowerCase()));
+    const filteredRelations = commonRelations.filter(r => String(r).toLowerCase().includes(filter.toLowerCase()));
     list.innerHTML = filteredRelations.map(r => `
       <div class="relation-item ${selectedRelation === r ? 'selected' : ''}" data-relation="${r}">
-        ${r}
+        <span class="relation-text">${r}</span>
+        <button type="button" class="edit-relation-btn" data-relation="${r}">✏️</button>
+        <button type="button" class="delete-relation-btn" data-relation="${r}">🗑️</button>
       </div>
     `).join('');
-
-    list.querySelectorAll('.relation-item').forEach(item => {
-      item.addEventListener('click', () => {
-        selectedRelation = item.dataset.relation;
-        renderRelationsList(filter);
-      });
-    });
+    console.log('Список отношений отрисован с фильтром:', filter, 'Выбрано:', selectedRelation);
   }
 
   modal.innerHTML = `
@@ -1430,6 +1643,7 @@ export function showRelationDictionary(callback) {
   document.getElementById('main-content').appendChild(modal);
 
   const closeModal = () => {
+    console.log('Закрытие модального окна отношений, selectedRelation:', selectedRelation);
     modal.remove();
     callback(null);
   };
@@ -1439,6 +1653,7 @@ export function showRelationDictionary(callback) {
   modal.querySelector('#relation-cancel-btn').addEventListener('click', closeModal);
 
   modal.querySelector('#relation-select-btn').addEventListener('click', () => {
+    console.log('Кнопка "Выбрать" нажата, selectedRelation:', selectedRelation);
     if (selectedRelation) {
       modal.remove();
       callback(selectedRelation);
@@ -1447,18 +1662,61 @@ export function showRelationDictionary(callback) {
     }
   });
 
-  modal.querySelector('#add-new-relation-btn').addEventListener('click', () => {
+  modal.querySelector('#add-new-relation-btn').addEventListener('click', async () => {
     const newRelation = prompt('Введите новое отношение:');
     if (newRelation && newRelation.trim() && !commonRelations.includes(newRelation.trim())) {
       commonRelations.push(newRelation.trim());
+      localStorage.setItem('commonRelations', JSON.stringify(commonRelations));
       renderRelationsList(modal.querySelector('#relation-search').value);
-      showToast('Новое отношение добавлено', 'success');
+      showToast('Новое отношение добавлено локально', 'success');
     }
   });
 
+  // Делегирование событий для элементов отношений
+  const list = modal.querySelector('.relations-list');
+  list.addEventListener('click', (e) => {
+    const target = e.target;
+    const relationItem = target.closest('.relation-item');
+    if (!relationItem) return;
+
+    const relation = relationItem.dataset.relation;
+    console.log('Клик по элементу отношения:', relation, 'Цель:', target.tagName, target.className);
+
+    // Выбор, если клик не по кнопкам редактирования или удаления
+    if (!target.classList.contains('edit-relation-btn') && !target.classList.contains('delete-relation-btn')) {
+      selectedRelation = relation;
+      console.log('Выбрано отношение:', selectedRelation);
+      renderRelationsList(modal.querySelector('#relation-search').value);
+    } else if (target.classList.contains('edit-relation-btn')) {
+      const oldName = relation;
+      const newName = prompt('Введите новое название отношения:', oldName);
+      if (newName && newName.trim() && newName !== oldName) {
+        updateRelation(oldName, newName.trim()).then(() => {
+          if (selectedRelation === oldName) selectedRelation = newName.trim();
+          renderRelationsList(modal.querySelector('#relation-search').value);
+        });
+      }
+    } else if (target.classList.contains('delete-relation-btn')) {
+      showConfirmDialog(
+        'Удалить отношение?',
+        `Вы уверены, что хотите удалить отношение "${relation}"?`,
+        async () => {
+          await deleteRelation(relation);
+          if (selectedRelation === relation) selectedRelation = null;
+          renderRelationsList(modal.querySelector('#relation-search').value);
+        }
+      );
+    }
+  });
+
+  // Дебаунсинг ввода поиска
+  let searchTimeout;
   const searchInput = modal.querySelector('#relation-search');
   searchInput.addEventListener('input', (e) => {
-    renderRelationsList(e.target.value);
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+      renderRelationsList(e.target.value);
+    }, 300);
   });
 
   renderRelationsList();
@@ -1613,89 +1871,109 @@ export function showSubscriptionManagement(client) {
   });
 }
 
-export function showSubscriptionForm(title, sub, clients, groups, callback) {
+export async function showSubscriptionForm(title, sub, clients, groups, callback) {
   const modal = document.createElement('div');
   modal.className = 'subscription-form-modal';
+  let templates;
+  try {
+    templates = await getSubscriptionTemplates(); // Ждём результат, если функция асинхронная
+    if (!Array.isArray(templates)) {
+      console.error('getSubscriptionTemplates не вернул массив:', templates);
+      templates = [];
+    }
+  } catch (error) {
+    console.error('Ошибка при загрузке шаблонов абонементов:', error);
+    templates = [];
+    showToast('Не удалось загрузить шаблоны абонементов', 'error');
+  }
+
+  // Проверяем, что groups — массив, иначе используем пустой массив
+  const validGroups = Array.isArray(groups) ? groups : [];
+  if (!Array.isArray(groups)) {
+    console.error('Параметр groups не является массивом:', groups);
+    showToast('Группы недоступны, используется пустой список', 'warning');
+  }
+
   modal.innerHTML = `
-  <div class="subscription-form-content">
-    <div class="subscription-form-header">
-      <h2>${title}</h2>
-      <button type="button" class="subscription-form-close">×</button>
-    </div>
-    <div class="subscription-form-body">
-      <div class="form-grid">
-        <div class="form-group">
-          <label for="subscription-client" class="required">Клиент</label>
-          <select id="subscription-client" required disabled>
-            <option value="${sub.clientId}">${clients.find(c => c.id === sub.clientId).name}</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="subscription-template" class="required">Тип абонемента</label>
-          <select id="subscription-template" required>
-            <option value="">Выберите тип абонемента</option>
-            ${getSubscriptionTemplates().map(template => `
-              <option value="${template.id}" ${sub.templateId === template.id ? 'selected' : ''}>
-                ${template.type}
-              </option>
-            `).join('')}
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="subscription-classes-per-week" class="required">Занятий в неделю</label>
-          <input type="number" id="subscription-classes-per-week" 
-                value="${sub.classesPerWeek || ''}" 
-                min="0" max="7" required>
-        </div>
-        <div class="form-group">
-          <label for="subscription-class-time" class="required">Время занятия</label>
-          <input type="time" id="subscription-class-time" 
-                value="${sub.classTime || '09:00'}" required>
-        </div>
-        <div class="form-group">
-          <label for="subscription-start-date" class="required">Дата начала</label>
-          <input type="date" id="subscription-start-date" 
-                value="${sub.startDate || ''}" required>
-        </div>
-        <div class="form-group">
-          <label for="subscription-end-date" class="required">Дата окончания</label>
-          <input type="date" id="subscription-end-date" 
-                value="${sub.endDate || ''}" required>
-        </div>
-        <div class="form-group full-width">
-          <label>Дни недели занятий</label>
-          <div class="days-of-week-selector">
-            ${['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map(day => `
-              <button type="button" class="day-button${sub.daysOfWeek?.includes(day) ? ' selected' : ''}" 
-                      data-day="${day}">${day}</button>
-            `).join('')}
+    <div class="subscription-form-content">
+      <div class="subscription-form-header">
+        <h2>${title}</h2>
+        <button type="button" class="subscription-form-close">×</button>
+      </div>
+      <div class="subscription-form-body">
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="subscription-client" class="required">Клиент</label>
+            <select id="subscription-client" required disabled>
+              <option value="${sub.clientId}">${clients.find(c => c.id === sub.clientId).name}</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="subscription-template" class="required">Тип абонемента</label>
+            <select id="subscription-template" required>
+              <option value="">Выберите тип абонемента</option>
+              ${templates.map(template => `
+                <option value="${template.id}" ${sub.templateId === template.id ? 'selected' : ''}>
+                  ${template.type}
+                </option>
+              `).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="subscription-classes-per-week" class="required">Занятий в неделю</label>
+            <input type="number" id="subscription-classes-per-week" 
+                  value="${sub.classesPerWeek || ''}" 
+                  min="0" max="7" required>
+          </div>
+          <div class="form-group">
+            <label for="subscription-class-time" class="required">Время занятия</label>
+            <input type="time" id="subscription-class-time" 
+                  value="${sub.classTime || '09:00'}" required>
+          </div>
+          <div class="form-group">
+            <label for="subscription-start-date" class="required">Дата начала</label>
+            <input type="date" id="subscription-start-date" 
+                  value="${sub.startDate || ''}" required>
+          </div>
+          <div class="form-group">
+            <label for="subscription-end-date" class="required">Дата окончания</label>
+            <input type="date" id="subscription-end-date" 
+                  value="${sub.endDate || ''}" required>
+          </div>
+          <div class="form-group full-width">
+            <label>Дни недели занятий</label>
+            <div class="days-of-week-selector">
+              ${['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map(day => `
+                <button type="button" class="day-button${sub.daysOfWeek?.includes(day) ? ' selected' : ''}" 
+                        data-day="${day}">${day}</button>
+              `).join('')}
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="subscription-group">Группа (опционально)</label>
+            <select id="subscription-group">
+              <option value="">Без привязки к группе</option>
+              ${validGroups.map(group => `
+                <option value="${group}" ${sub.group === group ? 'selected' : ''}>${group}</option>
+              `).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="subscription-is-paid" ${sub.isPaid !== false ? 'checked' : ''}>
+              <span class="checkmark"></span>
+              Абонемент оплачен
+            </label>
+            <small class="field-hint">Влияет на активность абонемента</small>
           </div>
         </div>
-        <div class="form-group">
-          <label for="subscription-group">Группа (опционально)</label>
-          <select id="subscription-group">
-            <option value="">Без привязки к группе</option>
-            ${groups.map(group => `
-              <option value="${group}" ${sub.group === group ? 'selected' : ''}>${group}</option>
-            `).join('')}
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="checkbox-label">
-            <input type="checkbox" id="subscription-is-paid" ${sub.isPaid !== false ? 'checked' : ''}>
-            <span class="checkmark"></span>
-            Абонемент оплачен
-          </label>
-          <small class="field-hint">Влияет на активность абонемента</small>
-        </div>
+      </div>
+      <div class="subscription-form-footer">
+        <button type="button" id="subscription-cancel-btn" class="btn-secondary">Отмена</button>
+        <button type="button" id="subscription-save-btn" class="btn-primary">Сохранить</button>
       </div>
     </div>
-    <div class="subscription-form-footer">
-      <button type="button" id="subscription-cancel-btn" class="btn-secondary">Отмена</button>
-      <button type="button" id="subscription-save-btn" class="btn-primary">Сохранить</button>
-    </div>
-  </div>
-`;
+  `;
 
   document.getElementById('main-content').appendChild(modal);
 
@@ -1769,7 +2047,7 @@ export function showSubscriptionForm(title, sub, clients, groups, callback) {
 
     const subscriptionManagementModal = document.querySelector('.subscription-management-modal');
     if (subscriptionManagementModal) {
-      const client = clients.find(c => c.id === sub.clientId); // Предполагаем, что clients - это clientsData
+      const client = clients.find(c => c.id === sub.clientId);
       subscriptionManagementModal.remove();
       showSubscriptionManagement(client);
     }
@@ -1988,13 +2266,33 @@ export function showRenewSubscriptionForm(title, client, sub, callback) {
   });
 }
 
+// Функция для отображения формы управления группами клиента
 export function showGroupForm(title, client, groups, callback) {
-  console.log(`showGroupForm: client=${client.id}, groups=${groups}`);
+  console.log(`showGroupForm: клиент=${client.id}, группы=`, groups);
+
+  // Создаем модальное окно
   const modal = document.createElement('div');
   modal.className = 'group-form-modal';
-  let selectedGroups = [...(client.groups || [])];
-  let groupHistory = [...(client.group_history || [])]; // Изменено на group_history
 
+  // Копия текущих групп клиента
+  let selectedGroups = [...(client.groups || [])];
+
+  // Копия истории групп с преобразованием дат в формат YYYY-MM-DD
+  let groupHistory = Array.isArray(client.group_history)
+    ? client.group_history.map(entry => ({
+      ...entry,
+      date: entry.date.split('T')[0] // Удаляем временную часть
+    }))
+    : [];
+
+  // Проверяем, что groups — это массив, если нет — устанавливаем пустой массив
+  const validGroups = Array.isArray(groups) ? groups : [];
+  if (!Array.isArray(groups)) {
+    console.warn('Параметр groups не является массивом:', groups);
+    showToast('Группы недоступны, отображается пустой список.', 'warning');
+  }
+
+  // Функция для форматирования даты
   function formatDate(dateString) {
     if (!dateString) return 'Никогда';
     const date = new Date(dateString);
@@ -2009,6 +2307,7 @@ export function showGroupForm(title, client, groups, callback) {
     return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
   }
 
+  // Функция для рендеринга истории групп
   function renderGroupHistory() {
     const historyContainer = modal.querySelector('.group-history-container');
     historyContainer.innerHTML = `
@@ -2038,11 +2337,13 @@ export function showGroupForm(title, client, groups, callback) {
     `;
   }
 
+  // Функция для рендеринга списка групп
   function renderGroups(searchTerm = '') {
     const groupList = modal.querySelector('.groups-list');
-    const filteredGroups = groups
+    const filteredGroups = validGroups
       .filter(group => group.toLowerCase().includes(searchTerm.toLowerCase()))
       .sort((a, b) => a.localeCompare(b));
+
     groupList.innerHTML = `
       <table class="group-selection-table">
         <thead>
@@ -2053,7 +2354,7 @@ export function showGroupForm(title, client, groups, callback) {
           </tr>
         </thead>
         <tbody>
-          ${filteredGroups.map(group => {
+          ${filteredGroups.length ? filteredGroups.map(group => {
       const isSelected = selectedGroups.includes(group);
       const historyEntry = groupHistory.find(entry => entry.group === group && entry.action === 'added');
       const startDate = historyEntry ? historyEntry.date.split('T')[0] : new Date().toISOString().split('T')[0];
@@ -2064,11 +2365,16 @@ export function showGroupForm(title, client, groups, callback) {
                 <td><input type="date" class="start-date-input" value="${isSelected ? startDate : ''}" ${!isSelected ? 'disabled' : ''}></td>
               </tr>
             `;
-    }).join('')}
+    }).join('') : `
+            <tr>
+              <td colspan="3" class="no-data">Нет доступных групп</td>
+            </tr>
+          `}
         </tbody>
       </table>
     `;
 
+    // Обработка чекбокса "Выбрать все"
     const selectAllCheckbox = modal.querySelector('#select-all-groups');
     const checkboxes = modal.querySelectorAll('.group-row input[type="checkbox"]');
     const allChecked = Array.from(checkboxes).every(cb => cb.checked);
@@ -2102,7 +2408,7 @@ export function showGroupForm(title, client, groups, callback) {
           });
         } else if (!checked) {
           selectedGroups = selectedGroups.filter(g => g !== group);
-          groupHistory.push({ date: new Date().toISOString(), action: 'removed', group });
+          groupHistory.push({ date: new Date().toISOString().split('T')[0], action: 'removed', group });
           removeClientFromGroup(client.id, group);
           dateInput.disabled = true;
           renderGroupHistory();
@@ -2111,6 +2417,7 @@ export function showGroupForm(title, client, groups, callback) {
       renderGroups(searchTerm);
     });
 
+    // Обработка отдельных чекбоксов
     groupList.querySelectorAll('.group-row input[type="checkbox"]').forEach(checkbox => {
       checkbox.addEventListener('change', (e) => {
         const group = e.target.value;
@@ -2136,7 +2443,7 @@ export function showGroupForm(title, client, groups, callback) {
           }
         } else {
           selectedGroups = selectedGroups.filter(g => g !== group);
-          groupHistory.push({ date: new Date().toISOString(), action: 'removed', group });
+          groupHistory.push({ date: new Date().toISOString().split('T')[0], action: 'removed', group });
           removeClientFromGroup(client.id, group);
           dateInput.disabled = true;
           renderGroupHistory();
@@ -2145,6 +2452,7 @@ export function showGroupForm(title, client, groups, callback) {
       });
     });
 
+    // Обработка изменения даты
     groupList.querySelectorAll('.start-date-input').forEach(input => {
       input.addEventListener('change', (e) => {
         const group = e.target.closest('.group-row').dataset.group;
@@ -2160,6 +2468,7 @@ export function showGroupForm(title, client, groups, callback) {
     });
   }
 
+  // HTML-структура модального окна
   modal.innerHTML = `
     <div class="group-form-content">
       <div class="group-form-header">
@@ -2189,24 +2498,29 @@ export function showGroupForm(title, client, groups, callback) {
     </div>
   `;
 
+  // Добавляем модальное окно в DOM
   document.getElementById('main-content').appendChild(modal);
 
+  // Функция для закрытия модального окна
   const closeModal = () => modal.remove();
   setupModalClose(modal, closeModal);
 
+  // Обработчики кнопок
   modal.querySelector('.group-form-close').addEventListener('click', closeModal);
   modal.querySelector('#group-cancel-btn').addEventListener('click', closeModal);
 
+  // Обработчик поиска
   const searchInput = modal.querySelector('#group-search');
   searchInput.addEventListener('input', (e) => {
     renderGroups(e.target.value);
   });
 
+  // Обработчик сохранения
   modal.querySelector('#group-save-btn').addEventListener('click', () => {
     console.log(`Сохранение групп для клиента ${client.id}:`, selectedGroups);
     const finalGroups = selectedGroups.map(group => {
       const historyEntry = groupHistory.find(entry => entry.group === group && entry.action === 'added');
-      return { name: group, startDate: historyEntry ? historyEntry.date : new Date().toISOString() };
+      return { name: group, startDate: historyEntry ? historyEntry.date : new Date().toISOString().split('T')[0] };
     });
     callback(finalGroups.map(g => g.name), groupHistory);
     if (typeof renderClients === 'function') {
@@ -2215,6 +2529,7 @@ export function showGroupForm(title, client, groups, callback) {
     closeModal();
   });
 
+  // Функция для отображения модального окна выбора даты
   function showDateSelectionModal(title, callback) {
     const dateModal = document.createElement('div');
     dateModal.className = 'date-modal';
@@ -2262,6 +2577,7 @@ export function showGroupForm(title, client, groups, callback) {
     }, { once: true });
   }
 
+  // Инициализация рендеринга
   renderGroupHistory();
   renderGroups();
 }
