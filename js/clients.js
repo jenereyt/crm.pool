@@ -11,12 +11,15 @@ let clientsData = JSON.parse(localStorage.getItem('clientsData')) || [];
 let commonDiagnoses = [];
 let commonRelations = [];
 
+
+
+
 async function syncRelations() {
   try {
     const response = await fetch(`${server}/relations`);
     if (!response.ok) throw new Error('Failed to fetch relations');
     const data = await response.json();
-    commonRelations = data.map(r => r.name);
+    commonRelations = data; // Теперь массив объектов [{id, name}]
     localStorage.setItem('commonRelations', JSON.stringify(commonRelations));
     return commonRelations;
   } catch (error) {
@@ -31,7 +34,7 @@ async function syncDiagnoses() {
     const response = await fetch(`${server}/diagnoses`);
     if (!response.ok) throw new Error('Failed to fetch diagnoses');
     const data = await response.json();
-    commonDiagnoses = data.map(d => d.name);
+    commonDiagnoses = data; // Теперь массив объектов [{id, name}]
     localStorage.setItem('commonDiagnoses', JSON.stringify(commonDiagnoses));
     return commonDiagnoses;
   } catch (error) {
@@ -50,23 +53,41 @@ async function addRelation(newRelation) {
     });
     if (!response.ok) throw new Error('Failed to add relation');
     await syncRelations(); // Синхронизируем после добавления
+    showToast('Отношение добавлено на сервер', 'success');
   } catch (error) {
     console.error('Error adding relation to server:', error);
     showToast('Ошибка добавления отношения на сервер.', 'error');
   }
 }
 
+async function addDiagnosis(newDiagnosis) {
+  try {
+    const response = await fetch(`${server}/diagnoses`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: newDiagnosis })
+    });
+    if (!response.ok) throw new Error('Failed to add diagnosis');
+    await syncDiagnoses(); // Синхронизируем после добавления
+    showToast('Диагноз добавлен на сервер', 'success');
+  } catch (error) {
+    console.error('Error adding diagnosis to server:', error);
+    showToast('Ошибка добавления диагноза на сервер.', 'error');
+  }
+}
+
 async function updateDiagnosis(oldName, newName) {
   try {
-    // Skip server call since endpoint is not available
-    const index = commonDiagnoses.indexOf(oldName);
-    if (index !== -1) {
-      commonDiagnoses[index] = newName;
-      localStorage.setItem('commonDiagnoses', JSON.stringify(commonDiagnoses));
-      showToast('Диагноз обновлён локально', 'success');
-    } else {
-      throw new Error('Diagnosis not found');
-    }
+    const diag = commonDiagnoses.find(d => d.name === oldName);
+    if (!diag) throw new Error('Diagnosis not found');
+    const response = await fetch(`${server}/diagnoses/${diag.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: newName })
+    });
+    if (!response.ok) throw new Error('Failed to update diagnosis');
+    await syncDiagnoses();
+    showToast('Диагноз обновлен на сервере', 'success');
   } catch (error) {
     console.error('Error updating diagnosis:', error);
     showToast('Ошибка обновления диагноза', 'error');
@@ -75,15 +96,16 @@ async function updateDiagnosis(oldName, newName) {
 
 async function updateRelation(oldName, newName) {
   try {
-    // Skip server call since endpoint is not available
-    const index = commonRelations.indexOf(oldName);
-    if (index !== -1) {
-      commonRelations[index] = newName;
-      localStorage.setItem('commonRelations', JSON.stringify(commonRelations));
-      showToast('Отношение обновлено локально', 'success');
-    } else {
-      throw new Error('Relation not found');
-    }
+    const rel = commonRelations.find(r => r.name === oldName);
+    if (!rel) throw new Error('Relation not found');
+    const response = await fetch(`${server}/relations/${rel.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: newName })
+    });
+    if (!response.ok) throw new Error('Failed to update relation');
+    await syncRelations();
+    showToast('Отношение обновлено на сервере', 'success');
   } catch (error) {
     console.error('Error updating relation:', error);
     showToast('Ошибка обновления отношения', 'error');
@@ -92,10 +114,14 @@ async function updateRelation(oldName, newName) {
 
 async function deleteDiagnosis(name) {
   try {
-    // Skip server call since endpoint is not available
-    commonDiagnoses = commonDiagnoses.filter(d => d !== name);
-    localStorage.setItem('commonDiagnoses', JSON.stringify(commonDiagnoses));
-    showToast('Диагноз удалён локально', 'success');
+    const diag = commonDiagnoses.find(d => d.name === name);
+    if (!diag) throw new Error('Diagnosis not found');
+    const response = await fetch(`${server}/diagnoses/${diag.id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete diagnosis');
+    await syncDiagnoses();
+    showToast('Диагноз удален с сервера', 'success');
   } catch (error) {
     console.error('Error deleting diagnosis:', error);
     showToast('Ошибка удаления диагноза', 'error');
@@ -104,14 +130,44 @@ async function deleteDiagnosis(name) {
 
 async function deleteRelation(name) {
   try {
-    // Skip server call since endpoint is not available
-    commonRelations = commonRelations.filter(r => r !== name);
-    localStorage.setItem('commonRelations', JSON.stringify(commonRelations));
-    showToast('Отношение удалено локально', 'success');
+    const rel = commonRelations.find(r => r.name === name);
+    if (!rel) throw new Error('Relation not found');
+    const response = await fetch(`${server}/relations/${rel.id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete relation');
+    await syncRelations();
+    showToast('Отношение удалено с сервера', 'success');
   } catch (error) {
     console.error('Error deleting relation:', error);
     showToast('Ошибка удаления отношения', 'error');
   }
+}
+
+function getRelationName(id) {
+  return commonRelations.find(r => r.id === id)?.name || 'Неизвестно';
+}
+
+function getDiagnosisName(id) {
+  return commonDiagnoses.find(d => d.id === id)?.name || 'Неизвестно';
+}
+
+async function getOrCreateRelationId(name) {
+  if (!name) return null;
+  let rel = commonRelations.find(r => r.name === name);
+  if (rel) return rel.id;
+  await addRelation(name);
+  rel = commonRelations.find(r => r.name === name);
+  return rel?.id || null;
+}
+
+async function getOrCreateDiagnosisId(name) {
+  if (!name) return null;
+  let diag = commonDiagnoses.find(d => d.name === name);
+  if (diag) return diag.id;
+  await addDiagnosis(name);
+  diag = commonDiagnoses.find(d => d.name === name);
+  return diag?.id || null;
 }
 
 async function syncClientsWithServer() {
@@ -138,6 +194,17 @@ export function getClientById(id) {
 }
 
 export async function addClient(client) {
+  const parentsWithIds = await Promise.all((client.parents || []).map(async p => ({
+    full_name: p.fullName || '',
+    phone: p.phone || '',
+    relation_id: await getOrCreateRelationId(p.relation)
+  })));
+
+  const diagnosesWithIds = await Promise.all((client.diagnoses || []).map(async d => ({
+    diagnosis_id: await getOrCreateDiagnosisId(d.name),
+    notes: d.notes || ''
+  })));
+
   const payload = {
     surname: client.surname,
     name: client.name,
@@ -145,8 +212,8 @@ export async function addClient(client) {
     phone: client.phone || '',
     birth_date: client.birth_date,
     gender: client.gender,
-    parents: client.parents || [],
-    diagnoses: client.diagnoses || [],
+    parents: parentsWithIds,
+    diagnoses: diagnosesWithIds,
     features: client.features || '',
     blacklisted: false,
     groups: client.groups || [],
@@ -199,7 +266,6 @@ export async function addClient(client) {
       photo: serverClient.photo ? serverClient.photo.substring(0, 50) + '...' : 'null'
     });
 
-    // Сохраняем photo локально, если сервер не вернул его
     if (!serverClient.photo && photoUrl) {
       console.warn('Server did not return photo, keeping local base64');
       serverClient.photo = photoUrl;
@@ -208,6 +274,7 @@ export async function addClient(client) {
     Object.assign(newClient, serverClient);
     localStorage.setItem('clientsData', JSON.stringify(clientsData));
     showToast('Клиент добавлен и синхронизирован с сервером', 'success');
+    if (typeof renderClients === 'function') renderClients(); // Автообновление списка
   } catch (error) {
     console.error('Error adding client to server:', error);
     showToast('Ошибка добавления на сервер. Клиент сохранён локально.', 'error');
@@ -235,18 +302,23 @@ export async function updateClient(id, data) {
     photoUrl = '';
   }
 
-  // Map parents to server-expected format
-  const updatedParents = (data.parents || []).map(p => ({
+  const parentsWithIds = await Promise.all((data.parents || []).map(async p => ({
     full_name: p.fullName || '',
     phone: p.phone || '',
-    relation_id: commonRelations.includes(p.relation) ? p.relation : null
-  }));
+    relation_id: await getOrCreateRelationId(p.relation)
+  })));
 
-  // Update client locally
+  const diagnosesWithIds = await Promise.all((data.diagnoses || []).map(async d => ({
+    diagnosis_id: await getOrCreateDiagnosisId(d.name),
+    notes: d.notes || ''
+  })));
+
+  // Update client locally (для форм храним name, но можно хранить как есть)
   Object.assign(client, {
     ...data,
     photo: photoUrl,
-    parents: updatedParents,
+    parents: data.parents,  // В форме: {fullName, phone, relation}
+    diagnoses: data.diagnoses,  // В форме: {name, notes}
     groups: Array.isArray(data.groups) ? data.groups : client.groups || []
   });
   localStorage.setItem('clientsData', JSON.stringify(clientsData));
@@ -260,9 +332,9 @@ export async function updateClient(id, data) {
     phone: client.phone || '',
     birth_date: client.birth_date,
     gender: client.gender,
-    parents: updatedParents,
-    diagnoses: Array.isArray(client.diagnoses) ? client.diagnoses : [],
-    features: client.features || '',
+    parents: parentsWithIds,
+    diagnoses: diagnosesWithIds,
+    features: data.features || '',
     blacklisted: client.blacklisted !== undefined ? client.blacklisted : false,
     groups: Array.isArray(client.groups) ? client.groups : [],
     group_history: Array.isArray(client.group_history)
@@ -275,7 +347,7 @@ export async function updateClient(id, data) {
           return true;
         })
         .map(entry => ({
-          date: entry.date.split('T')[0], // Convert to date-only
+          date: entry.date.split('T')[0],
           action: entry.action,
           group_id: entry.group
         }))
@@ -322,6 +394,7 @@ export async function updateClient(id, data) {
     Object.assign(client, serverClient);
     localStorage.setItem('clientsData', JSON.stringify(clientsData));
     showToast('Клиент обновлён и синхронизирован с сервером', 'success');
+    if (typeof renderClients === 'function') renderClients(); // Автообновление списка
   } catch (error) {
     console.error('Error updating client on server:', error);
     showToast('Ошибка обновления на сервере. Изменения сохранены локально.', 'warning');
@@ -420,12 +493,37 @@ function setupModalClose(modal, closeModal) {
 export function showClientForm(title, client, callback) {
   const modal = document.createElement('div');
   modal.className = 'client-form-modal';
-  let parents = client.parents ? [...client.parents.map(p => ({
-    fullName: p.fullName || '',
-    phone: p.phone || '',
-    relation: p.relation || ''
-  }))] : [];
-  let diagnoses = client.diagnoses ? [...client.diagnoses] : [];
+
+  // Инициализация родителей: из сервера full_name и relation_id → fullName и relation (name)
+  let parents = client.parents
+    ? [...client.parents.map(p => ({
+        fullName: p.full_name || p.fullName || '',
+        phone: p.phone || '',
+        relation: getRelationName(p.relation_id) || p.relation || ''
+      }))]
+    : [];
+
+  // Инициализация диагнозов: из сервера diagnosis_id и notes → name и notes
+  let diagnoses = client.diagnoses
+    ? [...client.diagnoses
+        .filter(d => d.diagnosis_id !== undefined && d.diagnosis_id !== null) // Фильтруем некорректные diagnosis_id
+        .map(d => {
+          const diagnosisName = d.name || getDiagnosisName(d.diagnosis_id) || 'Неизвестный диагноз';
+          if (!d.diagnosis_id || getDiagnosisName(d.diagnosis_id) === 'Неизвестно') {
+            console.warn(`Диагноз с ID ${d.diagnosis_id} не найден в commonDiagnoses`, d);
+          }
+          return {
+            name: diagnosisName,
+            notes: d.notes || ''
+          };
+        })]
+    : [];
+
+  // Логирование для отладки
+  console.log('client.diagnoses:', client.diagnoses);
+  console.log('Инициализированные диагнозы:', diagnoses);
+  console.log('commonDiagnoses:', commonDiagnoses);
+
   const isEdit = !!client.id;
 
   function calculateAge(birthDate) {
@@ -460,21 +558,27 @@ export function showClientForm(title, client, callback) {
           </tr>
         </thead>
         <tbody>
-          ${parents.length ? parents.map((p, index) => `
+          ${parents.length
+            ? parents
+                .map(
+                  (p, index) => `
             <tr class="parent-row" data-index="${index}">
-              <td><input type="text" class="parent-fullname" value="${p.fullName}" required></td>
-              <td><input type="tel" class="parent-phone" value="${p.phone}" required></td>
+              <td><input type="text" class="parent-fullname" value="${p.fullName || ''}" required></td>
+              <td><input type="tel" class="parent-phone" value="${p.phone || ''}" required></td>
               <td>
                 <div class="input-with-button">
-                  <input type="text" list="relation-list" class="parent-relation" value="${p.relation}" required>
+                  <input type="text" list="relation-list" class="parent-relation" value="${p.relation || ''}" required>
                   <datalist id="relation-list">
-                    ${commonRelations.map(rel => `<option value="${rel}">`).join('')}
+                    ${commonRelations.map(rel => `<option value="${rel.name}">`).join('')}
                   </datalist>
                   <button type="button" class="relation-dictionary-btn">...</button>
                 </div>
               </td>
             </tr>
-          `).join('') : `
+          `
+                )
+                .join('')
+            : `
             <tr>
               <td colspan="3" class="no-parents">Нет добавленных родителей/опекунов</td>
             </tr>
@@ -524,12 +628,12 @@ export function showClientForm(title, client, callback) {
       const relationInput = row.querySelector('.parent-relation');
       const dictionaryBtn = row.querySelector('.relation-dictionary-btn');
 
-      fullnameInput.addEventListener('input', (e) => parents[index].fullName = e.target.value);
-      phoneInput.addEventListener('input', (e) => parents[index].phone = e.target.value);
-      relationInput.addEventListener('input', (e) => parents[index].relation = e.target.value);
+      fullnameInput.addEventListener('input', e => (parents[index].fullName = e.target.value));
+      phoneInput.addEventListener('input', e => (parents[index].phone = e.target.value));
+      relationInput.addEventListener('input', e => (parents[index].relation = e.target.value));
 
       dictionaryBtn.addEventListener('click', () => {
-        showRelationDictionary((selectedRelation) => {
+        showRelationDictionary(selectedRelation => {
           if (selectedRelation) {
             relationInput.value = selectedRelation;
             parents[index].relation = selectedRelation;
@@ -553,24 +657,32 @@ export function showClientForm(title, client, callback) {
           </tr>
         </thead>
         <tbody>
-          ${diagnoses.length ? diagnoses.map((d, index) => `
-            <tr class="diagnosis-row" data-index="${index}">
-              <td>
-                <div class="input-with-button">
-                  <input type="text" list="diagnosis-list" class="diagnosis-name" value="${d.name}" required>
-                  <datalist id="diagnosis-list">
-                    ${commonDiagnoses.map(diag => `<option value="${diag}">`).join('')}
-                  </datalist>
-                  <button type="button" class="diagnosis-dictionary-btn">...</button>
-                </div>
-              </td>
-              <td><input type="text" class="diagnosis-notes" value="${d.notes || ''}"></td>
-            </tr>
-          `).join('') : `
-            <tr>
-              <td colspan="2" class="no-diagnoses">Нет добавленных диагнозов</td>
-            </tr>
-          `}
+          ${diagnoses.length
+            ? diagnoses
+                .map(
+                  (d, index) => `
+                <tr class="diagnosis-row" data-index="${index}">
+                  <td>
+                    <div class="input-with-button">
+                      <input type="text" list="diagnosis-list" class="diagnosis-name" value="${
+                        d.name || ''
+                      }" required>
+                      <datalist id="diagnosis-list">
+                        ${commonDiagnoses.map(diag => `<option value="${diag.name}">`).join('')}
+                      </datalist>
+                      <button type="button" class="diagnosis-dictionary-btn">...</button>
+                    </div>
+                  </td>
+                  <td><input type="text" class="diagnosis-notes" value="${d.notes || ''}"></td>
+                </tr>
+              `
+                )
+                .join('')
+            : `
+                <tr>
+                  <td colspan="2" class="no-diagnoses">Нет добавленных диагнозов</td>
+                </tr>
+              `}
         </tbody>
       </table>
     `;
@@ -615,11 +727,11 @@ export function showClientForm(title, client, callback) {
       const notesInput = row.querySelector('.diagnosis-notes');
       const dictionaryBtn = row.querySelector('.diagnosis-dictionary-btn');
 
-      nameInput.addEventListener('input', (e) => diagnoses[index].name = e.target.value);
-      notesInput.addEventListener('input', (e) => diagnoses[index].notes = e.target.value);
+      nameInput.addEventListener('input', e => (diagnoses[index].name = e.target.value));
+      notesInput.addEventListener('input', e => (diagnoses[index].notes = e.target.value));
 
       dictionaryBtn.addEventListener('click', () => {
-        showDiagnosisDictionary((selectedDiagnosis) => {
+        showDiagnosisDictionary(selectedDiagnosis => {
           if (selectedDiagnosis) {
             nameInput.value = selectedDiagnosis;
             diagnoses[index].name = selectedDiagnosis;
@@ -683,15 +795,16 @@ export function showClientForm(title, client, callback) {
         <div class="client-photo-section">
           <div class="photo-upload-area">
             <div class="for-flex flex-end">
-              <button type="button" class="photo-remove-btn" id="photo-remove-btn" ${!client.photo ? 'style="display: none;"' : ''}>
+              <button type="button" class="photo-remove-btn" id="photo-remove-btn" ${
+                !client.photo ? 'style="display: none;"' : ''
+              }>
                 X
               </button>
             </div>
             <div id="client-photo-preview" class="client-photo-preview ${!client.photo ? 'placeholder' : ''}">
-              ${client.photo ?
-      `<img src="${client.photo}" alt="${client.surname || 'Клиент'}">` :
-      `<img src="images/icon-photo.svg" alt="Загрузить фото" class="upload-icon">`
-    }
+              ${client.photo
+                ? `<img src="${client.photo}" alt="${client.surname || 'Клиент'}">`
+                : `<img src="images/icon-photo.svg" alt="Загрузить фото" class="upload-icon">`}
             </div>
             <input type="file" id="client-photo" accept="image/*" style="display: none;">
           </div>
@@ -706,7 +819,9 @@ export function showClientForm(title, client, callback) {
         <div id="diagnoses-container"></div>
         <div class="form-group full-width">
           <label for="client-features">Примечания</label>
-          <input type="text" id="client-features" value="${client.features || ''}" placeholder="Дополнительная информация о клиенте, особенности занятий...">
+          <input type="text" id="client-features" value="${
+            client.features || ''
+          }" placeholder="Дополнительная информация о клиенте, особенности занятий...">
         </div>
       </div>
 
@@ -748,7 +863,7 @@ export function showClientForm(title, client, callback) {
     }
   });
 
-  photoInput.addEventListener('change', (e) => {
+  photoInput.addEventListener('change', e => {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
@@ -757,7 +872,7 @@ export function showClientForm(title, client, callback) {
       }
 
       const reader = new FileReader();
-      reader.onload = (ev) => {
+      reader.onload = ev => {
         const img = document.createElement('img');
         img.src = ev.target.result;
         img.alt = 'Предпросмотр';
@@ -789,13 +904,37 @@ export function showClientForm(title, client, callback) {
   renderParents(parentsContainer);
 
   const diagnosesContainer = modal.querySelector('#diagnoses-container');
-  renderDiagnoses(diagnosesContainer);
+  // Проверка commonDiagnoses перед рендерингом
+  if (!commonDiagnoses.length) {
+    console.warn('commonDiagnoses пуст, пытаемся синхронизировать');
+    showToast('Справочник диагнозов не загружен, синхронизация...', 'warning');
+    syncDiagnoses().then(() => {
+      console.log('commonDiagnoses после синхронизации:', commonDiagnoses);
+      // Повторная инициализация диагнозов после синхронизации
+      diagnoses = client.diagnoses
+        ? [...client.diagnoses
+            .filter(d => d.diagnosis_id !== undefined && d.diagnosis_id !== null)
+            .map(d => {
+              const diagnosisName = d.name || getDiagnosisName(d.diagnosis_id) || 'Неизвестный диагноз';
+              return {
+                name: diagnosisName,
+                notes: d.notes || ''
+              };
+            })]
+        : [];
+      renderDiagnoses(diagnosesContainer);
+    });
+  } else {
+    renderDiagnoses(diagnosesContainer);
+  }
 
   function validateForm() {
     let isValid = true;
 
-    document.querySelectorAll('.field-error').forEach(el => el.textContent = '');
-    document.querySelectorAll('.form-group input, .form-group select').forEach(el => el.classList.remove('error'));
+    document.querySelectorAll('.field-error').forEach(el => (el.textContent = ''));
+    document
+      .querySelectorAll('.form-group input, .form-group select')
+      .forEach(el => el.classList.remove('error'));
 
     const surname = document.getElementById('client-surname').value.trim();
     if (!surname) {
@@ -878,17 +1017,24 @@ export function showClientForm(title, client, callback) {
     const phone = document.getElementById('client-phone').value.trim();
     const birth_date = document.getElementById('client-birthdate').value;
     const gender = document.getElementById('client-gender').value;
-    const features = document.getElementById('client-features').value.trim();
+    const features = document.getElementById('client-features').value.trim() || '';
 
     const photo = photoInput.files[0] || '';
 
-    const updatedParents = parents.filter(p => p.fullName.trim() !== '').map(p => ({
-      fullName: p.fullName.trim(),
-      phone: p.phone,
-      relation: p.relation
-    }));
+    const updatedParents = parents
+      .filter(p => p.fullName.trim() !== '')
+      .map(p => ({
+        fullName: p.fullName.trim(),
+        phone: p.phone,
+        relation: p.relation
+      }));
 
-    const updatedDiagnoses = diagnoses.filter(d => d.name.trim() !== '');
+    const updatedDiagnoses = diagnoses
+      .filter(d => d.name.trim() !== '')
+      .map(d => ({
+        name: d.name.trim(),
+        notes: d.notes
+      }));
 
     callback({
       surname,
@@ -901,7 +1047,7 @@ export function showClientForm(title, client, callback) {
       diagnoses: updatedDiagnoses,
       features,
       photo,
-      groups: []
+      groups: client.groups || []
     });
     closeModal();
   });
@@ -1035,8 +1181,6 @@ export async function loadClients() {
       }
     });
   }
-
-
 
   function renderClients() {
     const search = document.getElementById('client-search').value.toLowerCase();
@@ -1322,17 +1466,17 @@ export function showClientDetails(client) {
               </div>
               <div class="detail-item">
                 <span class="detail-label">Дата рождения:</span>
-                <span class="detail-value">${client.birth_date || 'Не указана'}</span> <!-- Изменено -->
+                <span class="detail-value">${client.birth_date || 'Не указана'}</span>
               </div>
               <div class="detail-item">
                 <span class="detail-label">Пол:</span>
                 <span class="detail-value">${client.gender === 'male' ? 'Мужской' : client.gender === 'female' ? 'Женский' : 'Не указан'}</span>
               </div>
-              ${client.parents.length > 0 ? `
+              ${client.parents && client.parents.length > 0 ? `
                 <div class="detail-item">
                   <span class="detail-label">Родители/опекуны:</span>
                   <div class="detail-value">
-                    ${client.parents.map(p => `${p.fullName} (${p.phone})${p.relation ? ` - ${p.relation}` : ''}`).join('<br>')}
+                    ${client.parents.map(p => `${p.full_name || ''} (${p.phone || ''})${p.relation_id ? ` - ${getRelationName(p.relation_id)}` : ''}`).join('<br>')}
                   </div>
                 </div>
               ` : ''}
@@ -1342,9 +1486,9 @@ export function showClientDetails(client) {
               <h4>Медицинская информация</h4>
               <div class="detail-item">
                 <span class="detail-label">Диагнозы:</span>
-                <div class="detail-value ${client.diagnoses && client.diagnoses.some(d => d.name !== 'Нет') ? 'has-diagnosis' : ''}">
+                <div class="detail-value ${client.diagnoses && client.diagnoses.some(d => (d.name || getDiagnosisName(d.diagnosis_id)) !== 'Нет') ? 'has-diagnosis' : ''}">
                   ${client.diagnoses && client.diagnoses.length > 0 ?
-      client.diagnoses.map(d => `${d.name}${d.notes ? ` (${d.notes})` : ''}`).join('<br>') : 'Нет'}
+      client.diagnoses.map(d => `${d.name || getDiagnosisName(d.diagnosis_id) || 'Неизвестный диагноз'}${d.notes ? ` (${d.notes})` : ''}`).join('<br>') : 'Нет'}
                 </div>
               </div>
               ${client.features ? `
@@ -1378,7 +1522,7 @@ export function showClientDetails(client) {
     }
                 </div>
               </div>
-              ${client.group_history.length ? `
+              ${client.group_history && client.group_history.length ? `
                 <div class="detail-item">
                   <span class="detail-label">История групп:</span>
                   <div class="renewal-history">
@@ -1392,7 +1536,7 @@ export function showClientDetails(client) {
             
             <div class="detail-section">
               <h4>Абонементы</h4>
-              ${client.subscriptions.length ? client.subscriptions.filter(s => s.isPaid && new Date(s.endDate) >= new Date()).map((sub, index) => {
+              ${client.subscriptions && client.subscriptions.length ? client.subscriptions.filter(s => s.isPaid && new Date(s.endDate) >= new Date()).map((sub, index) => {
       const template = getSubscriptionTemplates().find(t => t.id === sub.templateId);
       return `
                   <div class="subscription-item" data-sub-index="${index}">
@@ -1463,7 +1607,6 @@ export function showClientDetails(client) {
       modal.remove();
       showClientForm('Редактировать клиента', client, async (data) => {
         await updateClient(client.id, data);
-        if (typeof renderClients === 'function') renderClients();
         showToast('Данные клиента обновлены', 'success');
       });
     });
@@ -1493,12 +1636,16 @@ export function showDiagnosisDictionary(callback) {
 
   function renderDiagnosesList(filter = '') {
     const list = modal.querySelector('.diagnoses-list');
-    const filteredDiagnoses = commonDiagnoses.filter(d => String(d).toLowerCase().includes(filter.toLowerCase()));
+    const filteredDiagnoses = commonDiagnoses.filter(d => d.name.toLowerCase().includes(filter.toLowerCase()));
     list.innerHTML = filteredDiagnoses.map(d => `
-      <div class="diagnosis-item ${selectedDiagnosis === d ? 'selected' : ''}" data-diagnosis="${d}">
-        <span class="diagnosis-text">${d}</span>
-        <button type="button" class="edit-diagnosis-btn" data-diagnosis="${d}">✏️</button>
-        <button type="button" class="delete-diagnosis-btn" data-diagnosis="${d}">🗑️</button>
+      <div class="diagnosis-item ${selectedDiagnosis?.id === d.id ? 'selected' : ''}" data-diagnosis-id="${d.id}" data-diagnosis-name="${d.name}">
+        <span class="diagnosis-text">${d.name}</span>
+        <button type="button" class="edit-diagnosis-btn" data-diagnosis-name="${d.name}">
+          <img src="/images/icon-edit.svg" alt="Редактировать" class="btn-icon">
+        </button>
+        <button type="button" class="delete-diagnosis-btn" data-diagnosis-name="${d.name}">
+          <img src="/images/trash.svg" alt="Удалить" class="btn-icon">
+        </button>
       </div>
     `).join('');
     console.log('Список диагнозов отрисован с фильтром:', filter, 'Выбрано:', selectedDiagnosis);
@@ -1538,60 +1685,65 @@ export function showDiagnosisDictionary(callback) {
     console.log('Кнопка "Выбрать" нажата, selectedDiagnosis:', selectedDiagnosis);
     if (selectedDiagnosis) {
       modal.remove();
-      callback(selectedDiagnosis);
+      callback(selectedDiagnosis.name);  // Возвращаем name для формы
     } else {
       showToast('Выберите диагноз', 'error');
     }
   });
 
-  modal.querySelector('#add-new-diagnosis-btn').addEventListener('click', async () => {
+  modal.querySelector('#add-new-diagnosis-btn').addEventListener('click', () => {
     const newDiagnosis = prompt('Введите новый диагноз:');
-    if (newDiagnosis && newDiagnosis.trim() && !commonDiagnoses.includes(newDiagnosis.trim())) {
-      commonDiagnoses.push(newDiagnosis.trim());
-      localStorage.setItem('commonDiagnoses', JSON.stringify(commonDiagnoses));
-      renderDiagnosesList(modal.querySelector('#diagnosis-search').value);
-      showToast('Новый диагноз добавлен локально', 'success');
+    if (newDiagnosis && newDiagnosis.trim() && !commonDiagnoses.some(d => d.name === newDiagnosis.trim())) {
+      addDiagnosis(newDiagnosis.trim()).then(() => {
+        renderDiagnosesList(modal.querySelector('#diagnosis-search').value);
+        showToast('Новый диагноз добавлен', 'success');
+      }).catch(err => {
+        showToast('Ошибка при добавлении', 'error');
+      });
     }
   });
 
-  // Делегирование событий для элементов диагнозов
   const list = modal.querySelector('.diagnoses-list');
   list.addEventListener('click', (e) => {
-    const target = e.target;
+    const target = e.target.closest('button') || e.target; // Учитываем клик по img внутри button
     const diagnosisItem = target.closest('.diagnosis-item');
     if (!diagnosisItem) return;
 
-    const diagnosis = diagnosisItem.dataset.diagnosis;
-    console.log('Клик по элементу диагноза:', diagnosis, 'Цель:', target.tagName, target.className);
+    const name = diagnosisItem.dataset.diagnosisName;
+    const id = diagnosisItem.dataset.diagnosisId;
+    console.log('Клик по элементу диагноза:', name, 'ID:', id, 'Цель:', target.tagName, target.className);
 
-    // Выбор, если клик не по кнопкам редактирования или удаления
     if (!target.classList.contains('edit-diagnosis-btn') && !target.classList.contains('delete-diagnosis-btn')) {
-      selectedDiagnosis = diagnosis;
+      selectedDiagnosis = { id, name };
       console.log('Выбран диагноз:', selectedDiagnosis);
       renderDiagnosesList(modal.querySelector('#diagnosis-search').value);
     } else if (target.classList.contains('edit-diagnosis-btn')) {
-      const oldName = diagnosis;
+      const oldName = name;
       const newName = prompt('Введите новое название диагноза:', oldName);
       if (newName && newName.trim() && newName !== oldName) {
         updateDiagnosis(oldName, newName.trim()).then(() => {
-          if (selectedDiagnosis === oldName) selectedDiagnosis = newName.trim();
+          if (selectedDiagnosis && selectedDiagnosis.name === oldName) selectedDiagnosis.name = newName.trim();
           renderDiagnosesList(modal.querySelector('#diagnosis-search').value);
+        }).catch(err => {
+          showToast('Ошибка при обновлении', 'error');
         });
       }
     } else if (target.classList.contains('delete-diagnosis-btn')) {
       showConfirmDialog(
         'Удалить диагноз?',
-        `Вы уверены, что хотите удалить диагноз "${diagnosis}"?`,
-        async () => {
-          await deleteDiagnosis(diagnosis);
-          if (selectedDiagnosis === diagnosis) selectedDiagnosis = null;
-          renderDiagnosesList(modal.querySelector('#diagnosis-search').value);
+        `Вы уверены, что хотите удалить диагноз "${name}"?`,
+        () => {
+          deleteDiagnosis(name).then(() => {
+            if (selectedDiagnosis && selectedDiagnosis.name === name) selectedDiagnosis = null;
+            renderDiagnosesList(modal.querySelector('#diagnosis-search').value);
+          }).catch(err => {
+            showToast('Ошибка при удалении', 'error');
+          });
         }
       );
     }
   });
 
-  // Дебаунсинг ввода поиска
   let searchTimeout;
   const searchInput = modal.querySelector('#diagnosis-search');
   searchInput.addEventListener('input', (e) => {
@@ -1611,12 +1763,16 @@ export function showRelationDictionary(callback) {
 
   function renderRelationsList(filter = '') {
     const list = modal.querySelector('.relations-list');
-    const filteredRelations = commonRelations.filter(r => String(r).toLowerCase().includes(filter.toLowerCase()));
+    const filteredRelations = commonRelations.filter(r => r.name.toLowerCase().includes(filter.toLowerCase()));
     list.innerHTML = filteredRelations.map(r => `
-      <div class="relation-item ${selectedRelation === r ? 'selected' : ''}" data-relation="${r}">
-        <span class="relation-text">${r}</span>
-        <button type="button" class="edit-relation-btn" data-relation="${r}">✏️</button>
-        <button type="button" class="delete-relation-btn" data-relation="${r}">🗑️</button>
+      <div class="relation-item ${selectedRelation?.id === r.id ? 'selected' : ''}" data-relation-id="${r.id}" data-relation-name="${r.name}">
+        <span class="relation-text">${r.name}</span>
+        <button type="button" class="edit-relation-btn" data-relation-name="${r.name}">
+          <img src="/images/icon-edit.svg" alt="Редактировать" class="btn-icon">
+        </button>
+        <button type="button" class="delete-relation-btn" data-relation-name="${r.name}">
+          <img src="/images/trash.svg" alt="Удалить" class="btn-icon">
+        </button>
       </div>
     `).join('');
     console.log('Список отношений отрисован с фильтром:', filter, 'Выбрано:', selectedRelation);
@@ -1656,60 +1812,65 @@ export function showRelationDictionary(callback) {
     console.log('Кнопка "Выбрать" нажата, selectedRelation:', selectedRelation);
     if (selectedRelation) {
       modal.remove();
-      callback(selectedRelation);
+      callback(selectedRelation.name);  // Возвращаем name для формы
     } else {
       showToast('Выберите отношение', 'error');
     }
   });
 
-  modal.querySelector('#add-new-relation-btn').addEventListener('click', async () => {
+  modal.querySelector('#add-new-relation-btn').addEventListener('click', () => {
     const newRelation = prompt('Введите новое отношение:');
-    if (newRelation && newRelation.trim() && !commonRelations.includes(newRelation.trim())) {
-      commonRelations.push(newRelation.trim());
-      localStorage.setItem('commonRelations', JSON.stringify(commonRelations));
-      renderRelationsList(modal.querySelector('#relation-search').value);
-      showToast('Новое отношение добавлено локально', 'success');
+    if (newRelation && newRelation.trim() && !commonRelations.some(r => r.name === newRelation.trim())) {
+      addRelation(newRelation.trim()).then(() => {
+        renderRelationsList(modal.querySelector('#relation-search').value);
+        showToast('Новое отношение добавлено', 'success');
+      }).catch(err => {
+        showToast('Ошибка при добавлении', 'error');
+      });
     }
   });
 
-  // Делегирование событий для элементов отношений
   const list = modal.querySelector('.relations-list');
   list.addEventListener('click', (e) => {
-    const target = e.target;
+    const target = e.target.closest('button') || e.target; // Учитываем клик по img внутри button
     const relationItem = target.closest('.relation-item');
     if (!relationItem) return;
 
-    const relation = relationItem.dataset.relation;
-    console.log('Клик по элементу отношения:', relation, 'Цель:', target.tagName, target.className);
+    const name = relationItem.dataset.relationName;
+    const id = relationItem.dataset.relationId;
+    console.log('Клик по элементу отношения:', name, 'ID:', id, 'Цель:', target.tagName, target.className);
 
-    // Выбор, если клик не по кнопкам редактирования или удаления
     if (!target.classList.contains('edit-relation-btn') && !target.classList.contains('delete-relation-btn')) {
-      selectedRelation = relation;
+      selectedRelation = { id, name };
       console.log('Выбрано отношение:', selectedRelation);
       renderRelationsList(modal.querySelector('#relation-search').value);
     } else if (target.classList.contains('edit-relation-btn')) {
-      const oldName = relation;
+      const oldName = name;
       const newName = prompt('Введите новое название отношения:', oldName);
       if (newName && newName.trim() && newName !== oldName) {
         updateRelation(oldName, newName.trim()).then(() => {
-          if (selectedRelation === oldName) selectedRelation = newName.trim();
+          if (selectedRelation && selectedRelation.name === oldName) selectedRelation.name = newName.trim();
           renderRelationsList(modal.querySelector('#relation-search').value);
+        }).catch(err => {
+          showToast('Ошибка при обновлении', 'error');
         });
       }
     } else if (target.classList.contains('delete-relation-btn')) {
       showConfirmDialog(
         'Удалить отношение?',
-        `Вы уверены, что хотите удалить отношение "${relation}"?`,
-        async () => {
-          await deleteRelation(relation);
-          if (selectedRelation === relation) selectedRelation = null;
-          renderRelationsList(modal.querySelector('#relation-search').value);
+        `Вы уверены, что хотите удалить отношение "${name}"?`,
+        () => {
+          deleteRelation(name).then(() => {
+            if (selectedRelation && selectedRelation.name === name) selectedRelation = null;
+            renderRelationsList(modal.querySelector('#relation-search').value);
+          }).catch(err => {
+            showToast('Ошибка при удалении', 'error');
+          });
         }
       );
     }
   });
 
-  // Дебаунсинг ввода поиска
   let searchTimeout;
   const searchInput = modal.querySelector('#relation-search');
   searchInput.addEventListener('input', (e) => {

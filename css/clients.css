@@ -1899,6 +1899,18 @@ img[class*='icon'] {
   color: var(--text-color);
 }
 
+.edit-relation-btn, .delete-relation-btn{
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.edit-relation-btn img{
+  width: 15px;
+  height: 15px;
+}
+
+
 .renew-close {
   background: none;
   border: none;
