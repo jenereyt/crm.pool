@@ -11,28 +11,28 @@ export function loadReports() {
   const header = document.createElement('header');
   header.className = 'header';
   header.innerHTML = `
-    <div class="header-content">
-      <img src="images/icon-reports.svg" alt="Отчеты" class="header-icon">
-      <h1>Отчеты</h1>
-    </div>
-  `;
+      <div class="header-content">
+        <img src="images/icon-reports.svg" alt="Отчеты" class="header-icon">
+        <h1>Отчеты</h1>
+      </div>
+    `;
   mainContent.appendChild(header);
 
   const tabsAndDate = document.createElement('div');
   tabsAndDate.className = 'tabs-and-date';
   tabsAndDate.innerHTML = `
-    <div class="reports-tabs">
-      <button class="tab-button active" data-tab="payments">Оплаты</button>
-      <button class="tab-button" data-tab="employees">Сотрудники</button>
-    </div>
-    <div class="report-date">
-      <label>Период: </label>
-      <input type="date" id="report-start-date" value="2025-01-01">
-      <input type="date" id="report-end-date" value="${new Date().toISOString().split('T')[0]}">
-      <button id="generate-report">Сформировать</button>
-      <button id="export-report">Экспорт в CSV</button>
-    </div>
-  `;
+      <div class="reports-tabs">
+        <button class="tab-button active" data-tab="payments">Оплаты</button>
+        <button class="tab-button" data-tab="employees">Сотрудники</button>
+      </div>
+      <div class="report-date">
+        <label>Период: </label>
+        <input type="date" id="report-start-date" value="2025-01-01">
+        <input type="date" id="report-end-date" value="${new Date().toISOString().split('T')[0]}">
+        <button id="generate-report">Сформировать</button>
+        <button id="export-report">Экспорт в CSV</button>
+      </div>
+    `;
   mainContent.appendChild(tabsAndDate);
 
   const reportsSection = document.createElement('div');
@@ -52,13 +52,27 @@ export function loadReports() {
     return { start, end };
   }
 
-  function renderPayments() {
+  async function renderPayments() {
     const period = getPeriod();
     if (!period) return;
 
     const { start, end } = period;
-    const activeSubs = getActiveSubscriptions();
-    const inactiveSubs = getInactiveSubscriptions();
+    let activeSubs = [];
+    let inactiveSubs = [];
+
+    try {
+      activeSubs = (await getActiveSubscriptions()) || [];
+      inactiveSubs = (await getInactiveSubscriptions()) || [];
+    } catch (error) {
+      console.error('Ошибка при получении подписок:', error);
+      showToast('Ошибка при загрузке данных подписок', 'error');
+      return;
+    }
+
+    // Дополнительная проверка на массив
+    activeSubs = Array.isArray(activeSubs) ? activeSubs : [];
+    inactiveSubs = Array.isArray(inactiveSubs) ? inactiveSubs : [];
+
     const allSubs = [...activeSubs, ...inactiveSubs].filter(sub => {
       const subDate = new Date(sub.startDate);
       return subDate >= new Date(start) && subDate <= new Date(end);
@@ -133,14 +147,26 @@ export function loadReports() {
     `;
   }
 
-  function renderEmployees() {
+  async function renderEmployees() {
     const period = getPeriod();
     if (!period) return;
 
     const { start, end } = period;
-    const trainers = getTrainers();
+    let trainers = [];
+    try {
+      trainers = await getTrainers();
+    } catch (error) {
+      console.error('Ошибка при получении тренеров:', error);
+      showToast('Ошибка при загрузке данных тренеров', 'error');
+      return;
+    }
+
+    trainers = Array.isArray(trainers) ? trainers : [];
+
     const trainerStats = {};
-    trainers.forEach(trainer => trainerStats[trainer] = { count: 0, classes: [] });
+    trainers.forEach(trainer => {
+      trainerStats[trainer.name] = { count: 0, classes: [] };
+    });
 
     const filteredSchedule = scheduleData.filter(cls => {
       const clsDate = new Date(cls.date);
@@ -148,7 +174,7 @@ export function loadReports() {
     });
 
     filteredSchedule.forEach(cls => {
-      if (trainers.includes(cls.trainer)) {
+      if (trainers.find(t => t.name === cls.trainer)) {
         trainerStats[cls.trainer].count++;
         trainerStats[cls.trainer].classes.push({ name: cls.name, date: cls.date, group: cls.group || 'Без группы' });
       }
@@ -156,12 +182,14 @@ export function loadReports() {
 
     const totalClasses = Object.values(trainerStats).reduce((acc, stat) => acc + stat.count, 0);
 
+    // Проверяем, что groups — это массив
+    const groupsList = Array.isArray(groups) ? groups : [];
     const groupFilter = `
       <div class="group-filter">
         <label>Группа: </label>
         <select id="group-filter">
           <option value="">Все группы</option>
-          ${groups.map(group => `<option value="${group}">${group}</option>`).join('')}
+          ${groupsList.map(group => `<option value="${escapeHtml(group.name)}">${escapeHtml(group.name)}</option>`).join('')}
         </select>
       </div>
     `;
@@ -184,7 +212,7 @@ export function loadReports() {
           </tr>
         </thead>
         <tbody>
-          ${Object.entries(trainerStats).map(([trainer, stat]) => {
+          ${Object.entries(trainerStats).map(([trainerName, stat]) => {
       const groupFilterValue = document.getElementById('group-filter')?.value || '';
       const filteredClasses = groupFilterValue
         ? stat.classes.filter(cls => cls.group === groupFilterValue)
@@ -195,7 +223,7 @@ export function loadReports() {
       const allDetails = sortedClasses.map(cls => `${cls.name} (${formatDate(cls.date)}, группа: ${cls.group})`).join('<br>');
       return `
               <tr>
-                <td>${trainer}</td>
+                <td>${trainerName}</td>
                 <td>${displayCount}</td>
                 <td>
                   ${previewDetails || 'Нет деталей'}
@@ -238,12 +266,12 @@ export function loadReports() {
     const modal = document.createElement('div');
     modal.className = 'details-modal';
     modal.innerHTML = `
-      <div class="details-modal-content">
-        <h3>Детали занятий</h3>
-        <div class="details-content">${details}</div>
-        <button class="btn-primary close-details-btn">Закрыть</button>
-      </div>
-    `;
+        <div class="details-modal-content">
+          <h3>Детали занятий</h3>
+          <div class="details-content">${details}</div>
+          <button class="btn-primary close-details-btn">Закрыть</button>
+        </div>
+      `;
     document.body.appendChild(modal);
 
     modal.querySelector('.close-details-btn').addEventListener('click', () => modal.remove());

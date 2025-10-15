@@ -11,9 +11,6 @@ let clientsData = JSON.parse(localStorage.getItem('clientsData')) || [];
 let commonDiagnoses = [];
 let commonRelations = [];
 
-
-
-
 async function syncRelations() {
   try {
     const response = await fetch(`${server}/relations`);
@@ -175,14 +172,33 @@ async function syncClientsWithServer() {
     const response = await fetch(`${server}/clients`);
     if (!response.ok) throw new Error('Failed to fetch clients');
     const serverData = await response.json();
-    clientsData = serverData;
+    clientsData = serverData.map(normalizeClient); // Нормализуем всех клиентов
     localStorage.setItem('clientsData', JSON.stringify(clientsData));
-    return serverData;
+    return clientsData;
   } catch (error) {
     console.error('Error syncing with server:', error);
     showToast('Ошибка синхронизации с сервером. Используются локальные данные.', 'error');
     return clientsData;
   }
+}
+function normalizeClient(client) {
+  if (client.parents) {
+    client.parents = client.parents.map(p => ({
+      full_name: p.full_name || p.fullName,
+      phone: p.phone,
+      relation_id: p.relation_id || getOrCreateRelationId(p.relation) // Если нужно, но лучше не асинхронно здесь
+    }));
+  }
+
+  if (client.diagnoses) {
+    client.diagnoses = client.diagnoses.map(d => ({
+      diagnosis_id: d.diagnosis_id,
+      notes: d.notes,
+      name: d.name || getDiagnosisName(d.diagnosis_id)
+    }));
+  }
+
+  return client;
 }
 
 export function getClients() {
@@ -218,36 +234,23 @@ export async function addClient(client) {
     blacklisted: false,
     groups: client.groups || [],
     group_history: [],
-    subscriptions: [],
-    photo: '' // Изначально пустое
+    subscriptions: []
   };
 
-  let photoUrl = '';
-  if (client.photo instanceof File) {
-    const reader = new FileReader();
-    reader.readAsDataURL(client.photo);
-    await new Promise(resolve => reader.onload = resolve);
-    photoUrl = reader.result; // Base64
-    payload.photo = photoUrl;
-    console.log('Photo converted to base64 in addClient:', photoUrl.substring(0, 50) + '...');
-  }
-
   const newClient = {
-    id: `client${Date.now()}`,
+    id: `client${Date.now()}`, // Временный ID для локального хранения
     ...payload,
     created_at: new Date().toISOString(),
+    photo: '' // Изначально пустое
   };
 
   clientsData.push(newClient);
   localStorage.setItem('clientsData', JSON.stringify(clientsData));
-  console.log('Client added locally with photo:', newClient.photo ? newClient.photo.substring(0, 50) + '...' : 'null');
+  console.log('Client added locally:', newClient);
 
+  let serverClient;
   try {
-    console.log('Sending payload to server:', {
-      ...payload,
-      photo: payload.photo ? payload.photo.substring(0, 50) + '...' : 'null'
-    });
-
+    // Отправляем запрос на создание клиента без фото
     const response = await fetch(`${server}/clients`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -260,26 +263,55 @@ export async function addClient(client) {
       throw new Error(`Failed to add client: ${response.status} - ${errorBody.message || 'Unknown error'}`);
     }
 
-    const serverClient = await response.json();
-    console.log('Server response:', {
-      ...serverClient,
-      photo: serverClient.photo ? serverClient.photo.substring(0, 50) + '...' : 'null'
-    });
+    serverClient = await response.json();
+    console.log('Server response:', serverClient);
 
-    if (!serverClient.photo && photoUrl) {
-      console.warn('Server did not return photo, keeping local base64');
-      serverClient.photo = photoUrl;
-    }
-
+    // Обновляем локальный клиент с ID от сервера
+    newClient.id = serverClient.id;
     Object.assign(newClient, serverClient);
+    normalizeClient(newClient); // Нормализуем данные после получения с сервера
     localStorage.setItem('clientsData', JSON.stringify(clientsData));
-    showToast('Клиент добавлен и синхронизирован с сервером', 'success');
-    if (typeof renderClients === 'function') renderClients(); // Автообновление списка
+    showToast('Клиент добавлен на сервер', 'success');
   } catch (error) {
     console.error('Error adding client to server:', error);
-    showToast('Ошибка добавления на сервер. Клиент сохранён локально.', 'error');
+    showToast('Ошибка добавления клиента на сервер. Клиент сохранён локально.', 'error');
+    return newClient;
   }
 
+  // Если есть фото, загружаем его отдельным запросом
+  if (client.photo instanceof File) {
+    try {
+      if (client.photo.size > 5 * 1024 * 1024) {
+        showToast('Размер файла не должен превышать 5MB', 'error');
+        return newClient;
+      }
+
+      const formData = new FormData();
+      formData.append('photo', client.photo);
+
+      const photoResponse = await fetch(`${server}/clients/${serverClient.id}/photo`, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!photoResponse.ok) {
+        const errorBody = await photoResponse.json();
+        console.error('Server photo upload error:', errorBody);
+        throw new Error(`Failed to upload photo: ${photoResponse.status} - ${errorBody.message || 'Unknown error'}`);
+      }
+
+      const photoData = await photoResponse.json();
+      newClient.photo = photoData.photoPath; // Сохраняем путь к фото
+      localStorage.setItem('clientsData', JSON.stringify(clientsData));
+      console.log('Photo uploaded successfully, path:', newClient.photo);
+      showToast('Фото клиента загружено', 'success');
+    } catch (error) {
+      console.error('Error uploading photo to server:', error);
+      showToast('Ошибка загрузки фото на сервер. Клиент сохранён без фото.', 'warning');
+    }
+  }
+
+  if (typeof renderClients === 'function') renderClients();
   return newClient;
 }
 
@@ -288,18 +320,6 @@ export async function updateClient(id, data) {
   if (!client) {
     console.error('Client not found:', id);
     return null;
-  }
-
-  // Handle photo
-  let photoUrl = client.photo || '';
-  if (data.photo instanceof File) {
-    const reader = new FileReader();
-    reader.readAsDataURL(data.photo);
-    await new Promise(resolve => reader.onload = resolve);
-    photoUrl = reader.result;
-    console.log('Photo converted to base64:', photoUrl.substring(0, 50) + '...');
-  } else if (data.photo === '') {
-    photoUrl = '';
   }
 
   const parentsWithIds = await Promise.all((data.parents || []).map(async p => ({
@@ -313,32 +333,20 @@ export async function updateClient(id, data) {
     notes: d.notes || ''
   })));
 
-  // Update client locally (для форм храним name, но можно хранить как есть)
-  Object.assign(client, {
-    ...data,
-    photo: photoUrl,
-    parents: data.parents,  // В форме: {fullName, phone, relation}
-    diagnoses: data.diagnoses,  // В форме: {name, notes}
-    groups: Array.isArray(data.groups) ? data.groups : client.groups || []
-  });
-  localStorage.setItem('clientsData', JSON.stringify(clientsData));
-  console.log('Client updated locally with photo:', client.photo ? client.photo.substring(0, 50) + '...' : 'null');
-
-  // Prepare payload for server
   const updatedPayload = {
-    surname: client.surname,
-    name: client.name,
-    patronymic: client.patronymic || '',
-    phone: client.phone || '',
-    birth_date: client.birth_date,
-    gender: client.gender,
+    surname: data.surname,
+    name: data.name,
+    patronymic: data.patronymic || '',
+    phone: data.phone || '',
+    birth_date: data.birth_date,
+    gender: data.gender,
     parents: parentsWithIds,
     diagnoses: diagnosesWithIds,
     features: data.features || '',
-    blacklisted: client.blacklisted !== undefined ? client.blacklisted : false,
-    groups: Array.isArray(client.groups) ? client.groups : [],
-    group_history: Array.isArray(client.group_history)
-      ? client.group_history
+    blacklisted: data.blacklisted !== undefined ? data.blacklisted : client.blacklisted || false,
+    groups: Array.isArray(data.groups) ? data.groups : client.groups || [],
+    group_history: Array.isArray(data.group_history)
+      ? data.group_history
         .filter(entry => {
           if (!entry.group) {
             console.warn('Invalid group_history entry missing group:', entry);
@@ -351,17 +359,17 @@ export async function updateClient(id, data) {
           action: entry.action,
           group_id: entry.group
         }))
-      : [],
-    subscriptions: Array.isArray(client.subscriptions) ? client.subscriptions : [],
-    photo: photoUrl
+      : client.group_history || [],
+    subscriptions: Array.isArray(data.subscriptions) ? data.subscriptions : client.subscriptions || []
   };
 
-  try {
-    console.log('Sending payload to server:', {
-      ...updatedPayload,
-      photo: updatedPayload.photo ? updatedPayload.photo.substring(0, 50) + '...' : 'null'
-    });
+  // Обновляем клиента локально
+  Object.assign(client, updatedPayload);
+  localStorage.setItem('clientsData', JSON.stringify(clientsData));
+  console.log('Client updated locally:', client);
 
+  try {
+    // Отправляем запрос на обновление клиента без фото
     const response = await fetch(`${server}/clients/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -369,38 +377,113 @@ export async function updateClient(id, data) {
     });
 
     if (!response.ok) {
-      let errorMessage = `Failed to update: ${response.status} ${response.statusText}`;
-      try {
-        const errorBody = await response.json();
-        console.error('Server error details:', JSON.stringify(errorBody, null, 2));
-        errorMessage += ` - ${errorBody.message || JSON.stringify(errorBody.detail) || 'Unknown error'}`;
-      } catch (parseError) {
-        console.error('Could not parse error body:', parseError);
-      }
-      throw new Error(errorMessage);
+      const errorBody = await response.json();
+      console.error('Server error details:', errorBody);
+      throw new Error(`Failed to update client: ${response.status} - ${errorBody.message || 'Unknown error'}`);
     }
 
     const serverClient = await response.json();
-    console.log('Server response:', {
-      ...serverClient,
-      photo: serverClient.photo ? serverClient.photo.substring(0, 50) + '...' : 'null'
-    });
-
-    if (!serverClient.photo && photoUrl) {
-      console.warn('Server did not return photo, keeping local base64');
-      serverClient.photo = photoUrl;
-    }
-
+    console.log('Server response:', serverClient);
     Object.assign(client, serverClient);
+    normalizeClient(client); // Нормализуем данные после получения с сервера
     localStorage.setItem('clientsData', JSON.stringify(clientsData));
-    showToast('Клиент обновлён и синхронизирован с сервером', 'success');
-    if (typeof renderClients === 'function') renderClients(); // Автообновление списка
+    showToast('Клиент обновлён на сервере', 'success');
   } catch (error) {
     console.error('Error updating client on server:', error);
-    showToast('Ошибка обновления на сервере. Изменения сохранены локально.', 'warning');
+    showToast('Ошибка обновления клиента на сервере. Изменения сохранены локально.', 'warning');
   }
 
+  // Обработка фото
+  if (data.photo instanceof File) {
+    try {
+      if (data.photo.size > 5 * 1024 * 1024) {
+        showToast('Размер файла не должен превышать 5MB', 'error');
+        return client;
+      }
+
+      const formData = new FormData();
+      formData.append('photo', data.photo);
+
+      const photoResponse = await fetch(`${server}/clients/${id}/photo`, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!photoResponse.ok) {
+        const errorBody = await photoResponse.json();
+        console.error('Server photo upload error:', errorBody);
+        throw new Error(`Failed to upload photo: ${photoResponse.status} - ${errorBody.message || 'Unknown error'}`);
+      }
+
+      const photoData = await photoResponse.json();
+      client.photo = photoData.photoPath; // Сохраняем путь к фото
+      localStorage.setItem('clientsData', JSON.stringify(clientsData));
+      console.log('Photo uploaded successfully, path:', client.photo);
+      showToast('Фото клиента обновлено', 'success');
+    } catch (error) {
+      console.error('Error uploading photo to server:', error);
+      showToast('Ошибка загрузки фото на сервер.', 'warning');
+    }
+  } else if (data.photo === '') {
+    try {
+      const deletePhotoResponse = await fetch(`${server}/clients/${id}/photo`, {
+        method: 'DELETE'
+      });
+
+      if (!deletePhotoResponse.ok) {
+        const errorBody = await deletePhotoResponse.json();
+        console.error('Server photo deletion error:', errorBody);
+        throw new Error(`Failed to delete photo: ${deletePhotoResponse.status} - ${errorBody.message || 'Unknown error'}`);
+      }
+
+      client.photo = '';
+      localStorage.setItem('clientsData', JSON.stringify(clientsData));
+      console.log('Photo deleted successfully');
+      showToast('Фото клиента удалено', 'success');
+    } catch (error) {
+      console.error('Error deleting photo from server:', error);
+      showToast('Ошибка удаления фото с сервера.', 'warning');
+    }
+  }
+
+  if (typeof renderClients === 'function') renderClients();
   return client;
+}
+
+export async function fetchClientPhoto(clientId) {
+  const client = clientsData.find(c => c.id === clientId);
+  if (!client) {
+    console.error('Client not found:', clientId);
+    return null;
+  }
+
+  try {
+    const response = await fetch(`${server}/clients/${clientId}/photo`, {
+      method: 'GET'
+    });
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        console.log('No photo found for client:', clientId);
+        client.photo = '';
+        localStorage.setItem('clientsData', JSON.stringify(clientsData));
+        return '';
+      }
+      const errorBody = await response.json();
+      throw new Error(`Failed to fetch photo: ${response.status} - ${errorBody.message || 'Unknown error'}`);
+    }
+
+    const photoData = await response.json();
+    client.photo = photoData.photoPath; // Сохраняем путь к фото
+    localStorage.setItem('clientsData', JSON.stringify(clientsData));
+    console.log('Photo path fetched successfully:', client.photo);
+    if (typeof renderClients === 'function') renderClients();
+    return client.photo;
+  } catch (error) {
+    console.error('Error fetching photo from server:', error);
+    showToast('Ошибка загрузки фото с сервера.', 'error');
+    return client.photo || '';
+  }
 }
 
 export async function removeClient(id) {
@@ -497,26 +580,26 @@ export function showClientForm(title, client, callback) {
   // Инициализация родителей: из сервера full_name и relation_id → fullName и relation (name)
   let parents = client.parents
     ? [...client.parents.map(p => ({
-        fullName: p.full_name || p.fullName || '',
-        phone: p.phone || '',
-        relation: getRelationName(p.relation_id) || p.relation || ''
-      }))]
+      fullName: p.full_name || p.fullName || '',
+      phone: p.phone || '',
+      relation: getRelationName(p.relation_id) || p.relation || ''
+    }))]
     : [];
 
   // Инициализация диагнозов: из сервера diagnosis_id и notes → name и notes
   let diagnoses = client.diagnoses
     ? [...client.diagnoses
-        .filter(d => d.diagnosis_id !== undefined && d.diagnosis_id !== null) // Фильтруем некорректные diagnosis_id
-        .map(d => {
-          const diagnosisName = d.name || getDiagnosisName(d.diagnosis_id) || 'Неизвестный диагноз';
-          if (!d.diagnosis_id || getDiagnosisName(d.diagnosis_id) === 'Неизвестно') {
-            console.warn(`Диагноз с ID ${d.diagnosis_id} не найден в commonDiagnoses`, d);
-          }
-          return {
-            name: diagnosisName,
-            notes: d.notes || ''
-          };
-        })]
+      .filter(d => d.diagnosis_id !== undefined && d.diagnosis_id !== null) // Фильтруем некорректные diagnosis_id
+      .map(d => {
+        const diagnosisName = d.name || getDiagnosisName(d.diagnosis_id) || 'Неизвестный диагноз';
+        if (!d.diagnosis_id || getDiagnosisName(d.diagnosis_id) === 'Неизвестно') {
+          console.warn(`Диагноз с ID ${d.diagnosis_id} не найден в commonDiagnoses`, d);
+        }
+        return {
+          name: diagnosisName,
+          notes: d.notes || ''
+        };
+      })]
     : [];
 
   // Логирование для отладки
@@ -559,9 +642,9 @@ export function showClientForm(title, client, callback) {
         </thead>
         <tbody>
           ${parents.length
-            ? parents
-                .map(
-                  (p, index) => `
+        ? parents
+          .map(
+            (p, index) => `
             <tr class="parent-row" data-index="${index}">
               <td><input type="text" class="parent-fullname" value="${p.fullName || ''}" required></td>
               <td><input type="tel" class="parent-phone" value="${p.phone || ''}" required></td>
@@ -576,9 +659,9 @@ export function showClientForm(title, client, callback) {
               </td>
             </tr>
           `
-                )
-                .join('')
-            : `
+          )
+          .join('')
+        : `
             <tr>
               <td colspan="3" class="no-parents">Нет добавленных родителей/опекунов</td>
             </tr>
@@ -658,15 +741,14 @@ export function showClientForm(title, client, callback) {
         </thead>
         <tbody>
           ${diagnoses.length
-            ? diagnoses
-                .map(
-                  (d, index) => `
+        ? diagnoses
+          .map(
+            (d, index) => `
                 <tr class="diagnosis-row" data-index="${index}">
                   <td>
                     <div class="input-with-button">
-                      <input type="text" list="diagnosis-list" class="diagnosis-name" value="${
-                        d.name || ''
-                      }" required>
+                      <input type="text" list="diagnosis-list" class="diagnosis-name" value="${d.name || ''
+              }" required>
                       <datalist id="diagnosis-list">
                         ${commonDiagnoses.map(diag => `<option value="${diag.name}">`).join('')}
                       </datalist>
@@ -676,9 +758,9 @@ export function showClientForm(title, client, callback) {
                   <td><input type="text" class="diagnosis-notes" value="${d.notes || ''}"></td>
                 </tr>
               `
-                )
-                .join('')
-            : `
+          )
+          .join('')
+        : `
                 <tr>
                   <td colspan="2" class="no-diagnoses">Нет добавленных диагнозов</td>
                 </tr>
@@ -795,16 +877,15 @@ export function showClientForm(title, client, callback) {
         <div class="client-photo-section">
           <div class="photo-upload-area">
             <div class="for-flex flex-end">
-              <button type="button" class="photo-remove-btn" id="photo-remove-btn" ${
-                !client.photo ? 'style="display: none;"' : ''
-              }>
+              <button type="button" class="photo-remove-btn" id="photo-remove-btn" ${!client.photo ? 'style="display: none;"' : ''
+    }>
                 X
               </button>
             </div>
             <div id="client-photo-preview" class="client-photo-preview ${!client.photo ? 'placeholder' : ''}">
               ${client.photo
-                ? `<img src="${client.photo}" alt="${client.surname || 'Клиент'}">`
-                : `<img src="images/icon-photo.svg" alt="Загрузить фото" class="upload-icon">`}
+      ? `<img src="${client.photo}" alt="${client.surname || 'Клиент'}">`
+      : `<img src="images/icon-photo.svg" alt="Загрузить фото" class="upload-icon">`}
             </div>
             <input type="file" id="client-photo" accept="image/*" style="display: none;">
           </div>
@@ -819,9 +900,8 @@ export function showClientForm(title, client, callback) {
         <div id="diagnoses-container"></div>
         <div class="form-group full-width">
           <label for="client-features">Примечания</label>
-          <input type="text" id="client-features" value="${
-            client.features || ''
-          }" placeholder="Дополнительная информация о клиенте, особенности занятий...">
+          <input type="text" id="client-features" value="${client.features || ''
+    }" placeholder="Дополнительная информация о клиенте, особенности занятий...">
         </div>
       </div>
 
@@ -913,14 +993,14 @@ export function showClientForm(title, client, callback) {
       // Повторная инициализация диагнозов после синхронизации
       diagnoses = client.diagnoses
         ? [...client.diagnoses
-            .filter(d => d.diagnosis_id !== undefined && d.diagnosis_id !== null)
-            .map(d => {
-              const diagnosisName = d.name || getDiagnosisName(d.diagnosis_id) || 'Неизвестный диагноз';
-              return {
-                name: diagnosisName,
-                notes: d.notes || ''
-              };
-            })]
+          .filter(d => d.diagnosis_id !== undefined && d.diagnosis_id !== null)
+          .map(d => {
+            const diagnosisName = d.name || getDiagnosisName(d.diagnosis_id) || 'Неизвестный диагноз';
+            return {
+              name: diagnosisName,
+              notes: d.notes || ''
+            };
+          })]
         : [];
       renderDiagnoses(diagnosesContainer);
     });
@@ -1064,11 +1144,16 @@ export async function loadClients() {
 
   // Затем загружаем из localStorage
   clientsData = JSON.parse(localStorage.getItem('clientsData')) || [];
+
   // Затем синхронизируем с сервером асинхронно
-  syncClientsWithServer().then(updatedData => {
-    clientsData = updatedData;
-    if (typeof renderClients === 'function') renderClients();
-  });
+  await syncClientsWithServer();
+
+  // Подгружаем фото для каждого клиента
+  for (const client of clientsData) {
+    if (client.id) {
+      await fetchClientPhoto(client.id);
+    }
+  }
 
   const mainContent = document.getElementById('main-content');
   mainContent.innerHTML = '';
@@ -1214,7 +1299,7 @@ export async function loadClients() {
       .map(client => {
         console.log('Client photo URL in render:', client.photo ? client.photo.substring(0, 50) + '...' : 'null');
         const fullName = `${client.surname} ${client.name} ${client.patronymic || ''}`;
-        const hasDiagnosis = client.diagnoses && client.diagnoses.length > 0 && !(client.diagnoses.length === 1 && client.diagnoses[0].name === 'Нет');
+        const hasDiagnosis = client.diagnoses && client.diagnoses.length > 0 && !(client.diagnoses.length === 1 && (client.diagnoses[0].name || getDiagnosisName(client.diagnoses[0].diagnosis_id)) === 'Нет');
         const status = getSubscriptionStatus(client);
         const statusClass = {
           'active': 'status-active',
@@ -1250,7 +1335,7 @@ export async function loadClients() {
                 <span class="client-phone">${client.phone}</span>
                 ${hasDiagnosis ? `
                   <div class="diagnosis-badge">
-                    ${client.diagnoses.map(d => `<span class="diagnosis-tag">${d.name}${d.notes ? ` (${d.notes})` : ''}</span>`).join('')}
+                    ${client.diagnoses.map(d => `<span class="diagnosis-tag">${d.name || getDiagnosisName(d.diagnosis_id)}${d.notes ? ` (${d.notes})` : ''}</span>`).join('')}
                   </div>
                 ` : ''}
               </div>
@@ -1320,8 +1405,8 @@ export async function loadClients() {
     });
   });
 
-  clientList.addEventListener('click', async (e) => { // Добавляем async
-    e.preventDefault(); // Добавляем preventDefault для предотвращения возможных проблем
+  clientList.addEventListener('click', async (e) => {
+    e.preventDefault();
     const target = e.target;
     const clientCard = target.closest('.client-card');
     const clientId = clientCard ? clientCard.getAttribute('data-id') : null;
@@ -1340,8 +1425,8 @@ export async function loadClients() {
         });
       } else if (actionBtn.classList.contains('blacklist-btn')) {
         client.blacklisted = !client.blacklisted;
-        console.log('Blacklisted toggled to:', client.blacklisted); // Added for debugging
-        await updateClient(clientId, client); // Теперь await работает корректно
+        console.log('Blacklisted toggled to:', client.blacklisted);
+        await updateClient(clientId, client);
         renderClients();
         showToast(client.blacklisted ? 'Клиент добавлен в чёрный список' : 'Клиент удалён из чёрного списка', 'info');
       } else if (actionBtn.classList.contains('subscription-btn')) {
@@ -2427,7 +2512,6 @@ export function showRenewSubscriptionForm(title, client, sub, callback) {
   });
 }
 
-// Функция для отображения формы управления группами клиента
 export function showGroupForm(title, client, groups, callback) {
   console.log(`showGroupForm: клиент=${client.id}, группы=`, groups);
 
