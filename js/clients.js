@@ -50,6 +50,10 @@ async function addRelation(newRelation) {
     });
     if (!response.ok) throw new Error('Failed to add relation');
     await syncRelations(); // Синхронизируем после добавления
+    // Нормализуем всех клиентов после изменения справочника
+    clientsData = await Promise.all(clientsData.map(async (c) => await normalizeClient(c)));
+    localStorage.setItem('clientsData', JSON.stringify(clientsData));
+    if (typeof renderClients === 'function') renderClients();
     showToast('Отношение добавлено на сервер', 'success');
   } catch (error) {
     console.error('Error adding relation to server:', error);
@@ -66,6 +70,10 @@ async function addDiagnosis(newDiagnosis) {
     });
     if (!response.ok) throw new Error('Failed to add diagnosis');
     await syncDiagnoses(); // Синхронизируем после добавления
+    // Нормализуем всех клиентов после изменения справочника
+    clientsData = await Promise.all(clientsData.map(async (c) => await normalizeClient(c)));
+    localStorage.setItem('clientsData', JSON.stringify(clientsData));
+    if (typeof renderClients === 'function') renderClients();
     showToast('Диагноз добавлен на сервер', 'success');
   } catch (error) {
     console.error('Error adding diagnosis to server:', error);
@@ -84,6 +92,10 @@ async function updateDiagnosis(oldName, newName) {
     });
     if (!response.ok) throw new Error('Failed to update diagnosis');
     await syncDiagnoses();
+    // Нормализуем всех клиентов после изменения справочника
+    clientsData = await Promise.all(clientsData.map(async (c) => await normalizeClient(c)));
+    localStorage.setItem('clientsData', JSON.stringify(clientsData));
+    if (typeof renderClients === 'function') renderClients();
     showToast('Диагноз обновлен на сервере', 'success');
   } catch (error) {
     console.error('Error updating diagnosis:', error);
@@ -102,6 +114,10 @@ async function updateRelation(oldName, newName) {
     });
     if (!response.ok) throw new Error('Failed to update relation');
     await syncRelations();
+    // Нормализуем всех клиентов после изменения справочника
+    clientsData = await Promise.all(clientsData.map(async (c) => await normalizeClient(c)));
+    localStorage.setItem('clientsData', JSON.stringify(clientsData));
+    if (typeof renderClients === 'function') renderClients();
     showToast('Отношение обновлено на сервере', 'success');
   } catch (error) {
     console.error('Error updating relation:', error);
@@ -118,6 +134,10 @@ async function deleteDiagnosis(name) {
     });
     if (!response.ok) throw new Error('Failed to delete diagnosis');
     await syncDiagnoses();
+    // Нормализуем всех клиентов после изменения справочника
+    clientsData = await Promise.all(clientsData.map(async (c) => await normalizeClient(c)));
+    localStorage.setItem('clientsData', JSON.stringify(clientsData));
+    if (typeof renderClients === 'function') renderClients();
     showToast('Диагноз удален с сервера', 'success');
   } catch (error) {
     console.error('Error deleting diagnosis:', error);
@@ -134,6 +154,10 @@ async function deleteRelation(name) {
     });
     if (!response.ok) throw new Error('Failed to delete relation');
     await syncRelations();
+    // Нормализуем всех клиентов после изменения справочника
+    clientsData = await Promise.all(clientsData.map(async (c) => await normalizeClient(c)));
+    localStorage.setItem('clientsData', JSON.stringify(clientsData));
+    if (typeof renderClients === 'function') renderClients();
     showToast('Отношение удалено с сервера', 'success');
   } catch (error) {
     console.error('Error deleting relation:', error);
@@ -172,7 +196,7 @@ async function syncClientsWithServer() {
     const response = await fetch(`${server}/clients`);
     if (!response.ok) throw new Error('Failed to fetch clients');
     const serverData = await response.json();
-    clientsData = serverData.map(normalizeClient); // Нормализуем всех клиентов
+    clientsData = await Promise.all(serverData.map(async (c) => await normalizeClient(c))); // Нормализуем асинхронно
     localStorage.setItem('clientsData', JSON.stringify(clientsData));
     return clientsData;
   } catch (error) {
@@ -181,13 +205,14 @@ async function syncClientsWithServer() {
     return clientsData;
   }
 }
-function normalizeClient(client) {
+
+async function normalizeClient(client) {
   if (client.parents) {
-    client.parents = client.parents.map(p => ({
+    client.parents = await Promise.all(client.parents.map(async p => ({
       full_name: p.full_name || p.fullName,
       phone: p.phone,
-      relation_id: p.relation_id || getOrCreateRelationId(p.relation) // Если нужно, но лучше не асинхронно здесь
-    }));
+      relation_id: p.relation_id || await getOrCreateRelationId(p.relation)
+    })));
   }
 
   if (client.diagnoses) {
@@ -269,7 +294,7 @@ export async function addClient(client) {
     // Обновляем локальный клиент с ID от сервера
     newClient.id = serverClient.id;
     Object.assign(newClient, serverClient);
-    normalizeClient(newClient); // Нормализуем данные после получения с сервера
+    await normalizeClient(newClient); // Нормализуем асинхронно
     localStorage.setItem('clientsData', JSON.stringify(clientsData));
     showToast('Клиент добавлен на сервер', 'success');
   } catch (error) {
@@ -300,10 +325,9 @@ export async function addClient(client) {
         throw new Error(`Failed to upload photo: ${photoResponse.status} - ${errorBody.message || 'Unknown error'}`);
       }
 
-      const photoData = await photoResponse.json();
-      newClient.photo = photoData.photoPath; // Сохраняем путь к фото
-      localStorage.setItem('clientsData', JSON.stringify(clientsData));
-      console.log('Photo uploaded successfully, path:', newClient.photo);
+      // Поскольку сервер возвращает фото напрямую, получаем обновлённое фото
+      await fetchClientPhoto(newClient.id); // Получаем обновлённое фото
+      console.log('Photo uploaded successfully');
       showToast('Фото клиента загружено', 'success');
     } catch (error) {
       console.error('Error uploading photo to server:', error);
@@ -365,6 +389,7 @@ export async function updateClient(id, data) {
 
   // Обновляем клиента локально
   Object.assign(client, updatedPayload);
+  await normalizeClient(client); // Нормализуем асинхронно
   localStorage.setItem('clientsData', JSON.stringify(clientsData));
   console.log('Client updated locally:', client);
 
@@ -385,7 +410,7 @@ export async function updateClient(id, data) {
     const serverClient = await response.json();
     console.log('Server response:', serverClient);
     Object.assign(client, serverClient);
-    normalizeClient(client); // Нормализуем данные после получения с сервера
+    await normalizeClient(client); // Нормализуем асинхронно
     localStorage.setItem('clientsData', JSON.stringify(clientsData));
     showToast('Клиент обновлён на сервере', 'success');
   } catch (error) {
@@ -415,10 +440,8 @@ export async function updateClient(id, data) {
         throw new Error(`Failed to upload photo: ${photoResponse.status} - ${errorBody.message || 'Unknown error'}`);
       }
 
-      const photoData = await photoResponse.json();
-      client.photo = photoData.photoPath; // Сохраняем путь к фото
-      localStorage.setItem('clientsData', JSON.stringify(clientsData));
-      console.log('Photo uploaded successfully, path:', client.photo);
+      // Поскольку сервер возвращает фото напрямую, получаем обновлённое фото
+      await fetchClientPhoto(id);
       showToast('Фото клиента обновлено', 'success');
     } catch (error) {
       console.error('Error uploading photo to server:', error);
@@ -453,7 +476,7 @@ export async function updateClient(id, data) {
 export async function fetchClientPhoto(clientId) {
   const client = clientsData.find(c => c.id === clientId);
   if (!client) {
-    console.error('Client not found:', clientId);
+    console.error('Клиент не найден:', clientId);
     return null;
   }
 
@@ -464,23 +487,35 @@ export async function fetchClientPhoto(clientId) {
 
     if (!response.ok) {
       if (response.status === 404) {
-        console.log('No photo found for client:', clientId);
+        console.log('Фотография не найдена для клиента:', clientId);
         client.photo = '';
         localStorage.setItem('clientsData', JSON.stringify(clientsData));
         return '';
       }
-      const errorBody = await response.json();
-      throw new Error(`Failed to fetch photo: ${response.status} - ${errorBody.message || 'Unknown error'}`);
+      const errorBody = await response.text(); // Используем text() для отладки
+      throw new Error(`Не удалось получить фото: ${response.status} - ${errorBody}`);
     }
 
-    const photoData = await response.json();
-    client.photo = photoData.photoPath; // Сохраняем путь к фото
+    // Проверяем, что ответ — изображение
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('image/')) {
+      throw new Error(`Ожидалось изображение, но получен тип контента: ${contentType}`);
+    }
+
+    // Очищаем старый URL, если он существует
+    if (client.photo && client.photo.startsWith('blob:')) {
+      URL.revokeObjectURL(client.photo);
+    }
+
+    // Преобразуем ответ в blob и создаём URL
+    const blob = await response.blob();
+    client.photo = URL.createObjectURL(blob); // Сохраняем URL для изображения
     localStorage.setItem('clientsData', JSON.stringify(clientsData));
-    console.log('Photo path fetched successfully:', client.photo);
+    console.log('Фотография успешно получена:', client.photo);
     if (typeof renderClients === 'function') renderClients();
     return client.photo;
   } catch (error) {
-    console.error('Error fetching photo from server:', error);
+    console.error('Ошибка получения фото с сервера:', error);
     showToast('Ошибка загрузки фото с сервера.', 'error');
     return client.photo || '';
   }
@@ -500,6 +535,7 @@ export async function removeClient(id) {
     console.error('Error deleting client from server:', error);
     showToast('Ошибка удаления с сервера. Клиент удалён локально.', 'error');
   }
+  if (typeof renderClients === 'function') renderClients();
 }
 
 export function addGroupToClient(clientId, groupId, action = 'added', date = new Date().toISOString().split('T')[0]) {
@@ -518,10 +554,8 @@ export function addGroupToClient(clientId, groupId, action = 'added', date = new
     console.log(`Клиент ${clientId} добавлен в группу ${groupId} с датой ${date}`);
     updateClient(clientId, client).then(() => {
       console.log('Group update synced with server');
+      if (typeof renderClients === 'function') renderClients();
     });
-    if (typeof renderClients === 'function') {
-      renderClients();
-    }
   } else {
     console.log(`Клиент ${clientId} уже в группе ${groupId}`);
   }
@@ -544,10 +578,8 @@ export function removeGroupFromClient(clientId, groupId) {
     console.log(`Клиент ${clientId} удалён из группы ${groupId}`);
     updateClient(clientId, client).then(() => {
       console.log('Group removal synced with server');
+      if (typeof renderClients === 'function') renderClients();
     });
-    if (typeof renderClients === 'function') {
-      renderClients();
-    }
   } else {
     console.log(`Клиент ${clientId} не состоит в группе ${groupId}`);
   }
@@ -573,7 +605,7 @@ function setupModalClose(modal, closeModal) {
   });
 }
 
-export function showClientForm(title, client, callback) {
+export async function showClientForm(title, client, callback) {
   const modal = document.createElement('div');
   modal.className = 'client-form-modal';
 
@@ -590,16 +622,10 @@ export function showClientForm(title, client, callback) {
   let diagnoses = client.diagnoses
     ? [...client.diagnoses
       .filter(d => d.diagnosis_id !== undefined && d.diagnosis_id !== null) // Фильтруем некорректные diagnosis_id
-      .map(d => {
-        const diagnosisName = d.name || getDiagnosisName(d.diagnosis_id) || 'Неизвестный диагноз';
-        if (!d.diagnosis_id || getDiagnosisName(d.diagnosis_id) === 'Неизвестно') {
-          console.warn(`Диагноз с ID ${d.diagnosis_id} не найден в commonDiagnoses`, d);
-        }
-        return {
-          name: diagnosisName,
-          notes: d.notes || ''
-        };
-      })]
+      .map(d => ({
+        name: d.name || getDiagnosisName(d.diagnosis_id) || 'Неизвестный диагноз',
+        notes: d.notes || ''
+      }))]
     : [];
 
   // Логирование для отладки
@@ -726,7 +752,8 @@ export function showClientForm(title, client, callback) {
     });
   }
 
-  function renderDiagnoses(container) {
+  async function renderDiagnoses(container) {
+    await syncDiagnoses(); // Синхронизируем справочник перед рендером
     container.innerHTML = `
       <div class="diagnoses-controls">
         <button type="button" id="add-diagnosis-btn" class="btn-primary add-diagnosis-btn">Добавить</button>
@@ -988,25 +1015,8 @@ export function showClientForm(title, client, callback) {
   if (!commonDiagnoses.length) {
     console.warn('commonDiagnoses пуст, пытаемся синхронизировать');
     showToast('Справочник диагнозов не загружен, синхронизация...', 'warning');
-    syncDiagnoses().then(() => {
-      console.log('commonDiagnoses после синхронизации:', commonDiagnoses);
-      // Повторная инициализация диагнозов после синхронизации
-      diagnoses = client.diagnoses
-        ? [...client.diagnoses
-          .filter(d => d.diagnosis_id !== undefined && d.diagnosis_id !== null)
-          .map(d => {
-            const diagnosisName = d.name || getDiagnosisName(d.diagnosis_id) || 'Неизвестный диагноз';
-            return {
-              name: diagnosisName,
-              notes: d.notes || ''
-            };
-          })]
-        : [];
-      renderDiagnoses(diagnosesContainer);
-    });
-  } else {
-    renderDiagnoses(diagnosesContainer);
   }
+  await renderDiagnoses(diagnosesContainer); // Теперь асинхронно
 
   function validateForm() {
     let isValid = true;
@@ -1088,7 +1098,7 @@ export function showClientForm(title, client, callback) {
     return isValid;
   }
 
-  document.getElementById('client-save-btn').addEventListener('click', () => {
+  document.getElementById('client-save-btn').addEventListener('click', async () => {
     if (!validateForm()) return;
 
     const surname = document.getElementById('client-surname').value.trim();
@@ -1099,7 +1109,7 @@ export function showClientForm(title, client, callback) {
     const gender = document.getElementById('client-gender').value;
     const features = document.getElementById('client-features').value.trim() || '';
 
-    const photo = photoInput.files[0] || '';
+    const photo = photoInput.files[0] || (photoPreview.classList.contains('placeholder') ? '' : client.photo);
 
     const updatedParents = parents
       .filter(p => p.fullName.trim() !== '')
@@ -1116,7 +1126,7 @@ export function showClientForm(title, client, callback) {
         notes: d.notes
       }));
 
-    callback({
+    await callback({
       surname,
       name,
       patronymic,
@@ -1399,7 +1409,8 @@ export async function loadClients() {
 
   document.getElementById('client-add-btn').addEventListener('click', () => {
     showClientForm('Добавить клиента', {}, async (data) => {
-      await addClient(data);
+      const newClient = await addClient(data);
+      await normalizeClient(newClient);
       renderClients();
       showToast('Клиент успешно добавлен', 'success');
     });
@@ -1419,7 +1430,8 @@ export async function loadClients() {
 
       if (actionBtn.classList.contains('edit-btn')) {
         showClientForm('Редактировать клиента', client, async (data) => {
-          await updateClient(clientId, data);
+          const updatedClient = await updateClient(clientId, data);
+          await normalizeClient(updatedClient);
           renderClients();
           showToast('Данные клиента обновлены', 'success');
         });
@@ -1427,6 +1439,7 @@ export async function loadClients() {
         client.blacklisted = !client.blacklisted;
         console.log('Blacklisted toggled to:', client.blacklisted);
         await updateClient(clientId, client);
+        await normalizeClient(client);
         renderClients();
         showToast(client.blacklisted ? 'Клиент добавлен в чёрный список' : 'Клиент удалён из чёрного списка', 'info');
       } else if (actionBtn.classList.contains('subscription-btn')) {
@@ -1436,6 +1449,7 @@ export async function loadClients() {
           client.groups = groups;
           client.group_history = history;
           await updateClient(clientId, client);
+          await normalizeClient(client);
           renderClients();
           showToast('Группы клиента обновлены', 'success');
         });
@@ -1693,6 +1707,7 @@ export function showClientDetails(client) {
       showClientForm('Редактировать клиента', client, async (data) => {
         await updateClient(client.id, data);
         showToast('Данные клиента обновлены', 'success');
+        renderClients();
       });
     });
   }
@@ -2602,7 +2617,7 @@ export function showGroupForm(title, client, groups, callback) {
           ${filteredGroups.length ? filteredGroups.map(group => {
       const isSelected = selectedGroups.includes(group);
       const historyEntry = groupHistory.find(entry => entry.group === group && entry.action === 'added');
-      const startDate = historyEntry ? historyEntry.date.split('T')[0] : new Date().toISOString().split('T')[0];
+      const startDate = historyEntry ? historyEntry.date : new Date().toISOString().split('T')[0];
       return `
               <tr class="group-row" data-group="${group}">
                 <td><input type="checkbox" value="${group}" ${isSelected ? 'checked' : ''}></td>
