@@ -53,7 +53,7 @@ async function addRelation(newRelation) {
     // Нормализуем всех клиентов после изменения справочника
     clientsData = await Promise.all(clientsData.map(async (c) => await normalizeClient(c)));
     localStorage.setItem('clientsData', JSON.stringify(clientsData));
-    if (typeof renderClients === 'function') renderClients();
+    if (typeof window.renderClients === 'function') window.renderClients();
     showToast('Отношение добавлено на сервер', 'success');
   } catch (error) {
     console.error('Error adding relation to server:', error);
@@ -73,7 +73,7 @@ async function addDiagnosis(newDiagnosis) {
     // Нормализуем всех клиентов после изменения справочника
     clientsData = await Promise.all(clientsData.map(async (c) => await normalizeClient(c)));
     localStorage.setItem('clientsData', JSON.stringify(clientsData));
-    if (typeof renderClients === 'function') renderClients();
+    if (typeof window.renderClients === 'function') window.renderClients();
     showToast('Диагноз добавлен на сервер', 'success');
   } catch (error) {
     console.error('Error adding diagnosis to server:', error);
@@ -95,7 +95,7 @@ async function updateDiagnosis(oldName, newName) {
     // Нормализуем всех клиентов после изменения справочника
     clientsData = await Promise.all(clientsData.map(async (c) => await normalizeClient(c)));
     localStorage.setItem('clientsData', JSON.stringify(clientsData));
-    if (typeof renderClients === 'function') renderClients();
+    if (typeof window.renderClients === 'function') window.renderClients();
     showToast('Диагноз обновлен на сервере', 'success');
   } catch (error) {
     console.error('Error updating diagnosis:', error);
@@ -117,7 +117,7 @@ async function updateRelation(oldName, newName) {
     // Нормализуем всех клиентов после изменения справочника
     clientsData = await Promise.all(clientsData.map(async (c) => await normalizeClient(c)));
     localStorage.setItem('clientsData', JSON.stringify(clientsData));
-    if (typeof renderClients === 'function') renderClients();
+    if (typeof window.renderClients === 'function') window.renderClients();
     showToast('Отношение обновлено на сервере', 'success');
   } catch (error) {
     console.error('Error updating relation:', error);
@@ -137,7 +137,7 @@ async function deleteDiagnosis(name) {
     // Нормализуем всех клиентов после изменения справочника
     clientsData = await Promise.all(clientsData.map(async (c) => await normalizeClient(c)));
     localStorage.setItem('clientsData', JSON.stringify(clientsData));
-    if (typeof renderClients === 'function') renderClients();
+    if (typeof window.renderClients === 'function') window.renderClients();
     showToast('Диагноз удален с сервера', 'success');
   } catch (error) {
     console.error('Error deleting diagnosis:', error);
@@ -157,7 +157,7 @@ async function deleteRelation(name) {
     // Нормализуем всех клиентов после изменения справочника
     clientsData = await Promise.all(clientsData.map(async (c) => await normalizeClient(c)));
     localStorage.setItem('clientsData', JSON.stringify(clientsData));
-    if (typeof renderClients === 'function') renderClients();
+    if (typeof window.renderClients === 'function') window.renderClients();
     showToast('Отношение удалено с сервера', 'success');
   } catch (error) {
     console.error('Error deleting relation:', error);
@@ -198,6 +198,7 @@ async function syncClientsWithServer() {
     const serverData = await response.json();
     clientsData = await Promise.all(serverData.map(async (c) => await normalizeClient(c))); // Нормализуем асинхронно
     localStorage.setItem('clientsData', JSON.stringify(clientsData));
+    if (typeof window.renderClients === 'function') window.renderClients();
     return clientsData;
   } catch (error) {
     console.error('Error syncing with server:', error);
@@ -216,11 +217,11 @@ async function normalizeClient(client) {
   }
 
   if (client.diagnoses) {
-    client.diagnoses = client.diagnoses.map(d => ({
+    client.diagnoses = await Promise.all(client.diagnoses.map(async d => ({
       diagnosis_id: d.diagnosis_id,
       notes: d.notes,
-      name: d.name || getDiagnosisName(d.diagnosis_id)
-    }));
+      name: d.name || await getDiagnosisName(d.diagnosis_id)
+    })));
   }
 
   return client;
@@ -335,7 +336,7 @@ export async function addClient(client) {
     }
   }
 
-  if (typeof renderClients === 'function') renderClients();
+  if (typeof window.renderClients === 'function') window.renderClients();
   return newClient;
 }
 
@@ -387,14 +388,13 @@ export async function updateClient(id, data) {
     subscriptions: Array.isArray(data.subscriptions) ? data.subscriptions : client.subscriptions || []
   };
 
-  // Обновляем клиента локально
+  // Обновляем клиента локально сначала
   Object.assign(client, updatedPayload);
-  await normalizeClient(client); // Нормализуем асинхронно
+  await normalizeClient(client);
   localStorage.setItem('clientsData', JSON.stringify(clientsData));
-  console.log('Client updated locally:', client);
+  console.log('Client updated locally before server:', client);
 
   try {
-    // Отправляем запрос на обновление клиента без фото
     const response = await fetch(`${server}/clients/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -409,10 +409,13 @@ export async function updateClient(id, data) {
 
     const serverClient = await response.json();
     console.log('Server response:', serverClient);
+    // Обновляем локальный клиент данными с сервера
     Object.assign(client, serverClient);
-    await normalizeClient(client); // Нормализуем асинхронно
+    await normalizeClient(client);
     localStorage.setItem('clientsData', JSON.stringify(clientsData));
     showToast('Клиент обновлён на сервере', 'success');
+    // Синхронизируем всех клиентов для уверенности
+    await syncClientsWithServer();
   } catch (error) {
     console.error('Error updating client on server:', error);
     showToast('Ошибка обновления клиента на сервере. Изменения сохранены локально.', 'warning');
@@ -440,9 +443,9 @@ export async function updateClient(id, data) {
         throw new Error(`Failed to upload photo: ${photoResponse.status} - ${errorBody.message || 'Unknown error'}`);
       }
 
-      // Поскольку сервер возвращает фото напрямую, получаем обновлённое фото
       await fetchClientPhoto(id);
       showToast('Фото клиента обновлено', 'success');
+      await syncClientsWithServer();
     } catch (error) {
       console.error('Error uploading photo to server:', error);
       showToast('Ошибка загрузки фото на сервер.', 'warning');
@@ -463,13 +466,14 @@ export async function updateClient(id, data) {
       localStorage.setItem('clientsData', JSON.stringify(clientsData));
       console.log('Photo deleted successfully');
       showToast('Фото клиента удалено', 'success');
+      await syncClientsWithServer();
     } catch (error) {
       console.error('Error deleting photo from server:', error);
       showToast('Ошибка удаления фото с сервера.', 'warning');
     }
   }
 
-  if (typeof renderClients === 'function') renderClients();
+  if (typeof window.renderClients === 'function') window.renderClients();
   return client;
 }
 
@@ -512,7 +516,7 @@ export async function fetchClientPhoto(clientId) {
     client.photo = URL.createObjectURL(blob); // Сохраняем URL для изображения
     localStorage.setItem('clientsData', JSON.stringify(clientsData));
     console.log('Фотография успешно получена:', client.photo);
-    if (typeof renderClients === 'function') renderClients();
+    if (typeof window.renderClients === 'function') window.renderClients();
     return client.photo;
   } catch (error) {
     console.error('Ошибка получения фото с сервера:', error);
@@ -531,11 +535,12 @@ export async function removeClient(id) {
     });
     if (!response.ok) throw new Error('Failed to delete client');
     showToast('Клиент удалён с сервера', 'success');
+    await syncClientsWithServer();
   } catch (error) {
     console.error('Error deleting client from server:', error);
     showToast('Ошибка удаления с сервера. Клиент удалён локально.', 'error');
   }
-  if (typeof renderClients === 'function') renderClients();
+  if (typeof window.renderClients === 'function') window.renderClients();
 }
 
 export function addGroupToClient(clientId, groupId, action = 'added', date = new Date().toISOString().split('T')[0]) {
@@ -554,7 +559,7 @@ export function addGroupToClient(clientId, groupId, action = 'added', date = new
     console.log(`Клиент ${clientId} добавлен в группу ${groupId} с датой ${date}`);
     updateClient(clientId, client).then(() => {
       console.log('Group update synced with server');
-      if (typeof renderClients === 'function') renderClients();
+      if (typeof window.renderClients === 'function') window.renderClients();
     });
   } else {
     console.log(`Клиент ${clientId} уже в группе ${groupId}`);
@@ -578,7 +583,7 @@ export function removeGroupFromClient(clientId, groupId) {
     console.log(`Клиент ${clientId} удалён из группы ${groupId}`);
     updateClient(clientId, client).then(() => {
       console.log('Group removal synced with server');
-      if (typeof renderClients === 'function') renderClients();
+      if (typeof window.renderClients === 'function') window.renderClients();
     });
   } else {
     console.log(`Клиент ${clientId} не состоит в группе ${groupId}`);
@@ -650,6 +655,31 @@ export async function showClientForm(title, client, callback) {
   function isAdult(birthDate) {
     const age = calculateAge(birthDate);
     return age !== null && age >= 18;
+  }
+
+  function refreshParents() {
+    const updatedClient = getClientById(client.id);
+    if (updatedClient) {
+      parents = updatedClient.parents.map(p => ({
+        fullName: p.full_name || p.fullName || '',
+        phone: p.phone || '',
+        relation: getRelationName(p.relation_id) || p.relation || ''
+      }));
+      renderParents(parentsContainer);
+    }
+  }
+
+  function refreshDiagnoses() {
+    const updatedClient = getClientById(client.id);
+    if (updatedClient) {
+      diagnoses = updatedClient.diagnoses
+        .filter(d => d.diagnosis_id !== undefined && d.diagnosis_id !== null)
+        .map(d => ({
+          name: d.name || getDiagnosisName(d.diagnosis_id) || 'Неизвестный диагноз',
+          notes: d.notes || ''
+        }));
+      renderDiagnoses(diagnosesContainer);
+    }
   }
 
   function renderParents(container) {
@@ -747,7 +777,7 @@ export async function showClientForm(title, client, callback) {
             relationInput.value = selectedRelation;
             parents[index].relation = selectedRelation;
           }
-        });
+        }, refreshParents);
       });
     });
   }
@@ -845,7 +875,7 @@ export async function showClientForm(title, client, callback) {
             nameInput.value = selectedDiagnosis;
             diagnoses[index].name = selectedDiagnosis;
           }
-        });
+        }, refreshDiagnoses);
       });
     });
   }
@@ -1011,7 +1041,7 @@ export async function showClientForm(title, client, callback) {
   renderParents(parentsContainer);
 
   const diagnosesContainer = modal.querySelector('#diagnoses-container');
-  // Проверка commonDiagnoses перед рендерингом
+  // Проверка commonDiagnoses перед рендером
   if (!commonDiagnoses.length) {
     console.warn('commonDiagnoses пуст, пытаемся синхронизировать');
     showToast('Справочник диагнозов не загружен, синхронизация...', 'warning');
@@ -1126,7 +1156,7 @@ export async function showClientForm(title, client, callback) {
         notes: d.notes
       }));
 
-    await callback({
+    const updatedData = {
       surname,
       name,
       patronymic,
@@ -1138,8 +1168,11 @@ export async function showClientForm(title, client, callback) {
       features,
       photo,
       groups: client.groups || []
-    });
+    };
+
+    await callback(updatedData);
     closeModal();
+    await syncClientsWithServer(); // Полная синхронизация после сохранения
   });
 
   document.getElementById('client-cancel-btn').addEventListener('click', closeModal);
@@ -1388,6 +1421,8 @@ export async function loadClients() {
       }).join('');
   }
 
+  window.renderClients = renderClients;
+
   renderClients();
 
   const searchInput = document.getElementById('client-search');
@@ -1411,6 +1446,7 @@ export async function loadClients() {
     showClientForm('Добавить клиента', {}, async (data) => {
       const newClient = await addClient(data);
       await normalizeClient(newClient);
+      await syncClientsWithServer();
       renderClients();
       showToast('Клиент успешно добавлен', 'success');
     });
@@ -1421,7 +1457,7 @@ export async function loadClients() {
     const target = e.target;
     const clientCard = target.closest('.client-card');
     const clientId = clientCard ? clientCard.getAttribute('data-id') : null;
-    const client = clientsData.find(c => c.id === clientId);
+    let client = clientsData.find(c => c.id === clientId);
     if (!client) return;
 
     const actionBtn = target.closest('.client-action-btn');
@@ -1432,14 +1468,17 @@ export async function loadClients() {
         showClientForm('Редактировать клиента', client, async (data) => {
           const updatedClient = await updateClient(clientId, data);
           await normalizeClient(updatedClient);
+          await syncClientsWithServer();
           renderClients();
           showToast('Данные клиента обновлены', 'success');
+          client = updatedClient; // Update local reference
         });
       } else if (actionBtn.classList.contains('blacklist-btn')) {
         client.blacklisted = !client.blacklisted;
         console.log('Blacklisted toggled to:', client.blacklisted);
         await updateClient(clientId, client);
         await normalizeClient(client);
+        await syncClientsWithServer();
         renderClients();
         showToast(client.blacklisted ? 'Клиент добавлен в чёрный список' : 'Клиент удалён из чёрного списка', 'info');
       } else if (actionBtn.classList.contains('subscription-btn')) {
@@ -1450,6 +1489,7 @@ export async function loadClients() {
           client.group_history = history;
           await updateClient(clientId, client);
           await normalizeClient(client);
+          await syncClientsWithServer();
           renderClients();
           showToast('Группы клиента обновлены', 'success');
         });
@@ -1459,6 +1499,7 @@ export async function loadClients() {
           `Вы уверены, что хотите удалить клиента "${client.surname} ${client.name}"? Это действие нельзя отменить.`,
           async () => {
             await removeClient(clientId);
+            await syncClientsWithServer();
             renderClients();
             showToast('Клиент удалён', 'success');
           }
@@ -1705,9 +1746,11 @@ export function showClientDetails(client) {
     editBtn.addEventListener('click', () => {
       modal.remove();
       showClientForm('Редактировать клиента', client, async (data) => {
-        await updateClient(client.id, data);
+        const updatedClient = await updateClient(client.id, data);
+        await syncClientsWithServer(); // Полная синхронизация
+        showClientDetails(updatedClient);
         showToast('Данные клиента обновлены', 'success');
-        renderClients();
+        if (typeof window.renderClients === 'function') window.renderClients();
       });
     });
   }
@@ -1729,7 +1772,7 @@ export function formatDate(dateString) {
   return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-export function showDiagnosisDictionary(callback) {
+export function showDiagnosisDictionary(callback, refreshCallback = () => {}) {
   const modal = document.createElement('div');
   modal.className = 'diagnosis-dictionary-modal';
   let selectedDiagnosis = null;
@@ -1794,8 +1837,10 @@ export function showDiagnosisDictionary(callback) {
   modal.querySelector('#add-new-diagnosis-btn').addEventListener('click', () => {
     const newDiagnosis = prompt('Введите новый диагноз:');
     if (newDiagnosis && newDiagnosis.trim() && !commonDiagnoses.some(d => d.name === newDiagnosis.trim())) {
-      addDiagnosis(newDiagnosis.trim()).then(() => {
+      addDiagnosis(newDiagnosis.trim()).then(async () => {
+        await syncDiagnoses();
         renderDiagnosesList(modal.querySelector('#diagnosis-search').value);
+        refreshCallback();
         showToast('Новый диагноз добавлен', 'success');
       }).catch(err => {
         showToast('Ошибка при добавлении', 'error');
@@ -1821,9 +1866,11 @@ export function showDiagnosisDictionary(callback) {
       const oldName = name;
       const newName = prompt('Введите новое название диагноза:', oldName);
       if (newName && newName.trim() && newName !== oldName) {
-        updateDiagnosis(oldName, newName.trim()).then(() => {
+        updateDiagnosis(oldName, newName.trim()).then(async () => {
           if (selectedDiagnosis && selectedDiagnosis.name === oldName) selectedDiagnosis.name = newName.trim();
+          await syncDiagnoses();
           renderDiagnosesList(modal.querySelector('#diagnosis-search').value);
+          refreshCallback();
         }).catch(err => {
           showToast('Ошибка при обновлении', 'error');
         });
@@ -1833,9 +1880,11 @@ export function showDiagnosisDictionary(callback) {
         'Удалить диагноз?',
         `Вы уверены, что хотите удалить диагноз "${name}"?`,
         () => {
-          deleteDiagnosis(name).then(() => {
+          deleteDiagnosis(name).then(async () => {
             if (selectedDiagnosis && selectedDiagnosis.name === name) selectedDiagnosis = null;
+            await syncDiagnoses();
             renderDiagnosesList(modal.querySelector('#diagnosis-search').value);
+            refreshCallback();
           }).catch(err => {
             showToast('Ошибка при удалении', 'error');
           });
@@ -1856,7 +1905,7 @@ export function showDiagnosisDictionary(callback) {
   renderDiagnosesList();
 }
 
-export function showRelationDictionary(callback) {
+export function showRelationDictionary(callback, refreshCallback = () => {}) {
   const modal = document.createElement('div');
   modal.className = 'relation-dictionary-modal';
   let selectedRelation = null;
@@ -1921,8 +1970,10 @@ export function showRelationDictionary(callback) {
   modal.querySelector('#add-new-relation-btn').addEventListener('click', () => {
     const newRelation = prompt('Введите новое отношение:');
     if (newRelation && newRelation.trim() && !commonRelations.some(r => r.name === newRelation.trim())) {
-      addRelation(newRelation.trim()).then(() => {
+      addRelation(newRelation.trim()).then(async () => {
+        await syncRelations();
         renderRelationsList(modal.querySelector('#relation-search').value);
+        refreshCallback();
         showToast('Новое отношение добавлено', 'success');
       }).catch(err => {
         showToast('Ошибка при добавлении', 'error');
@@ -1948,9 +1999,11 @@ export function showRelationDictionary(callback) {
       const oldName = name;
       const newName = prompt('Введите новое название отношения:', oldName);
       if (newName && newName.trim() && newName !== oldName) {
-        updateRelation(oldName, newName.trim()).then(() => {
+        updateRelation(oldName, newName.trim()).then(async () => {
           if (selectedRelation && selectedRelation.name === oldName) selectedRelation.name = newName.trim();
+          await syncRelations();
           renderRelationsList(modal.querySelector('#relation-search').value);
+          refreshCallback();
         }).catch(err => {
           showToast('Ошибка при обновлении', 'error');
         });
@@ -1960,9 +2013,11 @@ export function showRelationDictionary(callback) {
         'Удалить отношение?',
         `Вы уверены, что хотите удалить отношение "${name}"?`,
         () => {
-          deleteRelation(name).then(() => {
+          deleteRelation(name).then(async () => {
             if (selectedRelation && selectedRelation.name === name) selectedRelation = null;
+            await syncRelations();
             renderRelationsList(modal.querySelector('#relation-search').value);
+            refreshCallback();
           }).catch(err => {
             showToast('Ошибка при удалении', 'error');
           });
@@ -2095,8 +2150,9 @@ export function showSubscriptionManagement(client) {
       showRenewSubscriptionForm('Продление абонемента', client, sub, async (data) => {
         client.subscriptions[index] = { ...sub, ...data };
         await updateClient(client.id, client);
+        await syncClientsWithServer();
         modal.remove();
-        if (typeof renderClients === 'function') renderClients();
+        if (typeof window.renderClients === 'function') window.renderClients();
         showToast('Абонемент продлён', 'success');
       });
     });
@@ -2125,8 +2181,9 @@ export function showSubscriptionManagement(client) {
         remainingClasses: template ? template.remainingClasses : data.remainingClasses || 0
       });
       await updateClient(client.id, client);
+      await syncClientsWithServer();
       modal.remove();
-      if (typeof renderClients === 'function') renderClients();
+      if (typeof window.renderClients === 'function') window.renderClients();
       showToast('Новый абонемент создан', 'success');
     });
   });
@@ -2261,7 +2318,7 @@ export async function showSubscriptionForm(title, sub, clients, groups, callback
     }
   });
 
-  document.getElementById('subscription-save-btn').addEventListener('click', () => {
+  document.getElementById('subscription-save-btn').addEventListener('click', async () => {
     const clientId = sub.clientId;
     const templateId = document.getElementById('subscription-template').value;
     const classesPerWeek = parseInt(document.getElementById('subscription-classes-per-week').value);
@@ -2290,7 +2347,7 @@ export async function showSubscriptionForm(title, sub, clients, groups, callback
       return;
     }
 
-    callback({
+    await callback({
       clientId,
       templateId,
       startDate,
@@ -2305,12 +2362,13 @@ export async function showSubscriptionForm(title, sub, clients, groups, callback
     });
 
     closeModal();
+    await syncClientsWithServer(); // Полная синхронизация после изменений
 
     const subscriptionManagementModal = document.querySelector('.subscription-management-modal');
     if (subscriptionManagementModal) {
-      const client = clients.find(c => c.id === sub.clientId);
+      const updatedClient = clientsData.find(c => c.id === sub.clientId);
       subscriptionManagementModal.remove();
-      showSubscriptionManagement(client);
+      showSubscriptionManagement(updatedClient);
     }
   });
 
@@ -2474,7 +2532,7 @@ export function showRenewSubscriptionForm(title, client, sub, callback) {
     }
   });
 
-  document.getElementById('renew-save-btn').addEventListener('click', () => {
+  document.getElementById('renew-save-btn').addEventListener('click', async () => {
     const templateId = document.getElementById('renew-template').value;
     const classesPerWeek = parseInt(document.getElementById('renew-classes-per-week').value);
     const daysOfWeek = Array.from(modal.querySelectorAll('.day-button.selected'))
@@ -2509,7 +2567,7 @@ export function showRenewSubscriptionForm(title, client, sub, callback) {
       toTemplate: template ? template.type : 'Неизвестный'
     };
 
-    callback({
+    await callback({
       templateId,
       startDate,
       endDate,
@@ -2524,6 +2582,7 @@ export function showRenewSubscriptionForm(title, client, sub, callback) {
     });
 
     closeModal();
+    await syncClientsWithServer(); // Полная синхронизация после изменений
   });
 }
 
@@ -2776,15 +2835,16 @@ export function showGroupForm(title, client, groups, callback) {
   });
 
   // Обработчик сохранения
-  modal.querySelector('#group-save-btn').addEventListener('click', () => {
+  modal.querySelector('#group-save-btn').addEventListener('click', async () => {
     console.log(`Сохранение групп для клиента ${client.id}:`, selectedGroups);
     const finalGroups = selectedGroups.map(group => {
       const historyEntry = groupHistory.find(entry => entry.group === group && entry.action === 'added');
       return { name: group, startDate: historyEntry ? historyEntry.date : new Date().toISOString().split('T')[0] };
     });
-    callback(finalGroups.map(g => g.name), groupHistory);
-    if (typeof renderClients === 'function') {
-      renderClients();
+    await callback(finalGroups.map(g => g.name), groupHistory);
+    await syncClientsWithServer();
+    if (typeof window.renderClients === 'function') {
+      window.renderClients();
     }
     closeModal();
   });
