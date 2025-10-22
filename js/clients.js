@@ -1204,29 +1204,32 @@ export async function showClientForm(title, client, callback) {
 }
 
 export async function loadClients() {
-  // Сначала синхронизируем справочники
-  await syncDiagnoses();
-  await syncRelations();
+  try {
+    // Сначала синхронизируем справочники
+    await syncDiagnoses();
+    await syncRelations();
 
-  // Затем загружаем из localStorage
-  clientsData = JSON.parse(localStorage.getItem('clientsData')) || [];
+    // Затем загружаем из localStorage
+    clientsData = JSON.parse(localStorage.getItem('clientsData')) || [];
 
-  // Затем синхронизируем с сервером асинхронно
-  await syncClientsWithServer();
+    // Затем синхронизируем с сервером асинхронно
+    await syncClientsWithServer();
 
-  // Подгружаем фото для каждого клиента
-  for (const client of clientsData) {
-    if (client.id) {
-      await fetchClientPhoto(client.id);
+    // Подгружаем фото для каждого клиента
+    for (const client of clientsData) {
+      if (client.id) {
+        await fetchClientPhoto(client.id);
+      }
     }
-  }
 
-  const mainContent = document.getElementById('main-content');
-  mainContent.innerHTML = '';
+    // Очищаем содержимое main-content
+    const mainContent = document.getElementById('main-content');
+    mainContent.innerHTML = '';
 
-  const header = document.createElement('header');
-  header.className = 'header';
-  header.innerHTML = `
+    // Создаём заголовок
+    const header = document.createElement('header');
+    header.className = 'header';
+    header.innerHTML = `
       <div class="header-content">
         <h1><img src="images/icon-clients.svg" alt="Клиенты" class="icon-users">Клиенты</h1>
         <div class="header-stats">
@@ -1245,11 +1248,12 @@ export async function loadClients() {
         </div>
       </div>
     `;
-  mainContent.appendChild(header);
+    mainContent.appendChild(header);
 
-  const controlBar = document.createElement('div');
-  controlBar.className = 'control-bar';
-  controlBar.innerHTML = `
+    // Создаём панель управления
+    const controlBar = document.createElement('div');
+    controlBar.className = 'control-bar';
+    controlBar.innerHTML = `
       <div class="search-container">
         <div class="search-input-wrapper">
           <img src="images/icon-search.svg" alt="Поиск" class="search-icon">
@@ -1276,272 +1280,454 @@ export async function loadClients() {
         <span>Добавить клиента</span>
       </button>
     `;
-  mainContent.appendChild(controlBar);
+    mainContent.appendChild(controlBar);
 
-  const clientSection = document.createElement('div');
-  clientSection.className = 'client-section';
+    // Создаём секцию клиентов
+    const clientSection = document.createElement('div');
+    clientSection.className = 'client-section';
 
-  const clientList = document.createElement('div');
-  clientList.className = 'client-list';
-  clientSection.appendChild(clientList);
+    const clientList = document.createElement('div');
+    clientList.className = 'client-list';
+    clientSection.appendChild(clientList);
 
-  const emptyState = document.createElement('div');
-  emptyState.className = 'empty-state';
-  emptyState.innerHTML = `
+    const emptyState = document.createElement('div');
+    emptyState.className = 'empty-state';
+    emptyState.innerHTML = `
       <div class="empty-state-icon"><img src="images/icon-clients.svg" alt="Клиенты"></div>
       <h3>Клиенты не найдены</h3>
       <p>Попробуйте изменить параметры поиска или добавьте нового клиента</p>
     `;
-  emptyState.style.display = 'none';
-  clientSection.appendChild(emptyState);
+    emptyState.style.display = 'none';
+    clientSection.appendChild(emptyState);
 
-  mainContent.appendChild(clientSection);
+    mainContent.appendChild(clientSection);
 
-  function getSubscriptionStatus(client) {
-    if (!client.subscriptions || client.subscriptions.length === 0) return 'no-subscription';
-    if (client.blacklisted) return 'blacklisted';
-    const hasActive = client.subscriptions.some(s => s.isPaid && new Date(s.endDate) >= new Date());
-    return hasActive ? 'active' : 'inactive';
-  }
-
-  function formatDate(dateString) {
-    if (!dateString) return 'Никогда';
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffTime = Math.abs(now - date);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 1) return 'Сегодня';
-    if (diffDays === 2) return 'Вчера';
-    if (diffDays <= 7) return `${diffDays - 1} дн. назад`;
-    if (diffDays <= 30) return `${Math.floor(diffDays / 7)} нед. назад`;
-    return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  }
-
-  function sortClients(clients, sortBy) {
-    return [...clients].sort((a, b) => {
-      switch (sortBy) {
-        case 'name':
-          return `${a.surname} ${a.name}`.localeCompare(`${b.surname} ${b.name}`);
-        case 'date-desc':
-          return new Date(b.created_at || 0) - new Date(a.created_at || 0);
-        case 'date-asc':
-          return new Date(a.created_at || 0) - new Date(b.created_at || 0);
-        default:
-          return 0;
-      }
-    });
-  }
-
-  function renderClients() {
-    const search = document.getElementById('client-search').value.toLowerCase();
-    const statusFilter = document.getElementById('status-filter').value;
-    const sortBy = document.getElementById('sort-by').value;
-
-    let filteredClients = clientsData.filter(client => {
-      const fullName = `${client.surname} ${client.name} ${client.patronymic || ''}`.toLowerCase();
-      const matchesSearch = search === '' ||
-        fullName.includes(search) ||
-        client.phone.toLowerCase().includes(search) ||
-        (Array.isArray(client.groups) && client.groups.some(group => group.toLowerCase().includes(search)));
-
-      const matchesStatus = statusFilter === '' || getSubscriptionStatus(client) === statusFilter;
-
-      return matchesSearch && matchesStatus;
-    });
-
-    filteredClients = sortClients(filteredClients, sortBy);
-
-    if (filteredClients.length === 0) {
-      clientList.style.display = 'none';
-      emptyState.style.display = 'flex';
-      return;
+    // Определяем вспомогательные функции
+    function getSubscriptionStatus(client) {
+      if (!client.subscriptions || client.subscriptions.length === 0) return 'no-subscription';
+      if (client.blacklisted) return 'blacklisted';
+      const hasActive = client.subscriptions.some(s => s.isPaid && new Date(s.endDate) >= new Date());
+      return hasActive ? 'active' : 'inactive';
     }
 
-    clientList.style.display = 'grid';
-    emptyState.style.display = 'none';
+    function formatDate(dateString) {
+      if (!dateString) return 'Никогда';
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffTime = Math.abs(now - date);
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-    clientList.innerHTML = filteredClients
-      .map(client => {
-        console.log('Client photo URL in render:', client.photo ? client.photo.substring(0, 50) + '...' : 'null');
-        const fullName = `${client.surname} ${client.name} ${client.patronymic || ''}`;
-        const hasDiagnosis = client.diagnoses && client.diagnoses.length > 0 && !(client.diagnoses.length === 1 && (client.diagnoses[0].name || getDiagnosisName(client.diagnoses[0].diagnosis_id)) === 'Нет');
-        const status = getSubscriptionStatus(client);
-        const statusClass = {
-          'active': 'status-active',
-          'inactive': 'status-inactive',
-          'no-subscription': 'status-none',
-          'blacklisted': 'status-blacklisted'
-        }[status];
+      if (diffDays === 1) return 'Сегодня';
+      if (diffDays === 2) return 'Вчера';
+      if (diffDays <= 7) return `${diffDays - 1} дн. назад`;
+      if (diffDays <= 30) return `${Math.floor(diffDays / 7)} нед. назад`;
+      return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    }
 
-        const statusText = {
-          'active': 'Активный',
-          'inactive': 'Неактивный',
-          'no-subscription': 'Без абонемента',
-          'blacklisted': 'В чёрном списке'
-        }[status];
-
-        const activeSub = client.subscriptions.find(s => s.isPaid && new Date(s.endDate) >= new Date());
-        const remainingClasses = activeSub ? activeSub.remainingClasses : undefined;
-
-        // Проверяем, есть ли фото, и если нет, пытаемся подгрузить
-        if (!client.photo && client.id) {
-          fetchClientPhoto(client.id).then(() => {
-            if (typeof window.renderClients === 'function') window.renderClients();
-          });
+    function sortClients(clients, sortBy) {
+      return [...clients].sort((a, b) => {
+        switch (sortBy) {
+          case 'name':
+            return `${a.surname} ${a.name}`.localeCompare(`${b.surname} ${b.name}`);
+          case 'date-desc':
+            return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+          case 'date-asc':
+            return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+          default:
+            return 0;
         }
+      });
+    }
 
-        return `
-      <div class="client-card ${client.blacklisted ? 'blacklisted' : ''}" data-id="${client.id}">
-        <div class="client-main-info">
-          <div class="client-avatar">
-            ${client.photo ?
-            `<img src="${client.photo}" class="client-photo" alt="${fullName}" style="object-fit: cover;">` :
-            `<div class="client-photo-placeholder">${client.name.charAt(0).toUpperCase()}</div>`
+    function renderClients() {
+      // Проверяем наличие элементов перед доступом к их свойствам
+      const searchInput = document.getElementById('client-search');
+      const statusFilterInput = document.getElementById('status-filter');
+      const sortByInput = document.getElementById('sort-by');
+
+      const search = searchInput ? searchInput.value.toLowerCase() : '';
+      const statusFilter = statusFilterInput ? statusFilterInput.value : '';
+      const sortBy = sortByInput ? sortByInput.value : 'name';
+
+      let filteredClients = clientsData.filter(client => {
+        const fullName = `${client.surname} ${client.name} ${client.patronymic || ''}`.toLowerCase();
+        const matchesSearch = search === '' ||
+          fullName.includes(search) ||
+          client.phone.toLowerCase().includes(search) ||
+          (Array.isArray(client.groups) && client.groups.some(group => group.toLowerCase().includes(search)));
+
+        const matchesStatus = statusFilter === '' || getSubscriptionStatus(client) === statusFilter;
+
+        return matchesSearch && matchesStatus;
+      });
+
+      filteredClients = sortClients(filteredClients, sortBy);
+
+      if (filteredClients.length === 0) {
+        clientList.style.display = 'none';
+        emptyState.style.display = 'flex';
+        return;
+      }
+
+      clientList.style.display = 'grid';
+      emptyState.style.display = 'none';
+
+      clientList.innerHTML = filteredClients
+        .map(client => {
+          console.log('Client photo URL in render:', client.photo ? client.photo.substring(0, 50) + '...' : 'null');
+          const fullName = `${client.surname} ${client.name} ${client.patronymic || ''}`;
+          const hasDiagnosis = client.diagnoses && client.diagnoses.length > 0 && !(client.diagnoses.length === 1 && (client.diagnoses[0].name || getDiagnosisName(client.diagnoses[0].diagnosis_id)) === 'Нет');
+          const status = getSubscriptionStatus(client);
+          const statusClass = {
+            'active': 'status-active',
+            'inactive': 'status-inactive',
+            'no-subscription': 'status-none',
+            'blacklisted': 'status-blacklisted'
+          }[status];
+
+          const statusText = {
+            'active': 'Активный',
+            'inactive': 'Неактивный',
+            'no-subscription': 'Без абонемента',
+            'blacklisted': 'В чёрном списке'
+          }[status];
+
+          const activeSub = client.subscriptions.find(s => s.isPaid && new Date(s.endDate) >= new Date());
+          const remainingClasses = activeSub ? activeSub.remainingClasses : undefined;
+
+          // Проверяем, есть ли фото, и если нет, пытаемся подгрузить
+          if (!client.photo && client.id) {
+            fetchClientPhoto(client.id).catch(error => {
+              console.error('Error fetching photo in renderClients:', error);
+            });
           }
-            <div class="status-indicator ${statusClass}" title="${statusText}"></div>
-          </div>
-          <div class="client-details">
-            <div class="client-name-section">
-              <h3 class="client-name ${hasDiagnosis ? 'has-diagnosis' : ''}">${fullName}</h3>
-              <div class="client-meta">
-                <span class="client-phone">${client.phone}</span>
-                ${hasDiagnosis ? `
-                  <div class="diagnosis-badge">
-                    ${client.diagnoses.map(d => `<span class="diagnosis-tag">${d.name || getDiagnosisName(d.diagnosis_id)}${d.notes ? ` (${d.notes})` : ''}</span>`).join('')}
+
+          return `
+            <div class="client-card ${client.blacklisted ? 'blacklisted' : ''}" data-id="${client.id}">
+              <div class="client-main-info">
+                <div class="client-avatar">
+                  ${client.photo ?
+              `<img src="${client.photo}" class="client-photo" alt="${fullName}" style="object-fit: cover;">` :
+              `<div class="client-photo-placeholder">${client.name.charAt(0).toUpperCase()}</div>`
+            }
+                  <div class="status-indicator ${statusClass}" title="${statusText}"></div>
+                </div>
+                <div class="client-details">
+                  <div class="client-name-section">
+                    <h3 class="client-name ${hasDiagnosis ? 'has-diagnosis' : ''}">${fullName}</h3>
+                    <div class="client-meta">
+                      <span class="client-phone">${client.phone}</span>
+                      ${hasDiagnosis ? `
+                        <div class="diagnosis-badge">
+                          ${client.diagnoses.map(d => `<span class="diagnosis-tag">${d.name || getDiagnosisName(d.diagnosis_id)}${d.notes ? ` (${d.notes})` : ''}</span>`).join('')}
+                        </div>
+                      ` : ''}
+                    </div>
                   </div>
-                ` : ''}
+                  <div class="client-additional-info">
+                    <span class="groups-info">
+                      <span class="info-label">Группы:</span>
+                      ${Array.isArray(client.groups) && client.groups.length ? client.groups.map(group => `<span class="group-tag">${group}</span>`).join('') : '<span class="no-groups">Без групп</span>'}
+                    </span>
+                    ${remainingClasses !== undefined ?
+              `<span class="classes-info">
+                          <span class="info-label">Осталось занятий:</span>
+                          <span class="classes-value ${remainingClasses <= 3 && remainingClasses !== Infinity ? 'low-classes' : ''}">
+                            ${remainingClasses === Infinity ? 'Безлимит' : remainingClasses}
+                          </span>
+                        </span>` : ''
+            }
+                  </div>
+                </div>
+              </div>
+              <div class="action-buttons-group">
+                <button type="button" class="client-action-btn edit-btn" data-id="${client.id}" title="Редактировать">
+                  <img src="images/icon-edit.svg" alt="Редактировать" class="btn-icon">
+                </button>
+                <button type="button" class="client-action-btn subscription-btn" data-id="${client.id}" title="Абонемент">
+                  <img src="images/icon-subscriptions.svg" alt="Абонемент" class="btn-icon">
+                </button>
+                <button type="button" class="client-action-btn group-btn" data-id="${client.id}" title="Группы">
+                  <img src="images/icon-group.svg" alt="Группы" class="btn-icon">
+                </button>
+                <button type="button" class="client-action-btn blacklist-btn ${client.blacklisted ? 'active' : ''}" data-id="${client.id}" title="${client.blacklisted ? 'Убрать из чёрного списка' : 'В чёрный список'}">
+                  <img src="images/icon-delete.svg" alt="${client.blacklisted ? 'Убрать из чёрного списка' : 'В чёрный список'}" class="btn-icon">
+                </button>
+                <button type="button" class="client-action-btn delete-btn" data-id="${client.id}" title="Удалить">
+                  <img src="images/trash.svg" alt="Удалить" class="btn-icon">
+                </button>
               </div>
             </div>
-            <div class="client-additional-info">
-              <span class="groups-info">
-                <span class="info-label">Группы:</span>
-                ${Array.isArray(client.groups) && client.groups.length ? client.groups.map(group => `<span class="group-tag">${group}</span>`).join('') : '<span class="no-groups">Без групп</span>'}
-              </span>
-              ${remainingClasses !== undefined ?
-            `<span class="classes-info">
-                <span class="info-label">Осталось занятий:</span>
-                <span class="classes-value ${remainingClasses <= 3 && remainingClasses !== Infinity ? 'low-classes' : ''}">
-                  ${remainingClasses === Infinity ? 'Безлимит' : remainingClasses}
-                </span>
-              </span>` : ''
-          }
-            </div>
-          </div>
-        </div>
-        <div class="action-buttons-group">
-          <button type="button" class="client-action-btn edit-btn" data-id="${client.id}" title="Редактировать">
-            <img src="images/icon-edit.svg" alt="Редактировать" class="btn-icon">
-          </button>
-          <button type="button" class="client-action-btn subscription-btn" data-id="${client.id}" title="Абонемент">
-            <img src="images/icon-subscriptions.svg" alt="Абонемент" class="btn-icon">
-          </button>
-          <button type="button" class="client-action-btn group-btn" data-id="${client.id}" title="Группы">
-            <img src="images/icon-group.svg" alt="Группы" class="btn-icon">
-          </button>
-          <button type="button" class="client-action-btn blacklist-btn ${client.blacklisted ? 'active' : ''}" data-id="${client.id}" title="${client.blacklisted ? 'Убрать из чёрного списка' : 'В чёрный список'}">
-            <img src="images/icon-delete.svg" alt="${client.blacklisted ? 'Убрать из чёрного списка' : 'В чёрный список'}" class="btn-icon">
-          </button>
-          <button type="button" class="client-action-btn delete-btn" data-id="${client.id}" title="Удалить">
-            <img src="images/trash.svg" alt="Удалить" class="btn-icon">
-          </button>
-        </div>
-      </div>
-    `;
-      }).join('');
-  }
+          `;
+        }).join('');
+    }
 
-  window.renderClients = renderClients;
+    window.renderClients = renderClients;
 
-  renderClients();
-
-  const searchInput = document.getElementById('client-search');
-  const searchClear = document.getElementById('search-clear');
-
-  searchInput.addEventListener('input', (e) => {
+    // Вызываем renderClients только после создания всех DOM-элементов
     renderClients();
-    searchClear.style.display = e.target.value ? 'block' : 'none';
-  });
 
-  searchClear.addEventListener('click', () => {
-    searchInput.value = '';
-    searchClear.style.display = 'none';
-    renderClients();
-  });
+    // Добавляем обработчики событий
+    const searchInput = document.getElementById('client-search');
+    const searchClear = document.getElementById('search-clear');
 
-  document.getElementById('status-filter').addEventListener('change', renderClients);
-  document.getElementById('sort-by').addEventListener('change', renderClients);
-
-  document.getElementById('client-add-btn').addEventListener('click', () => {
-    showClientForm('Добавить клиента', {}, async (data) => {
-      const newClient = await addClient(data);
-      await normalizeClient(newClient);
-      await syncClientsWithServer();
+    searchInput.addEventListener('input', (e) => {
       renderClients();
-      showToast('Клиент успешно добавлен', 'success');
+      searchClear.style.display = e.target.value ? 'block' : 'none';
     });
-  });
 
-  clientList.addEventListener('click', async (e) => {
-    e.preventDefault();
-    const target = e.target;
-    const clientCard = target.closest('.client-card');
-    const clientId = clientCard ? clientCard.getAttribute('data-id') : null;
-    let client = clientsData.find(c => c.id === clientId);
-    if (!client) return;
+    searchClear.addEventListener('click', () => {
+      searchInput.value = '';
+      searchClear.style.display = 'none';
+      renderClients();
+    });
 
-    const actionBtn = target.closest('.client-action-btn');
-    if (actionBtn) {
-      e.stopPropagation();
+    document.getElementById('status-filter').addEventListener('change', renderClients);
+    document.getElementById('sort-by').addEventListener('change', renderClients);
 
-      if (actionBtn.classList.contains('edit-btn')) {
-        showClientForm('Редактировать клиента', client, async (data) => {
-          const updatedClient = await updateClient(clientId, data);
-          await normalizeClient(updatedClient);
-          await syncClientsWithServer();
-          renderClients();
-          showToast('Данные клиента обновлены', 'success');
-          client = updatedClient; // Update local reference
-        });
-      } else if (actionBtn.classList.contains('blacklist-btn')) {
-        client.blacklisted = !client.blacklisted;
-        console.log('Blacklisted toggled to:', client.blacklisted);
-        await updateClient(clientId, client);
-        await normalizeClient(client);
+    document.getElementById('client-add-btn').addEventListener('click', () => {
+      showClientForm('Добавить клиента', {}, async (data) => {
+        const newClient = await addClient(data);
+        await normalizeClient(newClient);
         await syncClientsWithServer();
         renderClients();
-        showToast(client.blacklisted ? 'Клиент добавлен в чёрный список' : 'Клиент удалён из чёрного списка', 'info');
-      } else if (actionBtn.classList.contains('subscription-btn')) {
-        showSubscriptionManagement(client);
-      } else if (actionBtn.classList.contains('group-btn')) {
-        showGroupForm('Управление группами', client, getGroups(), async (groups, history) => {
-          client.groups = groups;
-          client.group_history = history;
+        showToast('Клиент успешно добавлен', 'success');
+      });
+    });
+
+    clientList.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const target = e.target;
+      const clientCard = target.closest('.client-card');
+      const clientId = clientCard ? clientCard.getAttribute('data-id') : null;
+      let client = clientsData.find(c => c.id === clientId);
+      if (!client) return;
+
+      const actionBtn = target.closest('.client-action-btn');
+      if (actionBtn) {
+        e.stopPropagation();
+
+        if (actionBtn.classList.contains('edit-btn')) {
+          showClientForm('Редактировать клиента', client, async (data) => {
+            const updatedClient = await updateClient(clientId, data);
+            await normalizeClient(updatedClient);
+            await syncClientsWithServer();
+            renderClients();
+            showToast('Данные клиента обновлены', 'success');
+            client = updatedClient; // Update local reference
+          });
+        } else if (actionBtn.classList.contains('blacklist-btn')) {
+          client.blacklisted = !client.blacklisted;
+          console.log('Blacklisted toggled to:', client.blacklisted);
           await updateClient(clientId, client);
           await normalizeClient(client);
           await syncClientsWithServer();
           renderClients();
-          showToast('Группы клиента обновлены', 'success');
-        });
-      } else if (actionBtn.classList.contains('delete-btn')) {
-        showConfirmDialog(
-          'Удалить клиента?',
-          `Вы уверены, что хотите удалить клиента "${client.surname} ${client.name}"? Это действие нельзя отменить.`,
-          async () => {
-            await removeClient(clientId);
+          showToast(client.blacklisted ? 'Клиент добавлен в чёрный список' : 'Клиент удалён из чёрного списка', 'info');
+        } else if (actionBtn.classList.contains('subscription-btn')) {
+          showSubscriptionManagement(client);
+        } else if (actionBtn.classList.contains('group-btn')) {
+          showGroupForm('Управление группами', client, getGroups(), async (groups, history) => {
+            client.groups = groups;
+            client.group_history = history;
+            await updateClient(clientId, client);
+            await normalizeClient(client);
             await syncClientsWithServer();
             renderClients();
-            showToast('Клиент удалён', 'success');
-          }
-        );
+            showToast('Группы клиента обновлены', 'success');
+          });
+        } else if (actionBtn.classList.contains('delete-btn')) {
+          showConfirmDialog(
+            'Удалить клиента?',
+            `Вы уверены, что хотите удалить клиента "${client.surname} ${client.name}"? Это действие нельзя отменить.`,
+            async () => {
+              await removeClient(clientId);
+              await syncClientsWithServer();
+              renderClients();
+              showToast('Клиент удалён', 'success');
+            }
+          );
+        }
+      } else {
+        const selection = window.getSelection();
+        if (selection.toString().length === 0) {
+          showClientDetails(client);
+        }
       }
-    } else {
-      const selection = window.getSelection();
-      if (selection.toString().length === 0) {
-        showClientDetails(client);
+    });
+  } catch (error) {
+    console.error('Error loading clients:', error);
+    showToast('Ошибка загрузки клиентов. Используются локальные данные.', 'error');
+
+    // Рендерим локальные данные, но только после создания DOM-элементов
+    const mainContent = document.getElementById('main-content');
+    mainContent.innerHTML = '';
+
+    const header = document.createElement('header');
+    header.className = 'header';
+    header.innerHTML = `
+      <div class="header-content">
+        <h1><img src="images/icon-clients.svg" alt="Клиенты" class="icon-users">Клиенты</h1>
+        <div class="header-stats">
+          <div class="stat-item">
+            <span class="stat-number">${clientsData.length}</span>
+            <span class="stat-label">всего</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-number">${clientsData.filter(c => c.subscriptions.some(s => s.isPaid && new Date(s.endDate) >= new Date())).length}</span>
+            <span class="stat-label">активных</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-number">${clientsData.filter(c => c.blacklisted).length}</span>
+            <span class="stat-label">в ЧС</span>
+          </div>
+        </div>
+      </div>
+    `;
+    mainContent.appendChild(header);
+
+    const controlBar = document.createElement('div');
+    controlBar.className = 'control-bar';
+    controlBar.innerHTML = `
+      <div class="search-container">
+        <div class="search-input-wrapper">
+          <img src="images/icon-search.svg" alt="Поиск" class="search-icon">
+          <input type="text" id="client-search" class="client-search" placeholder="Поиск по имени, телефону или группе...">
+          <button id="search-clear" class="search-clear" style="display: none;">×</button>
+        </div>
+      </div>
+      <div class="filter-controls">
+        <select id="status-filter" class="status-filter">
+          <option value="">Все статусы</option>
+          <option value="active">Активные абонементы</option>
+          <option value="inactive">Неактивные абонементы</option>
+          <option value="no-subscription">Без абонемента</option>
+          <option value="blacklisted">В чёрном списке</option>
+        </select>
+        <select id="sort-by" class="sort-select">
+          <option value="name">По имени</option>
+          <option value="date-desc">Сначала новые</option>
+          <option value="date-asc">Сначала старые</option>
+        </select>
+      </div>
+      <button type="button" class="btn-primary client-add-btn" id="client-add-btn">
+        <i class="add-icon">+</i>
+        <span>Добавить клиента</span>
+      </button>
+    `;
+    mainContent.appendChild(controlBar);
+
+    const clientSection = document.createElement('div');
+    clientSection.className = 'client-section';
+
+    const clientList = document.createElement('div');
+    clientList.className = 'client-list';
+    clientSection.appendChild(clientList);
+
+    const emptyState = document.createElement('div');
+    emptyState.className = 'empty-state';
+    emptyState.innerHTML = `
+      <div class="empty-state-icon"><img src="images/icon-clients.svg" alt="Клиенты"></div>
+      <h3>Клиенты не найдены</h3>
+      <p>Попробуйте изменить параметры поиска или добавьте нового клиента</p>
+    `;
+    emptyState.style.display = 'none';
+    clientSection.appendChild(emptyState);
+
+    mainContent.appendChild(clientSection);
+
+    // Рендерим локальные данные после создания DOM-элементов
+    renderClients();
+
+    // Добавляем обработчики событий
+    const searchInput = document.getElementById('client-search');
+    const searchClear = document.getElementById('search-clear');
+
+    searchInput.addEventListener('input', (e) => {
+      renderClients();
+      searchClear.style.display = e.target.value ? 'block' : 'none';
+    });
+
+    searchClear.addEventListener('click', () => {
+      searchInput.value = '';
+      searchClear.style.display = 'none';
+      renderClients();
+    });
+
+    document.getElementById('status-filter').addEventListener('change', renderClients);
+    document.getElementById('sort-by').addEventListener('change', renderClients);
+
+    document.getElementById('client-add-btn').addEventListener('click', () => {
+      showClientForm('Добавить клиента', {}, async (data) => {
+        const newClient = await addClient(data);
+        await normalizeClient(newClient);
+        await syncClientsWithServer();
+        renderClients();
+        showToast('Клиент успешно добавлен', 'success');
+      });
+    });
+
+    clientList.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const target = e.target;
+      const clientCard = target.closest('.client-card');
+      const clientId = clientCard ? clientCard.getAttribute('data-id') : null;
+      let client = clientsData.find(c => c.id === clientId);
+      if (!client) return;
+
+      const actionBtn = target.closest('.client-action-btn');
+      if (actionBtn) {
+        e.stopPropagation();
+
+        if (actionBtn.classList.contains('edit-btn')) {
+          showClientForm('Редактировать клиента', client, async (data) => {
+            const updatedClient = await updateClient(clientId, data);
+            await normalizeClient(updatedClient);
+            await syncClientsWithServer();
+            renderClients();
+            showToast('Данные клиента обновлены', 'success');
+            client = updatedClient; // Update local reference
+          });
+        } else if (actionBtn.classList.contains('blacklist-btn')) {
+          client.blacklisted = !client.blacklisted;
+          console.log('Blacklisted toggled to:', client.blacklisted);
+          await updateClient(clientId, client);
+          await normalizeClient(client);
+          await syncClientsWithServer();
+          renderClients();
+          showToast(client.blacklisted ? 'Клиент добавлен в чёрный список' : 'Клиент удалён из чёрного списка', 'info');
+        } else if (actionBtn.classList.contains('subscription-btn')) {
+          showSubscriptionManagement(client);
+        } else if (actionBtn.classList.contains('group-btn')) {
+          showGroupForm('Управление группами', client, getGroups(), async (groups, history) => {
+            client.groups = groups;
+            client.group_history = history;
+            await updateClient(clientId, client);
+            await normalizeClient(client);
+            await syncClientsWithServer();
+            renderClients();
+            showToast('Группы клиента обновлены', 'success');
+          });
+        } else if (actionBtn.classList.contains('delete-btn')) {
+          showConfirmDialog(
+            'Удалить клиента?',
+            `Вы уверены, что хотите удалить клиента "${client.surname} ${client.name}"? Это действие нельзя отменить.`,
+            async () => {
+              await removeClient(clientId);
+              await syncClientsWithServer();
+              renderClients();
+              showToast('Клиент удалён', 'success');
+            }
+          );
+        }
+      } else {
+        const selection = window.getSelection();
+        if (selection.toString().length === 0) {
+          showClientDetails(client);
+        }
       }
-    }
-  });
+    });
+  }
 }
 
 export function showToast(message, type = 'info') {
