@@ -193,10 +193,26 @@ async function getOrCreateDiagnosisId(name) {
 
 async function syncClientsWithServer() {
   try {
+    // Сохраняем текущие фотографии клиентов
+    const photoMap = new Map(clientsData.map(c => [c.id, c.photo]));
+
     const response = await fetch(`${server}/clients`);
     if (!response.ok) throw new Error('Failed to fetch clients');
     const serverData = await response.json();
-    clientsData = await Promise.all(serverData.map(async (c) => await normalizeClient(c))); // Нормализуем асинхронно
+    clientsData = await Promise.all(serverData.map(async (c) => {
+      const normalizedClient = await normalizeClient(c);
+      // Восстанавливаем локальное фото, если оно было
+      normalizedClient.photo = photoMap.get(c.id) || '';
+      return normalizedClient;
+    }));
+
+    // Подгружаем фотографии для клиентов, у которых их нет
+    for (const client of clientsData) {
+      if (!client.photo && client.id) {
+        await fetchClientPhoto(client.id);
+      }
+    }
+
     localStorage.setItem('clientsData', JSON.stringify(clientsData));
     if (typeof window.renderClients === 'function') window.renderClients();
     return clientsData;
@@ -347,6 +363,9 @@ export async function updateClient(id, data) {
     return null;
   }
 
+  // Сохраняем текущее значение photo для использования, если новое не указано
+  const currentPhoto = client.photo;
+
   const parentsWithIds = await Promise.all((data.parents || []).map(async p => ({
     full_name: p.fullName || '',
     phone: p.phone || '',
@@ -388,8 +407,9 @@ export async function updateClient(id, data) {
     subscriptions: Array.isArray(data.subscriptions) ? data.subscriptions : client.subscriptions || []
   };
 
-  // Обновляем клиента локально сначала
+  // Обновляем клиента локально, сохраняя текущее фото, если новое не указано
   Object.assign(client, updatedPayload);
+  client.photo = data.photo instanceof File || data.photo === '' ? data.photo : currentPhoto;
   await normalizeClient(client);
   localStorage.setItem('clientsData', JSON.stringify(clientsData));
   console.log('Client updated locally before server:', client);
@@ -409,13 +429,12 @@ export async function updateClient(id, data) {
 
     const serverClient = await response.json();
     console.log('Server response:', serverClient);
-    // Обновляем локальный клиент данными с сервера
+    // Обновляем локальный клиент данными с сервера, сохраняя photo, если оно не изменилось
     Object.assign(client, serverClient);
+    client.photo = data.photo instanceof File || data.photo === '' ? client.photo : currentPhoto;
     await normalizeClient(client);
     localStorage.setItem('clientsData', JSON.stringify(clientsData));
     showToast('Клиент обновлён на сервере', 'success');
-    // Синхронизируем всех клиентов для уверенности
-    await syncClientsWithServer();
   } catch (error) {
     console.error('Error updating client on server:', error);
     showToast('Ошибка обновления клиента на сервере. Изменения сохранены локально.', 'warning');
@@ -445,7 +464,6 @@ export async function updateClient(id, data) {
 
       await fetchClientPhoto(id);
       showToast('Фото клиента обновлено', 'success');
-      await syncClientsWithServer();
     } catch (error) {
       console.error('Error uploading photo to server:', error);
       showToast('Ошибка загрузки фото на сервер.', 'warning');
@@ -466,13 +484,14 @@ export async function updateClient(id, data) {
       localStorage.setItem('clientsData', JSON.stringify(clientsData));
       console.log('Photo deleted successfully');
       showToast('Фото клиента удалено', 'success');
-      await syncClientsWithServer();
     } catch (error) {
       console.error('Error deleting photo from server:', error);
       showToast('Ошибка удаления фото с сервера.', 'warning');
     }
   }
 
+  // Синхронизация после обработки фото
+  await syncClientsWithServer();
   if (typeof window.renderClients === 'function') window.renderClients();
   return client;
 }
@@ -506,18 +525,22 @@ export async function fetchClientPhoto(clientId) {
       throw new Error(`Ожидалось изображение, но получен тип контента: ${contentType}`);
     }
 
-    // Очищаем старый URL, если он существует
-    if (client.photo && client.photo.startsWith('blob:')) {
-      URL.revokeObjectURL(client.photo);
-    }
-
-    // Преобразуем ответ в blob и создаём URL
+    // Преобразуем ответ в blob
     const blob = await response.blob();
-    client.photo = URL.createObjectURL(blob); // Сохраняем URL для изображения
+
+    // Конвертируем blob в base64
+    const base64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+
+    client.photo = base64; // Сохраняем base64 string
     localStorage.setItem('clientsData', JSON.stringify(clientsData));
-    console.log('Фотография успешно получена:', client.photo);
+    console.log('Фотография успешно получена и сохранена как base64');
     if (typeof window.renderClients === 'function') window.renderClients();
-    return client.photo;
+    return base64;
   } catch (error) {
     console.error('Ошибка получения фото с сервера:', error);
     showToast('Ошибка загрузки фото с сервера.', 'error');
@@ -1361,6 +1384,13 @@ export async function loadClients() {
         const activeSub = client.subscriptions.find(s => s.isPaid && new Date(s.endDate) >= new Date());
         const remainingClasses = activeSub ? activeSub.remainingClasses : undefined;
 
+        // Проверяем, есть ли фото, и если нет, пытаемся подгрузить
+        if (!client.photo && client.id) {
+          fetchClientPhoto(client.id).then(() => {
+            if (typeof window.renderClients === 'function') window.renderClients();
+          });
+        }
+
         return `
       <div class="client-card ${client.blacklisted ? 'blacklisted' : ''}" data-id="${client.id}">
         <div class="client-main-info">
@@ -1772,7 +1802,7 @@ export function formatDate(dateString) {
   return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-export function showDiagnosisDictionary(callback, refreshCallback = () => {}) {
+export function showDiagnosisDictionary(callback, refreshCallback = () => { }) {
   const modal = document.createElement('div');
   modal.className = 'diagnosis-dictionary-modal';
   let selectedDiagnosis = null;
@@ -1905,7 +1935,7 @@ export function showDiagnosisDictionary(callback, refreshCallback = () => {}) {
   renderDiagnosesList();
 }
 
-export function showRelationDictionary(callback, refreshCallback = () => {}) {
+export function showRelationDictionary(callback, refreshCallback = () => { }) {
   const modal = document.createElement('div');
   modal.className = 'relation-dictionary-modal';
   let selectedRelation = null;
