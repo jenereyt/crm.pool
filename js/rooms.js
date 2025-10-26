@@ -1,13 +1,27 @@
+// rooms.js
 import { server } from './server.js'; // Adjust the path if server.js is elsewhere
 
 export async function getRooms() {
   try {
+    const token = localStorage.getItem('token');
     const response = await fetch(`${server}/rooms`, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` })
+      },
     });
-    if (!response.ok) throw new Error('Failed to fetch rooms');
+    if (!response.ok) {
+      if (response.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('userRole');
+        localStorage.removeItem('username');
+        window.location.reload(); // Автоматический выход при 401
+      }
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
     const rooms = await response.json();
+    console.log('Ответ сервера на /rooms:', rooms); // Для отладки
     return Array.isArray(rooms) ? rooms : [];
   } catch (error) {
     console.error('Error fetching rooms:', error);
@@ -15,7 +29,7 @@ export async function getRooms() {
   }
 }
 
-export async function loadRooms() {
+export async function loadRooms(userRole) { // Добавлен параметр userRole для проверки роли
   const mainContent = document.getElementById('main-content');
   mainContent.innerHTML = '';
 
@@ -23,7 +37,7 @@ export async function loadRooms() {
   header.className = 'header';
   header.innerHTML = `
     <div class="header-content">
-      <img src="images/icon-rooms.svg" alt="Залы" class="header-icon">
+      <img src="./images/icon-rooms.svg" alt="Залы" class="header-icon"> <!-- Исправлен путь -->
       <h1>Залы</h1>
     </div>
   `;
@@ -33,7 +47,7 @@ export async function loadRooms() {
   filterBar.className = 'filter-bar';
   filterBar.innerHTML = `
     <input type="text" id="room-filter" class="filter-input" placeholder="Поиск по названию">
-    <button class="room-add-btn" id="room-add-btn">Добавить зал</button>
+    ${userRole === 'manager' ? '<button class="room-add-btn" id="room-add-btn">Добавить зал</button>' : ''} <!-- Показывать кнопку только для менеджера -->
   `;
   mainContent.appendChild(filterBar);
 
@@ -44,6 +58,16 @@ export async function loadRooms() {
   async function renderRooms() {
     const rooms = await getRooms();
     const filter = document.getElementById('room-filter').value.toLowerCase();
+    const filteredRooms = rooms.filter(room => room.name.toLowerCase().includes(filter));
+    console.log('Отфильтрованные залы:', filteredRooms); // Для отладки
+
+    if (filteredRooms.length === 0) {
+      roomTable.innerHTML = `
+        <p class="no-rooms-message">Залы не найдены${filter ? ` по запросу "${filter}"` : ''}</p>
+      `;
+      return;
+    }
+
     roomTable.innerHTML = `
       <table>
         <thead>
@@ -53,18 +77,19 @@ export async function loadRooms() {
           </tr>
         </thead>
         <tbody>
-          ${rooms
-        .filter(room => room.name.toLowerCase().includes(filter))
-        .map(room => `
+          ${filteredRooms
+            .map(room => `
               <tr class="room-row" id="${room.id}">
                 <td>${room.name}</td>
                 <td>
-                  <button class="room-edit-btn" data-id="${room.id}">
-                    <img src="images/icon-edit.svg" alt="Редактировать" class="action-icon">
-                  </button>
-                  <button class="room-delete-btn" data-id="${room.id}">
-                    <img src="images/trash.svg" alt="Удалить" class="action-icon">
-                  </button>
+                  ${userRole === 'manager' ? `
+                    <button class="room-edit-btn" data-id="${room.id}">
+                      <img src="./images/icon-edit.svg" alt="Редактировать" class="action-icon">
+                    </button>
+                    <button class="room-delete-btn" data-id="${room.id}">
+                      <img src="./images/trash.svg" alt="Удалить" class="action-icon">
+                    </button>
+                  ` : ''}
                 </td>
               </tr>
             `).join('')}
@@ -76,80 +101,127 @@ export async function loadRooms() {
   await renderRooms();
 
   document.getElementById('room-filter').addEventListener('input', renderRooms);
-  document.getElementById('room-add-btn').addEventListener('click', () => {
-    showRoomForm('Добавить зал', {}, async (data) => {
-      try {
-        const response = await fetch(`${server}/rooms`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: data.name }),
-        });
-        if (!response.ok) throw new Error('Failed to add room');
-        await renderRooms();
-      } catch (error) {
-        console.error('Error adding room:', error);
-        alert('Ошибка при добавлении зала!');
-      }
-    });
-  });
 
-  roomTable.addEventListener('click', async (e) => {
-    if (e.target.closest('.room-delete-btn')) {
-      const roomId = e.target.closest('.room-delete-btn').getAttribute('data-id');
-      if (confirm('Удалить зал?')) {
+  if (userRole === 'manager') {
+    document.getElementById('room-add-btn').addEventListener('click', () => {
+      showRoomForm('Добавить зал', {}, async (data) => {
         try {
-          const response = await fetch(`${server}/rooms/${roomId}`, {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: roomId }),
+          const token = localStorage.getItem('token');
+          const response = await fetch(`${server}/rooms`, {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              ...(token && { 'Authorization': `Bearer ${token}` })
+            },
+            body: JSON.stringify({ name: data.name }),
           });
           if (!response.ok) {
-            const errorData = await response.text();
-            console.error('Error response:', response.status, errorData);
-            throw new Error('Failed to delete room');
+            if (response.status === 401) {
+              localStorage.removeItem('token');
+              localStorage.removeItem('userRole');
+              localStorage.removeItem('username');
+              window.location.reload();
+            }
+            throw new Error(`HTTP error! Status: ${response.status}`);
           }
+          console.log('Зал добавлен:', data); // Для отладки
           await renderRooms();
         } catch (error) {
-          console.error('Error deleting room:', error);
-          alert('Ошибка при удалении зала!');
+          console.error('Error adding room:', error);
+          alert('Ошибка при добавлении зала: ' + error.message);
         }
-      }
-    } else if (e.target.closest('.room-edit-btn')) {
-      const roomId = e.target.closest('.room-edit-btn').getAttribute('data-id');
-      try {
-        const response = await fetch(`${server}/rooms/${roomId}`, {
-          method: 'GET',
-        });
-        if (!response.ok) {
-          const errorData = await response.text();
-          console.error('Error response:', response.status, errorData);
-          throw new Error('Failed to fetch room');
-        }
-        const room = await response.json();
-        showRoomForm('Редактировать зал', room, async (data) => {
+      });
+    });
+
+    roomTable.addEventListener('click', async (e) => {
+      if (e.target.closest('.room-delete-btn')) {
+        const roomId = e.target.closest('.room-delete-btn').getAttribute('data-id');
+        if (confirm('Удалить зал?')) {
           try {
+            const token = localStorage.getItem('token');
             const response = await fetch(`${server}/rooms/${roomId}`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ id: roomId, name: data.name }),
+              method: 'DELETE',
+              headers: { 
+                ...(token && { 'Authorization': `Bearer ${token}` })
+              },
+              // Убрали body — для DELETE оно не нужно
             });
             if (!response.ok) {
+              if (response.status === 401) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('userRole');
+                localStorage.removeItem('username');
+                window.location.reload();
+              }
               const errorData = await response.text();
               console.error('Error response:', response.status, errorData);
-              throw new Error('Failed to update room');
+              throw new Error(`HTTP error! Status: ${response.status}`);
             }
+            console.log('Зал удален:', roomId); // Для отладки
             await renderRooms();
           } catch (error) {
-            console.error('Error updating room:', error);
-            alert('Ошибка при обновлении зала!');
+            console.error('Error deleting room:', error);
+            alert('Ошибка при удалении зала: ' + error.message);
           }
-        });
-      } catch (error) {
-        console.error('Error fetching room for edit:', error);
-        alert('Ошибка при получении данных зала!');
+        }
+      } else if (e.target.closest('.room-edit-btn')) {
+        const roomId = e.target.closest('.room-edit-btn').getAttribute('data-id');
+        try {
+          const token = localStorage.getItem('token');
+          const response = await fetch(`${server}/rooms/${roomId}`, {
+            method: 'GET',
+            headers: { 
+              ...(token && { 'Authorization': `Bearer ${token}` })
+            },
+          });
+          if (!response.ok) {
+            if (response.status === 401) {
+              localStorage.removeItem('token');
+              localStorage.removeItem('userRole');
+              localStorage.removeItem('username');
+              window.location.reload();
+            }
+            const errorData = await response.text();
+            console.error('Error response:', response.status, errorData);
+            throw new Error(`HTTP error! Status: ${response.status}`);
+          }
+          const room = await response.json();
+          console.log('Зал для редактирования:', room); // Для отладки
+          showRoomForm('Редактировать зал', room, async (data) => {
+            try {
+              const updateResponse = await fetch(`${server}/rooms/${roomId}`, {
+                method: 'PUT',
+                headers: { 
+                  'Content-Type': 'application/json',
+                  ...(token && { 'Authorization': `Bearer ${token}` })
+                },
+                body: JSON.stringify({ id: roomId, name: data.name }),
+              });
+              if (!updateResponse.ok) {
+                if (updateResponse.status === 401) {
+                  localStorage.removeItem('token');
+                  localStorage.removeItem('userRole');
+                  localStorage.removeItem('username');
+                  window.location.reload();
+                }
+                const errorData = await updateResponse.text();
+                console.error('Error response:', updateResponse.status, errorData);
+                throw new Error(`HTTP error! Status: ${updateResponse.status}`);
+              }
+              console.log('Зал обновлен:', data); // Для отладки
+              await renderRooms();
+            } catch (error) {
+              console.error('Error updating room:', error);
+              alert('Ошибка при обновлении зала: ' + error.message);
+            }
+          });
+        } catch (error) {
+          console.error('Error fetching room for edit:', error);
+          alert('Ошибка при получении данных зала: ' + error.message);
+        }
       }
-    }
-  });
+    });
+  }
 
   function showRoomForm(title, room, callback) {
     const modal = document.createElement('div');
@@ -166,9 +238,9 @@ export async function loadRooms() {
     `;
     mainContent.appendChild(modal);
 
-    modal.addEventListener('mousedown', (e) => {
+    modal.addEventListener('click', (e) => {
       if (e.target.classList.contains('room-modal') && !window.getSelection().toString()) {
-        modal.remove();
+        modal.remove(); // Исправлено: используем 'click' вместо 'mousedown' для стабильности
       }
     });
 

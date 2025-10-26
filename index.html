@@ -4,8 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy"
-    content="default-src 'self'; script-src 'self'; img-src 'self'; style-src 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' http://89.236.218.209:6577; script-src 'self' 'sha256-vvt4KWwuNr51XfE5m+hzeNEGhiOfZzG97ccfqGsPwvE='; img-src 'self' data:; style-src 'self' 'unsafe-inline'">
   <title>CRM</title>
   <link rel="stylesheet" href="./css/sidebar.css">
   <link rel="stylesheet" href="./css/main.css">
@@ -45,6 +44,7 @@
   <script type="module" src="./js/profile.js"></script>
   <script type="module" src="./js/reports.js"></script>
   <script type="module" src="./js/server.js"></script>
+  <script type="module" src="./js/usersHttpService.js"></script>
 </body>
 
 </html>

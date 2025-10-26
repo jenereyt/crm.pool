@@ -1,3 +1,4 @@
+/* profile.css */
 :root {
   --primary-color: #007bff;
   --primary-hover: #0056b3;
@@ -26,7 +27,6 @@
 /* Заголовок */
 .profile-page .header {
   color: white;
-
   margin: 0;
   width: 100%;
   box-sizing: border-box;
@@ -117,18 +117,18 @@
   font-weight: 600;
 }
 
-/* Таблица администраторов */
-.admin-table {
+/* Таблицы администраторов и менеджеров */
+.admin-table, .manager-table {
   width: 100%;
   border-collapse: collapse;
   border: 1px solid var(--gray-200);
   border-radius: var(--border-radius);
   overflow: hidden;
+  margin-bottom: 24px;
 }
 
-.admin-table th {
+.admin-table th, .manager-table th {
   background-color: transparent;
-  /* Без фона у заголовков */
   color: var(--gray-700);
   padding: 12px 16px;
   text-align: left;
@@ -137,7 +137,7 @@
   border-bottom: 1px solid var(--gray-200);
 }
 
-.admin-table td {
+.admin-table td, .manager-table td {
   border-bottom: 1px solid var(--gray-100);
   padding: 12px 16px;
   font-size: 14px;
@@ -145,16 +145,15 @@
   vertical-align: middle;
 }
 
-.admin-table tr:last-child td {
+.admin-table tr:last-child td, .manager-table tr:last-child td {
   border-bottom: none;
 }
 
-.admin-table tr:hover {
+.admin-table tr:hover, .manager-table tr:hover {
   background-color: var(--gray-50);
 }
 
-/* Действия в таблице */
-.admin-table td:last-child {
+.admin-table td:last-child, .manager-table td:last-child {
   white-space: nowrap;
 }
 
@@ -165,7 +164,8 @@
 }
 
 .admin-table .reset-password-btn,
-.admin-table .delete-admin-btn {
+.admin-table .delete-admin-btn,
+.manager-table .delete-admin-btn {
   padding: 6px 12px;
   font-size: 12px;
   margin-right: 8px;
@@ -187,24 +187,22 @@
   background-color: var(--secondary-hover);
 }
 
-.admin-table .delete-admin-btn {
+.admin-table .delete-admin-btn, .manager-table .delete-admin-btn {
   background-color: var(--danger-color);
   color: white;
   margin-right: 0;
   padding: 6px;
-  /* Уменьшено для иконки */
 }
 
-.admin-table .delete-admin-btn:hover {
+.admin-table .delete-admin-btn:hover, .manager-table .delete-admin-btn:hover {
   background-color: var(--danger-hover);
 }
 
-.admin-table .action-icon {
+.admin-table .action-icon, .manager-table .action-icon {
   filter: invert(1);
   width: 16px;
   height: 16px;
   display: block;
-  /* Гарантирует отображение */
 }
 
 /* Основные кнопки */
@@ -313,56 +311,57 @@
     font-size: 20px;
   }
 
-  .admin-table {
+  .admin-table, .manager-table {
     font-size: 12px;
   }
 
-  .admin-table th,
-  .admin-table td {
+  .admin-table th, .manager-table th,
+  .admin-table td, .manager-table td {
     padding: 8px 12px;
   }
 
   .admin-table .reset-password-btn,
-  .admin-table .delete-admin-btn {
+  .admin-table .delete-admin-btn,
+  .manager-table .delete-admin-btn {
     padding: 4px 8px;
     font-size: 11px;
     margin-right: 4px;
   }
 
-  .admin-table .delete-admin-btn {
+  .admin-table .delete-admin-btn, .manager-table .delete-admin-btn {
     padding: 4px;
     margin-right: 0;
   }
 
-  .admin-table .action-icon {
+  .admin-table .action-icon, .manager-table .action-icon {
     width: 14px;
     height: 14px;
   }
 }
 
 @media (max-width: 480px) {
-
   .profile-card,
   .admin-management {
     padding: 16px;
   }
 
-  .admin-table th,
-  .admin-table td {
+  .admin-table th, .manager-table th,
+  .admin-table td, .manager-table td {
     padding: 6px 8px;
   }
 
   .admin-table .reset-password-btn,
-  .admin-table .delete-admin-btn {
+  .admin-table .delete-admin-btn,
+  .manager-table .delete-admin-btn {
     padding: 3px 6px;
     font-size: 10px;
   }
 
-  .admin-table .delete-admin-btn {
+  .admin-table .delete-admin-btn, .manager-table .delete-admin-btn {
     padding: 3px;
   }
 
-  .admin-table .action-icon {
+  .admin-table .action-icon, .manager-table .action-icon {
     width: 12px;
     height: 12px;
   }
@@ -377,44 +376,45 @@
 }
 
 @media (max-width: 350px) {
-  .admin-table {
+  .admin-table, .manager-table {
     display: table;
     table-layout: auto;
     width: 100%;
   }
 
-  .admin-table th,
-  .admin-table td {
+  .admin-table th, .manager-table th,
+  .admin-table td, .manager-table td {
     font-size: 10px;
     padding: 4px 6px;
   }
 
-  .admin-table th:nth-child(1),
-  .admin-table td:nth-child(1) {
+  .admin-table th:nth-child(1), .manager-table th:nth-child(1),
+  .admin-table td:nth-child(1), .manager-table td:nth-child(1) {
     width: 60%;
   }
 
-  .admin-table th:nth-child(2),
-  .admin-table td:nth-child(2) {
+  .admin-table th:nth-child(2), .manager-table th:nth-child(2),
+  .admin-table td:nth-child(2), .manager-table td:nth-child(2) {
     width: 40%;
   }
 
   .admin-table .reset-password-btn,
-  .admin-table .delete-admin-btn {
+  .admin-table .delete-admin-btn,
+  .manager-table .delete-admin-btn {
     padding: 2px 4px;
     font-size: 9px;
   }
 
-  .admin-table .delete-admin-btn {
+  .admin-table .delete-admin-btn, .manager-table .delete-admin-btn {
     padding: 2px;
   }
 
-  .admin-table .action-icon {
+  .admin-table .action-icon, .manager-table .action-icon {
     width: 10px;
     height: 10px;
   }
 
-  .admin-table {
+  .admin-table, .manager-table {
     overflow-x: auto;
   }
-} 
+}

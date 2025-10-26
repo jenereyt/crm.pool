@@ -1,31 +1,30 @@
-// sidebar.js (updated to add 'reports' for manager)
+// sidebar.js
 document.addEventListener('DOMContentLoaded', () => {
   const sidebar = document.getElementById('sidebar');
   const sidebarNav = document.getElementById('sidebar-nav');
   const toggleButton = document.querySelector('.sidebar-toggle');
   const mainContent = document.getElementById('main-content');
 
-  // Тестовые данные менеджера
-  if (!localStorage.getItem('user_manager1')) {
-    localStorage.setItem('user_manager1', JSON.stringify({ password: 'manager123', role: 'manager' }));
-  }
-
-  // Получаем роль из localStorage
   let userRole = localStorage.getItem('userRole');
-
-  // Скрываем сайдбар до авторизации
   sidebar.style.display = userRole ? 'block' : 'none';
 
-  // Если не залогинен, загрузить авторизацию
   if (!userRole) {
-    import('./auth.js').then(({ loadAuth }) => loadAuth());
+    import('./auth.js')
+      .then(({ loadAuth }) => loadAuth())
+      .catch(error => {
+        console.error('Ошибка загрузки модуля auth.js:', error);
+        mainContent.innerHTML = '<p>Ошибка загрузки формы авторизации. Попробуйте позже.</p>';
+      });
     return;
   }
 
-  // После авторизации загружаем главную страницу
-  import('./main.js').then(({ loadHome }) => loadHome());
+  import('./main.js')
+    .then(({ loadHome }) => loadHome())
+    .catch(error => {
+      console.error('Ошибка загрузки модуля main.js:', error);
+      mainContent.innerHTML = '<p>Ошибка загрузки главной страницы. Попробуйте позже.</p>';
+    });
 
-  // Меню items
   const menuItems = [
     { id: 'home', icon: './images/icon-home.svg', label: 'Главная' },
     { id: 'clients', icon: './images/icon-clients.svg', label: 'Клиенты' },
@@ -36,13 +35,11 @@ document.addEventListener('DOMContentLoaded', () => {
     { id: 'classes', icon: './images/icon-classes.svg', label: 'Занятия' },
   ];
 
-  // Добавляем employees и reports только для менеджера
   if (userRole === 'manager') {
     menuItems.splice(5, 0, { id: 'employees', icon: './images/icon-employees.svg', label: 'Сотрудники' });
     menuItems.push({ id: 'reports', icon: './images/icon-reports.svg', label: 'Отчеты' });
   }
 
-  // Добавляем профиль в конец
   menuItems.push({ id: 'profile', icon: './images/icon-profile.svg', label: 'Профиль' });
 
   sidebarNav.innerHTML = `
@@ -58,7 +55,6 @@ document.addEventListener('DOMContentLoaded', () => {
     </ul>
   `;
 
-  // Функция для обновления состояния сайдбара
   function updateSidebarState() {
     const isMobile = window.innerWidth <= 768;
     if (isMobile) {
@@ -77,33 +73,41 @@ document.addEventListener('DOMContentLoaded', () => {
   updateSidebarState();
   window.addEventListener('resize', updateSidebarState);
 
-  // Обработчик кликов в меню
   sidebarNav.addEventListener('click', (e) => {
     const link = e.target.closest('.sidebar-link');
     if (link) {
       const section = link.getAttribute('data-section');
       mainContent.innerHTML = '';
 
+      const loadModule = (modulePath, loadFunction) => {
+        import(modulePath)
+          .then(module => module[loadFunction](section === 'profile' || section === 'clients' ? userRole : undefined))
+          .catch(error => {
+            console.error(`Ошибка загрузки модуля ${modulePath}:`, error);
+            mainContent.innerHTML = `<p>Ошибка загрузки раздела "${section}". Попробуйте позже.</p>`;
+          });
+      };
+
       if (section === 'home') {
-        import('./main.js').then(({ loadHome }) => loadHome());
+        loadModule('./main.js', 'loadHome');
       } else if (section === 'clients') {
-        import('./clients.js').then(({ loadClients }) => loadClients(userRole));
+        loadModule('./clients.js', 'loadClients');
       } else if (section === 'subscriptions') {
-        import('./subscriptions.js').then(({ loadSubscriptions }) => loadSubscriptions());
+        loadModule('./subscriptions.js', 'loadSubscriptions');
       } else if (section === 'schedule') {
-        import('./schedule.js').then(({ loadSchedule }) => loadSchedule());
+        loadModule('./schedule.js', 'loadSchedule');
       } else if (section === 'rooms') {
-        import('./rooms.js').then(({ loadRooms }) => loadRooms());
+        loadModule('./rooms.js', 'loadRooms');
       } else if (section === 'employees' && userRole === 'manager') {
-        import('./employees.js').then(({ loadEmployees }) => loadEmployees());
+        loadModule('./employees.js', 'loadEmployees');
       } else if (section === 'groups') {
-        import('./groups.js').then(({ loadGroups }) => loadGroups());
+        loadModule('./groups.js', 'loadGroups');
       } else if (section === 'classes') {
-        import('./classes.js').then(({ loadClasses }) => loadClasses());
+        loadModule('./classes.js', 'loadClasses');
       } else if (section === 'reports' && userRole === 'manager') {
-        import('./reports.js').then(({ loadReports }) => loadReports());
+        loadModule('./reports.js', 'loadReports');
       } else if (section === 'profile') {
-        import('./profile.js').then(({ loadProfile }) => loadProfile(userRole));
+        loadModule('./profile.js', 'loadProfile');
       }
     }
   });
