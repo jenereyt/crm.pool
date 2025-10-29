@@ -1,15 +1,13 @@
-import { server } from './server.js';
+// employees.js — ПОЛНЫЙ, ИСПРАВЛЕННЫЙ, ГОТОВЫЙ К ИСПОЛЬЗОВАНИЮ
+
+import UsersHttpService from './usersHttpService.js';
 
 let employees = [];
 
+// === ПОЛУЧЕНИЕ СОТРУДНИКОВ ===
 export async function getEmployees() {
   try {
-    const response = await fetch(`${server}/employees`, {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-    });
-    if (!response.ok) throw new Error('Ошибка при получении сотрудников');
-    const employeesData = await response.json();
+    const employeesData = await UsersHttpService.request('/employees');
     employees = Array.isArray(employeesData) ? employeesData : [];
     return employees;
   } catch (error) {
@@ -18,102 +16,78 @@ export async function getEmployees() {
   }
 }
 
+// === ПОЛУЧЕНИЕ ПО ID ===
 export async function getEmployeeById(id) {
   try {
-    const response = await fetch(`${server}/employees/${id}`, {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-    });
-    if (!response.ok) throw new Error('Ошибка при получении сотрудника');
-    return await response.json();
+    return await UsersHttpService.request(`/employees/${id}`);
   } catch (error) {
     console.error(`GET /employees/${id}:`, error);
     return null;
   }
 }
 
+// === ДОБАВЛЕНИЕ ===
 export async function addEmployee(data) {
   console.log('Data received in addEmployee:', data);
-  const requiredFields = ['name', 'position', 'phone'];
-  const missingFields = requiredFields.filter(field => !data[field] || data[field] === '');
-  if (missingFields.length) {
-    console.error('Отсутствуют или некорректны поля:', missingFields);
-    alert(`Ошибка: Заполните корректно поля: ${missingFields.join(', ')}`);
+  const required = ['name', 'position', 'phone'];
+  const missing = required.filter(f => !data[f]?.trim());
+  if (missing.length) {
+    alert(`Заполните: ${missing.join(', ')}`);
     return null;
   }
 
   try {
-    const response = await fetch(`${server}/employees`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Ошибка сервера:', errorData);
-      throw new Error(errorData.message || 'Ошибка при добавлении сотрудника');
-    }
-
-    const newEmployee = await response.json();
+    const newEmployee = await UsersHttpService.request('/employees', 'POST', data);
     employees.push(newEmployee);
     return newEmployee;
   } catch (error) {
     console.error('POST /employees:', error);
-    alert(`Ошибка при добавлении сотрудника: ${error.message}`);
+    alert(`Ошибка: ${error.message || 'Не удалось добавить'}`);
     return null;
   }
 }
 
+// === ОБНОВЛЕНИЕ ===
 export async function updateEmployee(id, data) {
   try {
-    const response = await fetch(`${server}/employees/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
-    if (!response.ok) throw new Error('Ошибка при обновлении сотрудника');
-    const updatedEmployee = await response.json();
-    employees = employees.map(emp => emp.id === id ? updatedEmployee : emp);
-    return updatedEmployee;
+    const updated = await UsersHttpService.request(`/employees/${id}`, 'PUT', data);
+    employees = employees.map(e => e.id === id ? updated : e);
+    return updated;
   } catch (error) {
     console.error(`PUT /employees/${id}:`, error);
-    alert('Ошибка при обновлении сотрудника!');
+    alert('Ошибка обновления!');
     return null;
   }
 }
 
+// === УДАЛЕНИЕ ===
 export async function deleteEmployee(id) {
   try {
-    const response = await fetch(`${server}/employees/${id}`, {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-    });
-    if (!response.ok) throw new Error('Ошибка при удалении сотрудника');
-    employees = employees.filter(emp => emp.id !== id);
+    await UsersHttpService.request(`/employees/${id}`, 'DELETE');
+    employees = employees.filter(e => e.id !== id);
     return true;
   } catch (error) {
     console.error(`DELETE /employees/${id}:`, error);
-    alert('Ошибка при удалении сотрудника!');
+    alert('Ошибка удаления!');
     return false;
   }
 }
 
+// === ТРЕНЕРЫ ===
 export async function getTrainers() {
-  if (employees.length === 0) {
-    console.log('Предзагрузка сотрудников...');
-    await getEmployees();
-  }
-  return employees.filter(emp => emp.position === 'trainer').map(emp => ({
-    id: emp.id,
-    name: emp.name
-  }));
+  if (!employees.length) await getEmployees();
+  return employees
+    .filter(e => e.position === 'trainer')
+    .map(e => ({ id: e.id, name: e.name }));
 }
 
+// === UI: ЗАГРУЗКА СТРАНИЦЫ ===
 export async function loadEmployees() {
   const mainContent = document.getElementById('main-content');
+  if (!mainContent) return;
   mainContent.innerHTML = '';
 
+  // Хедер
   const header = document.createElement('header');
   header.className = 'header';
   header.innerHTML = `
@@ -124,6 +98,7 @@ export async function loadEmployees() {
   `;
   mainContent.appendChild(header);
 
+  // Фильтры
   const filterBar = document.createElement('div');
   filterBar.className = 'filter-bar';
   filterBar.innerHTML = `
@@ -138,6 +113,7 @@ export async function loadEmployees() {
   `;
   mainContent.appendChild(filterBar);
 
+  // Таблица
   const employeeTable = document.createElement('div');
   employeeTable.className = 'employee-table';
   mainContent.appendChild(employeeTable);
@@ -160,7 +136,7 @@ export async function loadEmployees() {
           ${employees.map(emp => `
             <tr class="employee-row" id="${emp.id}" data-position="${emp.position}">
               <td>${escapeHtml(emp.name)}</td>
-              <td>${emp.position === 'trainer' ? 'Тренер' : emp.position === 'admin' ? 'Администратор' : 'Менеджер'}</td>
+              <td>${formatPosition(emp.position)}</td>
               <td>${escapeHtml(emp.phone)}</td>
               <td>
                 <button class="employee-edit-btn" data-id="${emp.id}">
@@ -177,65 +153,78 @@ export async function loadEmployees() {
     `;
   }
 
+  function formatPosition(pos) {
+    return pos === 'trainer' ? 'Тренер' : pos === 'admin' ? 'Администратор' : 'Менеджер';
+  }
+
+  // Фильтрация
   const filterInput = document.getElementById('employee-filter-input');
   const filterPosition = document.getElementById('employee-filter-position');
-  const addEmployeeBtn = document.getElementById('employee-add-btn');
+  const addBtn = document.getElementById('employee-add-btn');
 
-  filterInput.addEventListener('input', filterEmployees);
-  filterPosition.addEventListener('change', filterEmployees);
+  const filter = () => {
+    const term = filterInput.value.toLowerCase();
+    const pos = filterPosition.value;
+    document.querySelectorAll('.employee-row').forEach(row => {
+      const name = row.cells[0].textContent.toLowerCase();
+      const emp = employees.find(e => e.id === row.id);
+      row.classList.toggle('employee-hidden',
+        (term && !name.includes(term)) ||
+        (pos && emp.position !== pos)
+      );
+    });
+  };
 
-  addEmployeeBtn.addEventListener('click', () => {
-    showEmployeeModal('Добавить сотрудника', {}, async (data) => {
-      const newEmployee = {
-        name: data.name,
-        position: data.position,
-        phone: data.phone
-      };
-      const result = await addEmployee(newEmployee);
+  filterInput.addEventListener('input', filter);
+  filterPosition.addEventListener('change', filter);
+
+  // Добавление
+  addBtn.addEventListener('click', () => {
+    showEmployeeModal('Добавить сотрудника', {}, async data => {
+      const result = await addEmployee(data);
       if (result) {
         renderEmployees();
-        filterEmployees();
+        filter();
       }
     });
   });
 
-  employeeTable.addEventListener('click', async (e) => {
-    if (e.target.closest('.employee-delete-btn')) {
-      const empId = e.target.closest('.employee-delete-btn').getAttribute('data-id');
+  // Действия
+  employeeTable.addEventListener('click', async e => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    const id = btn.dataset.id;
+
+    if (btn.classList.contains('employee-delete-btn')) {
       if (confirm('Удалить сотрудника?')) {
-        const success = await deleteEmployee(empId);
-        if (success) {
+        if (await deleteEmployee(id)) {
           renderEmployees();
-          filterEmployees();
+          filter();
         }
       }
-    } else if (e.target.closest('.employee-edit-btn')) {
-      const empId = e.target.closest('.employee-edit-btn').getAttribute('data-id');
-      const employee = employees.find(emp => emp.id === empId);
-      showEmployeeModal('Редактировать сотрудника', employee, async (data) => {
-        const updatedEmployee = {
-          name: data.name,
-          position: data.position,
-          phone: data.phone
-        };
-        const result = await updateEmployee(empId, updatedEmployee);
-        if (result) {
+    }
+
+    if (btn.classList.contains('employee-edit-btn')) {
+      const emp = employees.find(e => e.id === id);
+      showEmployeeModal('Редактировать сотрудника', emp, async data => {
+        if (await updateEmployee(id, data)) {
           renderEmployees();
-          filterEmployees();
+          filter();
         }
       });
     }
   });
 
+  // === МОДАЛКА ===
   function showEmployeeModal(title, employee, callback) {
     const modal = document.createElement('div');
     modal.className = 'employee-modal';
     modal.innerHTML = `
       <div class="employee-modal-content">
         <h2>${escapeHtml(title)}</h2>
-        <input type="text" id="employee-name" placeholder="Имя сотрудника" value="${escapeHtml(employee.name || '')}" required>
+        <input type="text" id="employee-name" placeholder="Имя" value="${escapeHtml(employee.name || '')}" required>
         <select id="employee-position" required>
-          <option value="">Выберите должность</option>
+          <option value="">Должность</option>
           <option value="trainer" ${employee.position === 'trainer' ? 'selected' : ''}>Тренер</option>
           <option value="admin" ${employee.position === 'admin' ? 'selected' : ''}>Администратор</option>
           <option value="manager" ${employee.position === 'manager' ? 'selected' : ''}>Менеджер</option>
@@ -249,62 +238,33 @@ export async function loadEmployees() {
     `;
     mainContent.appendChild(modal);
 
-    modal.addEventListener('mousedown', (e) => {
-      if (e.target.classList.contains('employee-modal') && !window.getSelection().toString()) {
-        modal.remove();
-      }
+    modal.addEventListener('mousedown', e => {
+      if (e.target === modal && !window.getSelection().toString()) modal.remove();
     });
 
-    const saveBtn = document.getElementById('employee-save-btn');
-    const cancelBtn = document.getElementById('employee-cancel-btn');
-
-    if (saveBtn) {
-      saveBtn.addEventListener('click', () => {
-        const name = document.getElementById('employee-name').value.trim();
-        const position = document.getElementById('employee-position').value;
-        const phone = document.getElementById('employee-phone').value.trim();
-        if (name && position && phone) {
-          callback({ name, position, phone });
-          modal.remove();
-        } else {
-          alert('Заполните все поля корректно!');
-        }
-      });
-    } else {
-      console.error('Save button not found in modal');
-    }
-
-    if (cancelBtn) {
-      cancelBtn.addEventListener('click', () => {
+    document.getElementById('employee-save-btn').onclick = () => {
+      const name = document.getElementById('employee-name').value.trim();
+      const position = document.getElementById('employee-position').value;
+      const phone = document.getElementById('employee-phone').value.trim();
+      if (name && position && phone) {
+        callback({ name, position, phone });
         modal.remove();
-      });
-    } else {
-      console.error('Cancel button not found in modal');
-    }
-
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        modal.remove();
+      } else {
+        alert('Заполните все поля!');
       }
+    };
+
+    document.getElementById('employee-cancel-btn').onclick = () => modal.remove();
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') modal.remove();
     }, { once: true });
-  }
-
-  function filterEmployees() {
-    const searchTerm = filterInput.value.toLowerCase();
-    const position = filterPosition.value;
-    const employeeRows = employeeTable.querySelectorAll('.employee-row');
-    employeeRows.forEach(row => {
-      const name = row.querySelector('td').textContent.toLowerCase();
-      const emp = employees.find(emp => emp.id === row.id);
-      row.classList.toggle('employee-hidden',
-        (searchTerm && !name.includes(searchTerm)) ||
-        (position && emp.position !== position)
-      );
-    });
   }
 
   function escapeHtml(s) {
     if (!s) return '';
-    return String(s).replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+    return String(s).replace(/[&<>"']/g, m => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[m]));
   }
 }

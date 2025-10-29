@@ -79,35 +79,43 @@ document.addEventListener('DOMContentLoaded', () => {
       const section = link.getAttribute('data-section');
       mainContent.innerHTML = '';
 
-      const loadModule = (modulePath, loadFunction) => {
+      const loadModule = (modulePath, loadFunction, args = []) => {
         import(modulePath)
-          .then(module => module[loadFunction](section === 'profile' || section === 'clients' ? userRole : undefined))
+          .then(module => {
+            const func = module[loadFunction];
+            if (func) {
+              func(...args);
+            } else {
+              console.error(`Функция ${loadFunction} не найдена в ${modulePath}`);
+            }
+          })
           .catch(error => {
             console.error(`Ошибка загрузки модуля ${modulePath}:`, error);
             mainContent.innerHTML = `<p>Ошибка загрузки раздела "${section}". Попробуйте позже.</p>`;
           });
       };
 
+      // === Передаём userRole туда, где он нужен ===
       if (section === 'home') {
         loadModule('./main.js', 'loadHome');
       } else if (section === 'clients') {
-        loadModule('./clients.js', 'loadClients');
+        loadModule('./clients.js', 'loadClients', [userRole]);
       } else if (section === 'subscriptions') {
         loadModule('./subscriptions.js', 'loadSubscriptions');
       } else if (section === 'schedule') {
         loadModule('./schedule.js', 'loadSchedule');
       } else if (section === 'rooms') {
-        loadModule('./rooms.js', 'loadRooms');
+        loadModule('./rooms.js', 'loadRooms', [userRole]); // ← ВОТ ТУТ!
       } else if (section === 'employees' && userRole === 'manager') {
-        loadModule('./employees.js', 'loadEmployees');
+        loadModule('./employees.js', 'loadEmployees', [userRole]);
       } else if (section === 'groups') {
         loadModule('./groups.js', 'loadGroups');
       } else if (section === 'classes') {
         loadModule('./classes.js', 'loadClasses');
       } else if (section === 'reports' && userRole === 'manager') {
-        loadModule('./reports.js', 'loadReports');
+        loadModule('./reports.js', 'loadReports', [userRole]);
       } else if (section === 'profile') {
-        loadModule('./profile.js', 'loadProfile');
+        loadModule('./profile.js', 'loadProfile', [userRole]);
       }
     }
   });

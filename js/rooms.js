@@ -21,7 +21,6 @@ export async function getRooms() {
       throw new Error(`HTTP error! Status: ${response.status}`);
     }
     const rooms = await response.json();
-    console.log('Ответ сервера на /rooms:', rooms); // Для отладки
     return Array.isArray(rooms) ? rooms : [];
   } catch (error) {
     console.error('Error fetching rooms:', error);
@@ -59,8 +58,6 @@ export async function loadRooms(userRole) { // Добавлен параметр
     const rooms = await getRooms();
     const filter = document.getElementById('room-filter').value.toLowerCase();
     const filteredRooms = rooms.filter(room => room.name.toLowerCase().includes(filter));
-    console.log('Отфильтрованные залы:', filteredRooms); // Для отладки
-
     if (filteredRooms.length === 0) {
       roomTable.innerHTML = `
         <p class="no-rooms-message">Залы не найдены${filter ? ` по запросу "${filter}"` : ''}</p>
@@ -124,7 +121,6 @@ export async function loadRooms(userRole) { // Добавлен параметр
             }
             throw new Error(`HTTP error! Status: ${response.status}`);
           }
-          console.log('Зал добавлен:', data); // Для отладки
           await renderRooms();
         } catch (error) {
           console.error('Error adding room:', error);
@@ -157,7 +153,6 @@ export async function loadRooms(userRole) { // Добавлен параметр
               console.error('Error response:', response.status, errorData);
               throw new Error(`HTTP error! Status: ${response.status}`);
             }
-            console.log('Зал удален:', roomId); // Для отладки
             await renderRooms();
           } catch (error) {
             console.error('Error deleting room:', error);
@@ -186,7 +181,6 @@ export async function loadRooms(userRole) { // Добавлен параметр
             throw new Error(`HTTP error! Status: ${response.status}`);
           }
           const room = await response.json();
-          console.log('Зал для редактирования:', room); // Для отладки
           showRoomForm('Редактировать зал', room, async (data) => {
             try {
               const updateResponse = await fetch(`${server}/rooms/${roomId}`, {
@@ -208,7 +202,6 @@ export async function loadRooms(userRole) { // Добавлен параметр
                 console.error('Error response:', updateResponse.status, errorData);
                 throw new Error(`HTTP error! Status: ${updateResponse.status}`);
               }
-              console.log('Зал обновлен:', data); // Для отладки
               await renderRooms();
             } catch (error) {
               console.error('Error updating room:', error);
