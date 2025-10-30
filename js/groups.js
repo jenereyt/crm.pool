@@ -6,15 +6,11 @@ import { getTrainers } from './employees.js';
 
 let groupsCache = [];
 
-// === ПОЛУЧЕНИЕ ГРУПП С КЕШИРОВАНИЕМ И ОБНОВЛЕНИЕМ CLIENTS ===
 async function fetchGroups() {
   try {
-    console.log('=== FETCHING GROUPS ===');
-    const groups = await UsersHttpService.request('/groups'); // ← ТОКЕН + REFRESH
+    const groups = await UsersHttpService.request('/groups'); 
     groupsCache = Array.isArray(groups) ? groups : [];
-    console.log('Received groups from server:', groupsCache.length);
 
-    // Обогащаем clients из client records (если сервер не возвращает)
     const allClients = getClients();
     groupsCache.forEach(g => {
       if (!g.clients) g.clients = [];
@@ -38,7 +34,6 @@ async function fetchGroups() {
       }
     });
 
-    console.log('=== FETCH COMPLETE ===');
     return groupsCache;
   } catch (error) {
     console.error('Error fetching groups:', error);
@@ -46,7 +41,7 @@ async function fetchGroups() {
   }
 }
 
-// === CRUD ОПЕРАЦИИ ЧЕРЕЗ UsersHttpService ===
+
 async function addGroup(data) {
   try {
     const newGroup = await UsersHttpService.request('/groups', 'POST', {
@@ -81,7 +76,6 @@ async function deleteGroup(groupId) {
   }
 }
 
-// === ПОЛУЧЕНИЕ ГРУППЫ ПО ID ===
 export async function getGroupById(id) {
   try {
     const group = await UsersHttpService.request(`/groups/${id}`);
@@ -111,7 +105,6 @@ export async function getGroupById(id) {
   }
 }
 
-// === ПОЛУЧЕНИЕ СПИСКА ГРУПП ===
 export async function getGroups() {
   try {
     const groups = await UsersHttpService.request('/groups');
@@ -125,7 +118,6 @@ export async function getGroups() {
   }
 }
 
-// === ПОИСК ПО ID / NAME ===
 export async function getGroupNameById(groupId) {
   if (!groupsCache.length) await fetchGroups();
   const group = groupsCache.find(g => g.id === groupId);
@@ -137,7 +129,6 @@ export async function getGroupByName(name) {
   return groupsCache.find(g => g.name === name);
 }
 
-// === ОБНОВЛЕНИЕ CLIENTS В ГРУППЕ ===
 async function updateGroupClients(groupId, clients) {
   const group = await getGroupById(groupId);
   if (!group) return null;
@@ -156,7 +147,6 @@ async function updateGroupClients(groupId, clients) {
   return updated;
 }
 
-// === ДОБАВИТЬ / УДАЛИТЬ КЛИЕНТА ===
 export async function addClientToGroup(clientId, groupId, startDate = new Date().toISOString()) {
   const group = await getGroupById(groupId);
   if (!group) return;
@@ -180,7 +170,6 @@ export async function removeClientFromGroup(clientId, groupId) {
   await updateGroupClients(groupId, group.clients);
 }
 
-// === ДОБАВИТЬ НОВУЮ ГРУППУ С КЛИЕНТАМИ ===
 export async function addNewGroup(data) {
   const groups = await fetchGroups();
   if (groups.some(g, g.name.toLowerCase() === data.name.toLowerCase())) return null;
@@ -195,7 +184,6 @@ export async function addNewGroup(data) {
   return newGroup;
 }
 
-// === UI: МОДАЛКИ, РЕНДЕР, ТОСТЫ ===
 function escapeHtml(s) {
   if (!s) return '';
   return String(s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
@@ -382,7 +370,6 @@ export async function loadGroups() {
   });
 }
 
-// === МОДАЛКА УПРАВЛЕНИЯ КЛИЕНТАМИ ===
 function showClientManagementModal(title, group, clients, callback) {
   const modal = document.createElement('div');
   modal.className = 'modal';
@@ -457,11 +444,8 @@ function showClientManagementModal(title, group, clients, callback) {
   modal.querySelector('#group-save-btn').addEventListener('click', () => { callback(current); modal.remove(); });
   modal.querySelector('#group-cancel-btn').addEventListener('click', () => modal.remove());
   modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
-
-  // События чекбоксов, сортировка, даты — как в оригинале (можно скопировать)
 }
 
-// === ВСПОМОГАТЕЛЬНЫЕ МОДАЛКИ ===
 function showConfirmModal(msg, cb) {
   const modal = document.createElement('div');
   modal.className = 'modal';

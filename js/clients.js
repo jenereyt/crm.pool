@@ -1,7 +1,7 @@
 import { getSubscriptionTemplates } from './subscriptions.js';
 import { getGroups, addClientToGroup, removeClientFromGroup, getGroupById } from './groups.js';
 import { server } from './server.js'; // Adjust the path if server.js is elsewhere
-
+import usersHttpService from './usersHttpService.js';
 
 let groupHistoryData = JSON.parse(localStorage.getItem('groupHistoryData')) || [];
 
@@ -13,45 +13,35 @@ let commonRelations = [];
 
 async function syncRelations() {
   try {
-    const response = await fetch(`${server}/relations`);
-    if (!response.ok) throw new Error('Failed to fetch relations');
-    const data = await response.json();
-    commonRelations = data; // Теперь массив объектов [{id, name}]
+    const data = await usersHttpService.request('/relations', 'GET', null, false, true);
+    commonRelations = data;
     localStorage.setItem('commonRelations', JSON.stringify(commonRelations));
     return commonRelations;
   } catch (error) {
     console.error('Error syncing relations with server:', error);
     showToast('Ошибка синхронизации отношений с сервером. Используются локальные данные.', 'warning');
-    return JSON.parse(localStorage.getItem('commonRelations')) || [];
+    return commonRelations;
   }
 }
 
 async function syncDiagnoses() {
   try {
-    const response = await fetch(`${server}/diagnoses`);
-    if (!response.ok) throw new Error('Failed to fetch diagnoses');
-    const data = await response.json();
-    commonDiagnoses = data; // Теперь массив объектов [{id, name}]
+    const data = await usersHttpService.request('/diagnoses', 'GET', null, false, true);
+    commonDiagnoses = data;
     localStorage.setItem('commonDiagnoses', JSON.stringify(commonDiagnoses));
     return commonDiagnoses;
   } catch (error) {
     console.error('Error syncing diagnoses with server:', error);
     showToast('Ошибка синхронизации диагнозов с сервером. Используются локальные данные.', 'warning');
-    return JSON.parse(localStorage.getItem('commonDiagnoses')) || [];
+    return commonDiagnoses;
   }
 }
 
 async function addRelation(newRelation) {
   try {
-    const response = await fetch(`${server}/relations`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: newRelation })
-    });
-    if (!response.ok) throw new Error('Failed to add relation');
-    await syncRelations(); // Синхронизируем после добавления
-    // Нормализуем всех клиентов после изменения справочника
-    clientsData = await Promise.all(clientsData.map(async (c) => await normalizeClient(c)));
+    await usersHttpService.request('/relations', 'POST', { name: newRelation }, false, true);
+    await syncRelations();
+    clientsData = await Promise.all(clientsData.map(c => normalizeClient(c)));
     localStorage.setItem('clientsData', JSON.stringify(clientsData));
     if (typeof window.renderClients === 'function') window.renderClients();
     showToast('Отношение добавлено на сервер', 'success');
@@ -63,15 +53,9 @@ async function addRelation(newRelation) {
 
 async function addDiagnosis(newDiagnosis) {
   try {
-    const response = await fetch(`${server}/diagnoses`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: newDiagnosis })
-    });
-    if (!response.ok) throw new Error('Failed to add diagnosis');
-    await syncDiagnoses(); // Синхронизируем после добавления
-    // Нормализуем всех клиентов после изменения справочника
-    clientsData = await Promise.all(clientsData.map(async (c) => await normalizeClient(c)));
+    await usersHttpService.request('/diagnoses', 'POST', { name: newDiagnosis }, false, true);
+    await syncDiagnoses();
+    clientsData = await Promise.all(clientsData.map(c => normalizeClient(c)));
     localStorage.setItem('clientsData', JSON.stringify(clientsData));
     if (typeof window.renderClients === 'function') window.renderClients();
     showToast('Диагноз добавлен на сервер', 'success');
@@ -85,15 +69,9 @@ async function updateDiagnosis(oldName, newName) {
   try {
     const diag = commonDiagnoses.find(d => d.name === oldName);
     if (!diag) throw new Error('Diagnosis not found');
-    const response = await fetch(`${server}/diagnoses/${diag.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: newName })
-    });
-    if (!response.ok) throw new Error('Failed to update diagnosis');
+    await usersHttpService.request(`/diagnoses/${diag.id}`, 'PUT', { name: newName }, false, true);
     await syncDiagnoses();
-    // Нормализуем всех клиентов после изменения справочника
-    clientsData = await Promise.all(clientsData.map(async (c) => await normalizeClient(c)));
+    clientsData = await Promise.all(clientsData.map(c => normalizeClient(c)));
     localStorage.setItem('clientsData', JSON.stringify(clientsData));
     if (typeof window.renderClients === 'function') window.renderClients();
     showToast('Диагноз обновлен на сервере', 'success');
@@ -107,15 +85,9 @@ async function updateRelation(oldName, newName) {
   try {
     const rel = commonRelations.find(r => r.name === oldName);
     if (!rel) throw new Error('Relation not found');
-    const response = await fetch(`${server}/relations/${rel.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: newName })
-    });
-    if (!response.ok) throw new Error('Failed to update relation');
+    await usersHttpService.request(`/relations/${rel.id}`, 'PUT', { name: newName }, false, true);
     await syncRelations();
-    // Нормализуем всех клиентов после изменения справочника
-    clientsData = await Promise.all(clientsData.map(async (c) => await normalizeClient(c)));
+    clientsData = await Promise.all(clientsData.map(c => normalizeClient(c)));
     localStorage.setItem('clientsData', JSON.stringify(clientsData));
     if (typeof window.renderClients === 'function') window.renderClients();
     showToast('Отношение обновлено на сервере', 'success');
@@ -129,13 +101,9 @@ async function deleteDiagnosis(name) {
   try {
     const diag = commonDiagnoses.find(d => d.name === name);
     if (!diag) throw new Error('Diagnosis not found');
-    const response = await fetch(`${server}/diagnoses/${diag.id}`, {
-      method: 'DELETE'
-    });
-    if (!response.ok) throw new Error('Failed to delete diagnosis');
+    await usersHttpService.request(`/diagnoses/${diag.id}`, 'DELETE', null, false, true);
     await syncDiagnoses();
-    // Нормализуем всех клиентов после изменения справочника
-    clientsData = await Promise.all(clientsData.map(async (c) => await normalizeClient(c)));
+    clientsData = await Promise.all(clientsData.map(c => normalizeClient(c)));
     localStorage.setItem('clientsData', JSON.stringify(clientsData));
     if (typeof window.renderClients === 'function') window.renderClients();
     showToast('Диагноз удален с сервера', 'success');
@@ -149,13 +117,9 @@ async function deleteRelation(name) {
   try {
     const rel = commonRelations.find(r => r.name === name);
     if (!rel) throw new Error('Relation not found');
-    const response = await fetch(`${server}/relations/${rel.id}`, {
-      method: 'DELETE'
-    });
-    if (!response.ok) throw new Error('Failed to delete relation');
+    await usersHttpService.request(`/relations/${rel.id}`, 'DELETE', null, false, true);
     await syncRelations();
-    // Нормализуем всех клиентов после изменения справочника
-    clientsData = await Promise.all(clientsData.map(async (c) => await normalizeClient(c)));
+    clientsData = await Promise.all(clientsData.map(c => normalizeClient(c)));
     localStorage.setItem('clientsData', JSON.stringify(clientsData));
     if (typeof window.renderClients === 'function') window.renderClients();
     showToast('Отношение удалено с сервера', 'success');
@@ -193,26 +157,18 @@ async function getOrCreateDiagnosisId(name) {
 
 async function syncClientsWithServer() {
   try {
-    // Сохраняем текущие фотографии клиентов
     const photoMap = new Map(clientsData.map(c => [c.id, c.photo]));
-
-    const response = await fetch(`${server}/clients`);
-    if (!response.ok) throw new Error('Failed to fetch clients');
-    const serverData = await response.json();
+    const serverData = await usersHttpService.request('/clients', 'GET', null, false, true);
     clientsData = await Promise.all(serverData.map(async (c) => {
-      const normalizedClient = await normalizeClient(c);
-      // Восстанавливаем локальное фото, если оно было
-      normalizedClient.photo = photoMap.get(c.id) || '';
-      return normalizedClient;
+      const normalized = await normalizeClient(c);
+      normalized.photo = photoMap.get(c.id) || '';
+      return normalized;
     }));
-
-    // Подгружаем фотографии для клиентов, у которых их нет
     for (const client of clientsData) {
       if (!client.photo && client.id) {
         await fetchClientPhoto(client.id);
       }
     }
-
     localStorage.setItem('clientsData', JSON.stringify(clientsData));
     if (typeof window.renderClients === 'function') window.renderClients();
     return clientsData;
@@ -257,12 +213,10 @@ export async function addClient(client) {
     phone: p.phone || '',
     relation_id: await getOrCreateRelationId(p.relation)
   })));
-
   const diagnosesWithIds = await Promise.all((client.diagnoses || []).map(async d => ({
     diagnosis_id: await getOrCreateDiagnosisId(d.name),
     notes: d.notes || ''
   })));
-
   const payload = {
     surname: client.surname,
     name: client.name,
@@ -278,40 +232,21 @@ export async function addClient(client) {
     group_history: [],
     subscriptions: []
   };
-
   const newClient = {
-    id: `client${Date.now()}`, // Временный ID для локального хранения
+    id: `client${Date.now()}`,
     ...payload,
     created_at: new Date().toISOString(),
-    photo: '' // Изначально пустое
+    photo: ''
   };
-
   clientsData.push(newClient);
   localStorage.setItem('clientsData', JSON.stringify(clientsData));
-  console.log('Client added locally:', newClient);
 
   let serverClient;
   try {
-    // Отправляем запрос на создание клиента без фото
-    const response = await fetch(`${server}/clients`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-
-    if (!response.ok) {
-      const errorBody = await response.json();
-      console.error('Server error details:', errorBody);
-      throw new Error(`Failed to add client: ${response.status} - ${errorBody.message || 'Unknown error'}`);
-    }
-
-    serverClient = await response.json();
-    console.log('Server response:', serverClient);
-
-    // Обновляем локальный клиент с ID от сервера
+    serverClient = await usersHttpService.request('/clients', 'POST', payload, false, true);
     newClient.id = serverClient.id;
     Object.assign(newClient, serverClient);
-    await normalizeClient(newClient); // Нормализуем асинхронно
+    await normalizeClient(newClient);
     localStorage.setItem('clientsData', JSON.stringify(clientsData));
     showToast('Клиент добавлен на сервер', 'success');
   } catch (error) {
@@ -320,31 +255,16 @@ export async function addClient(client) {
     return newClient;
   }
 
-  // Если есть фото, загружаем его отдельным запросом
   if (client.photo instanceof File) {
     try {
       if (client.photo.size > 5 * 1024 * 1024) {
         showToast('Размер файла не должен превышать 5MB', 'error');
         return newClient;
       }
-
       const formData = new FormData();
       formData.append('photo', client.photo);
-
-      const photoResponse = await fetch(`${server}/clients/${serverClient.id}/photo`, {
-        method: 'POST',
-        body: formData
-      });
-
-      if (!photoResponse.ok) {
-        const errorBody = await photoResponse.json();
-        console.error('Server photo upload error:', errorBody);
-        throw new Error(`Failed to upload photo: ${photoResponse.status} - ${errorBody.message || 'Unknown error'}`);
-      }
-
-      // Поскольку сервер возвращает фото напрямую, получаем обновлённое фото
-      await fetchClientPhoto(newClient.id); // Получаем обновлённое фото
-      console.log('Photo uploaded successfully');
+      await usersHttpService.request(`/clients/${serverClient.id}/photo`, 'POST', formData, true, true);
+      await fetchClientPhoto(newClient.id);
       showToast('Фото клиента загружено', 'success');
     } catch (error) {
       console.error('Error uploading photo to server:', error);
@@ -358,25 +278,18 @@ export async function addClient(client) {
 
 export async function updateClient(id, data) {
   const client = clientsData.find(c => c.id === id);
-  if (!client) {
-    console.error('Client not found:', id);
-    return null;
-  }
+  if (!client) return null;
 
-  // Сохраняем текущее значение photo для использования, если новое не указано
   const currentPhoto = client.photo;
-
   const parentsWithIds = await Promise.all((data.parents || []).map(async p => ({
     full_name: p.fullName || '',
     phone: p.phone || '',
     relation_id: await getOrCreateRelationId(p.relation)
   })));
-
   const diagnosesWithIds = await Promise.all((data.diagnoses || []).map(async d => ({
     diagnosis_id: await getOrCreateDiagnosisId(d.name),
     notes: d.notes || ''
   })));
-
   const updatedPayload = {
     surname: data.surname,
     name: data.name,
@@ -390,46 +303,18 @@ export async function updateClient(id, data) {
     blacklisted: data.blacklisted !== undefined ? data.blacklisted : client.blacklisted || false,
     groups: Array.isArray(data.groups) ? data.groups : client.groups || [],
     group_history: Array.isArray(data.group_history)
-      ? data.group_history
-        .filter(entry => {
-          if (!entry.group) {
-            console.warn('Invalid group_history entry missing group:', entry);
-            return false;
-          }
-          return true;
-        })
-        .map(entry => ({
-          date: entry.date.split('T')[0],
-          action: entry.action,
-          group_id: entry.group
-        }))
+      ? data.group_history.filter(e => e.group).map(e => ({ date: e.date.split('T')[0], action: e.action, group_id: e.group }))
       : client.group_history || [],
     subscriptions: Array.isArray(data.subscriptions) ? data.subscriptions : client.subscriptions || []
   };
 
-  // Обновляем клиента локально, сохраняя текущее фото, если новое не указано
   Object.assign(client, updatedPayload);
   client.photo = data.photo instanceof File || data.photo === '' ? data.photo : currentPhoto;
   await normalizeClient(client);
   localStorage.setItem('clientsData', JSON.stringify(clientsData));
-  console.log('Client updated locally before server:', client);
 
   try {
-    const response = await fetch(`${server}/clients/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updatedPayload)
-    });
-
-    if (!response.ok) {
-      const errorBody = await response.json();
-      console.error('Server error details:', errorBody);
-      throw new Error(`Failed to update client: ${response.status} - ${errorBody.message || 'Unknown error'}`);
-    }
-
-    const serverClient = await response.json();
-    console.log('Server response:', serverClient);
-    // Обновляем локальный клиент данными с сервера, сохраняя photo, если оно не изменилось
+    const serverClient = await usersHttpService.request(`/clients/${id}`, 'PUT', updatedPayload, false, true);
     Object.assign(client, serverClient);
     client.photo = data.photo instanceof File || data.photo === '' ? client.photo : currentPhoto;
     await normalizeClient(client);
@@ -440,28 +325,15 @@ export async function updateClient(id, data) {
     showToast('Ошибка обновления клиента на сервере. Изменения сохранены локально.', 'warning');
   }
 
-  // Обработка фото
   if (data.photo instanceof File) {
     try {
       if (data.photo.size > 5 * 1024 * 1024) {
         showToast('Размер файла не должен превышать 5MB', 'error');
         return client;
       }
-
       const formData = new FormData();
       formData.append('photo', data.photo);
-
-      const photoResponse = await fetch(`${server}/clients/${id}/photo`, {
-        method: 'POST',
-        body: formData
-      });
-
-      if (!photoResponse.ok) {
-        const errorBody = await photoResponse.json();
-        console.error('Server photo upload error:', errorBody);
-        throw new Error(`Failed to upload photo: ${photoResponse.status} - ${errorBody.message || 'Unknown error'}`);
-      }
-
+      await usersHttpService.request(`/clients/${id}/photo`, 'POST', formData, true, true);
       await fetchClientPhoto(id);
       showToast('Фото клиента обновлено', 'success');
     } catch (error) {
@@ -470,19 +342,9 @@ export async function updateClient(id, data) {
     }
   } else if (data.photo === '') {
     try {
-      const deletePhotoResponse = await fetch(`${server}/clients/${id}/photo`, {
-        method: 'DELETE'
-      });
-
-      if (!deletePhotoResponse.ok) {
-        const errorBody = await deletePhotoResponse.json();
-        console.error('Server photo deletion error:', errorBody);
-        throw new Error(`Failed to delete photo: ${deletePhotoResponse.status} - ${errorBody.message || 'Unknown error'}`);
-      }
-
+      await usersHttpService.request(`/clients/${id}/photo`, 'DELETE', null, false, true);
       client.photo = '';
       localStorage.setItem('clientsData', JSON.stringify(clientsData));
-      console.log('Photo deleted successfully');
       showToast('Фото клиента удалено', 'success');
     } catch (error) {
       console.error('Error deleting photo from server:', error);
@@ -490,73 +352,16 @@ export async function updateClient(id, data) {
     }
   }
 
-  // Синхронизация после обработки фото
   await syncClientsWithServer();
   if (typeof window.renderClients === 'function') window.renderClients();
   return client;
 }
 
-export async function fetchClientPhoto(clientId) {
-  const client = clientsData.find(c => c.id === clientId);
-  if (!client) {
-    console.error('Клиент не найден:', clientId);
-    return null;
-  }
-
-  try {
-    const response = await fetch(`${server}/clients/${clientId}/photo`, {
-      method: 'GET'
-    });
-
-    if (!response.ok) {
-      if (response.status === 404) {
-        console.log('Фотография не найдена для клиента:', clientId);
-        client.photo = '';
-        localStorage.setItem('clientsData', JSON.stringify(clientsData));
-        return '';
-      }
-      const errorBody = await response.text(); // Используем text() для отладки
-      throw new Error(`Не удалось получить фото: ${response.status} - ${errorBody}`);
-    }
-
-    // Проверяем, что ответ — изображение
-    const contentType = response.headers.get('content-type');
-    if (!contentType || !contentType.includes('image/')) {
-      throw new Error(`Ожидалось изображение, но получен тип контента: ${contentType}`);
-    }
-
-    // Преобразуем ответ в blob
-    const blob = await response.blob();
-
-    // Конвертируем blob в base64
-    const base64 = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-
-    client.photo = base64; // Сохраняем base64 string
-    localStorage.setItem('clientsData', JSON.stringify(clientsData));
-    console.log('Фотография успешно получена и сохранена как base64');
-    if (typeof window.renderClients === 'function') window.renderClients();
-    return base64;
-  } catch (error) {
-    console.error('Ошибка получения фото с сервера:', error);
-    showToast('Ошибка загрузки фото с сервера.', 'error');
-    return client.photo || '';
-  }
-}
-
 export async function removeClient(id) {
   clientsData = clientsData.filter(c => c.id !== id);
   localStorage.setItem('clientsData', JSON.stringify(clientsData));
-
   try {
-    const response = await fetch(`${server}/clients/${id}`, {
-      method: 'DELETE'
-    });
-    if (!response.ok) throw new Error('Failed to delete client');
+    await usersHttpService.request(`/clients/${id}`, 'DELETE', null, false, true);
     showToast('Клиент удалён с сервера', 'success');
     await syncClientsWithServer();
   } catch (error) {
@@ -564,6 +369,39 @@ export async function removeClient(id) {
     showToast('Ошибка удаления с сервера. Клиент удалён локально.', 'error');
   }
   if (typeof window.renderClients === 'function') window.renderClients();
+}
+
+export async function fetchClientPhoto(clientId) {
+  const client = clientsData.find(c => c.id === clientId);
+  if (!client) return null;
+
+  try {
+    const blob = await usersHttpService.request(`/clients/${clientId}/photo`, 'GET', null, false, true);
+    if (!blob) {
+      client.photo = '';
+      localStorage.setItem('clientsData', JSON.stringify(clientsData));
+      return '';
+    }
+    const base64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+    client.photo = base64;
+    localStorage.setItem('clientsData', JSON.stringify(clientsData));
+    if (typeof window.renderClients === 'function') window.renderClients();
+    return base64;
+  } catch (error) {
+    if (error.status === 404) {
+      client.photo = '';
+      localStorage.setItem('clientsData', JSON.stringify(clientsData));
+      return '';
+    }
+    console.error('Ошибка получения фото с сервера:', error);
+    showToast('Ошибка загрузки фото с сервера.', 'error');
+    return client.photo || '';
+  }
 }
 
 export function addGroupToClient(clientId, groupId, action = 'added', date = new Date().toISOString().split('T')[0]) {
@@ -1205,28 +1043,28 @@ export async function showClientForm(title, client, callback) {
 
 export async function loadClients() {
   try {
-    // Сначала синхронизируем справочники
+    // 1. Синхронизация справочников
     await syncDiagnoses();
     await syncRelations();
 
-    // Затем загружаем из localStorage
+    // 2. Загрузка локальных данных
     clientsData = JSON.parse(localStorage.getItem('clientsData')) || [];
 
-    // Затем синхронизируем с сервером асинхронно
+    // 3. Синхронизация с сервером
     await syncClientsWithServer();
 
-    // Подгружаем фото для каждого клиента
+    // 4. Подгрузка фото
     for (const client of clientsData) {
-      if (client.id) {
+      if (client.id && !client.photo) {
         await fetchClientPhoto(client.id);
       }
     }
 
-    // Очищаем содержимое main-content
+    // 5. Очистка и создание интерфейса
     const mainContent = document.getElementById('main-content');
     mainContent.innerHTML = '';
 
-    // Создаём заголовок
+    // === HEADER ===
     const header = document.createElement('header');
     header.className = 'header';
     header.innerHTML = `
@@ -1238,7 +1076,7 @@ export async function loadClients() {
             <span class="stat-label">всего</span>
           </div>
           <div class="stat-item">
-            <span class="stat-number">${clientsData.filter(c => c.subscriptions.some(s => s.isPaid && new Date(s.endDate) >= new Date())).length}</span>
+            <span class="stat-number">${clientsData.filter(c => c.subscriptions?.some(s => s.isPaid && new Date(s.endDate) >= new Date())).length}</span>
             <span class="stat-label">активных</span>
           </div>
           <div class="stat-item">
@@ -1250,7 +1088,7 @@ export async function loadClients() {
     `;
     mainContent.appendChild(header);
 
-    // Создаём панель управления
+    // === CONTROL BAR ===
     const controlBar = document.createElement('div');
     controlBar.className = 'control-bar';
     controlBar.innerHTML = `
@@ -1282,7 +1120,7 @@ export async function loadClients() {
     `;
     mainContent.appendChild(controlBar);
 
-    // Создаём секцию клиентов
+    // === CLIENT SECTION ===
     const clientSection = document.createElement('div');
     clientSection.className = 'client-section';
 
@@ -1302,7 +1140,7 @@ export async function loadClients() {
 
     mainContent.appendChild(clientSection);
 
-    // Определяем вспомогательные функции
+    // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
     function getSubscriptionStatus(client) {
       if (!client.subscriptions || client.subscriptions.length === 0) return 'no-subscription';
       if (client.blacklisted) return 'blacklisted';
@@ -1310,25 +1148,11 @@ export async function loadClients() {
       return hasActive ? 'active' : 'inactive';
     }
 
-    function formatDate(dateString) {
-      if (!dateString) return 'Никогда';
-      const date = new Date(dateString);
-      const now = new Date();
-      const diffTime = Math.abs(now - date);
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-      if (diffDays === 1) return 'Сегодня';
-      if (diffDays === 2) return 'Вчера';
-      if (diffDays <= 7) return `${diffDays - 1} дн. назад`;
-      if (diffDays <= 30) return `${Math.floor(diffDays / 7)} нед. назад`;
-      return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    }
-
     function sortClients(clients, sortBy) {
       return [...clients].sort((a, b) => {
         switch (sortBy) {
           case 'name':
-            return `${a.surname} ${a.name}`.localeCompare(`${b.surname} ${b.name}`);
+            return `${a.surname || ''} ${a.name || ''}`.localeCompare(`${b.surname || ''} ${b.name || ''}`);
           case 'date-desc':
             return new Date(b.created_at || 0) - new Date(a.created_at || 0);
           case 'date-asc':
@@ -1340,21 +1164,26 @@ export async function loadClients() {
     }
 
     function renderClients() {
-      // Проверяем наличие элементов перед доступом к их свойствам
       const searchInput = document.getElementById('client-search');
       const statusFilterInput = document.getElementById('status-filter');
       const sortByInput = document.getElementById('sort-by');
 
-      const search = searchInput ? searchInput.value.toLowerCase() : '';
-      const statusFilter = statusFilterInput ? statusFilterInput.value : '';
-      const sortBy = sortByInput ? sortByInput.value : 'name';
+      const search = searchInput?.value.toLowerCase() || '';
+      const statusFilter = statusFilterInput?.value || '';
+      const sortBy = sortByInput?.value || 'name';
 
       let filteredClients = clientsData.filter(client => {
-        const fullName = `${client.surname} ${client.name} ${client.patronymic || ''}`.toLowerCase();
+        const fullName = `${client.surname || ''} ${client.name || ''} ${client.patronymic || ''}`.toLowerCase();
+        const phone = (client.phone || '').toLowerCase();
+        const groups = Array.isArray(client.groups) ? client.groups.map(gId => {
+          const group = getGroups().find(g => g.id === gId);
+          return group?.name || '';
+        }).join(' ').toLowerCase() : '';
+
         const matchesSearch = search === '' ||
           fullName.includes(search) ||
-          client.phone.toLowerCase().includes(search) ||
-          (Array.isArray(client.groups) && client.groups.some(group => group.toLowerCase().includes(search)));
+          phone.includes(search) ||
+          groups.includes(search);
 
         const matchesStatus = statusFilter === '' || getSubscriptionStatus(client) === statusFilter;
 
@@ -1372,120 +1201,119 @@ export async function loadClients() {
       clientList.style.display = 'grid';
       emptyState.style.display = 'none';
 
-      clientList.innerHTML = filteredClients
-        .map(client => {
-          console.log('Client photo URL in render:', client.photo ? client.photo.substring(0, 50) + '...' : 'null');
-          const fullName = `${client.surname} ${client.name} ${client.patronymic || ''}`;
-          const hasDiagnosis = client.diagnoses && client.diagnoses.length > 0 && !(client.diagnoses.length === 1 && (client.diagnoses[0].name || getDiagnosisName(client.diagnoses[0].diagnosis_id)) === 'Нет');
-          const status = getSubscriptionStatus(client);
-          const statusClass = {
-            'active': 'status-active',
-            'inactive': 'status-inactive',
-            'no-subscription': 'status-none',
-            'blacklisted': 'status-blacklisted'
-          }[status];
+      clientList.innerHTML = filteredClients.map(client => {
+        const fullName = `${client.surname || ''} ${client.name || ''} ${client.patronymic || ''}`.trim();
+        const hasDiagnosis = client.diagnoses && client.diagnoses.length > 0 && !(client.diagnoses.length === 1 && (client.diagnoses[0].name || getDiagnosisName(client.diagnoses[0].diagnosis_id)) === 'Нет');
+        const status = getSubscriptionStatus(client);
+        const statusClass = {
+          active: 'status-active',
+          inactive: 'status-inactive',
+          'no-subscription': 'status-none',
+          blacklisted: 'status-blacklisted'
+        }[status];
 
-          const statusText = {
-            'active': 'Активный',
-            'inactive': 'Неактивный',
-            'no-subscription': 'Без абонемента',
-            'blacklisted': 'В чёрном списке'
-          }[status];
+        const statusText = {
+          active: 'Активный',
+          inactive: 'Неактивный',
+          'no-subscription': 'Без абонемента',
+          blacklisted: 'В чёрном списке'
+        }[status];
 
-          const activeSub = client.subscriptions.find(s => s.isPaid && new Date(s.endDate) >= new Date());
-          const remainingClasses = activeSub ? activeSub.remainingClasses : undefined;
+        const activeSub = client.subscriptions?.find(s => s.isPaid && new Date(s.endDate) >= new Date());
+        const remainingClasses = activeSub?.remainingClasses;
 
-          // Проверяем, есть ли фото, и если нет, пытаемся подгрузить
-          if (!client.photo && client.id) {
-            fetchClientPhoto(client.id).catch(error => {
-              console.error('Error fetching photo in renderClients:', error);
-            });
-          }
+        if (!client.photo && client.id) {
+          fetchClientPhoto(client.id).catch(() => {});
+        }
 
-          return `
-            <div class="client-card ${client.blacklisted ? 'blacklisted' : ''}" data-id="${client.id}">
-              <div class="client-main-info">
-                <div class="client-avatar">
-                  ${client.photo ?
-              `<img src="${client.photo}" class="client-photo" alt="${fullName}" style="object-fit: cover;">` :
-              `<div class="client-photo-placeholder">${client.name.charAt(0).toUpperCase()}</div>`
-            }
-                  <div class="status-indicator ${statusClass}" title="${statusText}"></div>
-                </div>
-                <div class="client-details">
-                  <div class="client-name-section">
-                    <h3 class="client-name ${hasDiagnosis ? 'has-diagnosis' : ''}">${fullName}</h3>
-                    <div class="client-meta">
-                      <span class="client-phone">${client.phone}</span>
-                      ${hasDiagnosis ? `
-                        <div class="diagnosis-badge">
-                          ${client.diagnoses.map(d => `<span class="diagnosis-tag">${d.name || getDiagnosisName(d.diagnosis_id)}${d.notes ? ` (${d.notes})` : ''}</span>`).join('')}
-                        </div>
-                      ` : ''}
-                    </div>
-                  </div>
-                  <div class="client-additional-info">
-                    <span class="groups-info">
-                      <span class="info-label">Группы:</span>
-                      ${Array.isArray(client.groups) && client.groups.length ? client.groups.map(group => `<span class="group-tag">${group}</span>`).join('') : '<span class="no-groups">Без групп</span>'}
-                    </span>
-                    ${remainingClasses !== undefined ?
-              `<span class="classes-info">
-                          <span class="info-label">Осталось занятий:</span>
-                          <span class="classes-value ${remainingClasses <= 3 && remainingClasses !== Infinity ? 'low-classes' : ''}">
-                            ${remainingClasses === Infinity ? 'Безлимит' : remainingClasses}
-                          </span>
-                        </span>` : ''
-            }
-                  </div>
-                </div>
+        return `
+          <div class="client-card ${client.blacklisted ? 'blacklisted' : ''}" data-id="${client.id}">
+            <div class="client-main-info">
+              <div class="client-avatar">
+                ${client.photo
+                  ? `<img src="${client.photo}" class="client-photo" alt="${fullName}" style="object-fit: cover;">`
+                  : `<div class="client-photo-placeholder">${(client.name || '?').charAt(0).toUpperCase()}</div>`
+                }
+                <div class="status-indicator ${statusClass}" title="${statusText}"></div>
               </div>
-              <div class="action-buttons-group">
-                <button type="button" class="client-action-btn edit-btn" data-id="${client.id}" title="Редактировать">
-                  <img src="images/icon-edit.svg" alt="Редактировать" class="btn-icon">
-                </button>
-                <button type="button" class="client-action-btn subscription-btn" data-id="${client.id}" title="Абонемент">
-                  <img src="images/icon-subscriptions.svg" alt="Абонемент" class="btn-icon">
-                </button>
-                <button type="button" class="client-action-btn group-btn" data-id="${client.id}" title="Группы">
-                  <img src="images/icon-group.svg" alt="Группы" class="btn-icon">
-                </button>
-                <button type="button" class="client-action-btn blacklist-btn ${client.blacklisted ? 'active' : ''}" data-id="${client.id}" title="${client.blacklisted ? 'Убрать из чёрного списка' : 'В чёрный список'}">
-                  <img src="images/icon-delete.svg" alt="${client.blacklisted ? 'Убрать из чёрного списка' : 'В чёрный список'}" class="btn-icon">
-                </button>
-                <button type="button" class="client-action-btn delete-btn" data-id="${client.id}" title="Удалить">
-                  <img src="images/trash.svg" alt="Удалить" class="btn-icon">
-                </button>
+              <div class="client-details">
+                <div class="client-name-section">
+                  <h3 class="client-name ${hasDiagnosis ? 'has-diagnosis' : ''}">${fullName}</h3>
+                  <div class="client-meta">
+                    <span class="client-phone">${client.phone || '—'}</span>
+                    ${hasDiagnosis ? `
+                      <div class="diagnosis-badge">
+                        ${client.diagnoses.map(d => `<span class="diagnosis-tag">${d.name || getDiagnosisName(d.diagnosis_id)}${d.notes ? ` (${d.notes})` : ''}</span>`).join('')}
+                      </div>
+                    ` : ''}
+                  </div>
+                </div>
+                <div class="client-additional-info">
+                  <span class="groups-info">
+                    <span class="info-label">Группы:</span>
+                    ${Array.isArray(client.groups) && client.groups.length
+                      ? client.groups.map(gId => {
+                          const group = getGroups().find(g => g.id === gId);
+                          return group ? `<span class="group-tag">${group.name}</span>` : '';
+                        }).join('')
+                      : '<span class="no-groups">Без групп</span>'
+                    }
+                  </span>
+                  ${remainingClasses !== undefined ? `
+                    <span class="classes-info">
+                      <span class="info-label">Осталось занятий:</span>
+                      <span class="classes-value ${remainingClasses <= 3 && remainingClasses !== Infinity ? 'low-classes' : ''}">
+                        ${remainingClasses === Infinity ? 'Безлимит' : remainingClasses}
+                      </span>
+                    </span>
+                  ` : ''}
+                </div>
               </div>
             </div>
-          `;
-        }).join('');
+            <div class="action-buttons-group">
+              <button type="button" class="client-action-btn edit-btn" data-id="${client.id}" title="Редактировать">
+                <img src="images/icon-edit.svg" alt="Редактировать" class="btn-icon">
+              </button>
+              <button type="button" class="client-action-btn subscription-btn" data-id="${client.id}" title="Абонемент">
+                <img src="images/icon-subscriptions.svg" alt="Абонемент" class="btn-icon">
+              </button>
+              <button type="button" class="client-action-btn group-btn" data-id="${client.id}" title="Группы">
+                <img src="images/icon-group.svg" alt="Группы" class="btn-icon">
+              </button>
+              <button type="button" class="client-action-btn blacklist-btn ${client.blacklisted ? 'active' : ''}" data-id="${client.id}" title="${client.blacklisted ? 'Убрать из чёрного списка' : 'В чёрный список'}">
+                <img src="images/icon-delete.svg" alt="${client.blacklisted ? 'Убрать из чёрного списка' : 'В чёрный список'}" class="btn-icon">
+              </button>
+              <button type="button" class="client-action-btn delete-btn" data-id="${client.id}" title="Удалить">
+                <img src="images/trash.svg" alt="Удалить" class="btn-icon">
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
     }
 
     window.renderClients = renderClients;
-
-    // Вызываем renderClients только после создания всех DOM-элементов
     renderClients();
 
-    // Добавляем обработчики событий
+    // === ОБРАБОТЧИКИ ===
     const searchInput = document.getElementById('client-search');
     const searchClear = document.getElementById('search-clear');
 
-    searchInput.addEventListener('input', (e) => {
+    searchInput?.addEventListener('input', (e) => {
       renderClients();
       searchClear.style.display = e.target.value ? 'block' : 'none';
     });
 
-    searchClear.addEventListener('click', () => {
+    searchClear?.addEventListener('click', () => {
       searchInput.value = '';
       searchClear.style.display = 'none';
       renderClients();
     });
 
-    document.getElementById('status-filter').addEventListener('change', renderClients);
-    document.getElementById('sort-by').addEventListener('change', renderClients);
+    document.getElementById('status-filter')?.addEventListener('change', renderClients);
+    document.getElementById('sort-by')?.addEventListener('change', renderClients);
 
-    document.getElementById('client-add-btn').addEventListener('click', () => {
+    document.getElementById('client-add-btn')?.addEventListener('click', () => {
       showClientForm('Добавить клиента', {}, async (data) => {
         const newClient = await addClient(data);
         await normalizeClient(newClient);
@@ -1499,8 +1327,10 @@ export async function loadClients() {
       e.preventDefault();
       const target = e.target;
       const clientCard = target.closest('.client-card');
-      const clientId = clientCard ? clientCard.getAttribute('data-id') : null;
-      let client = clientsData.find(c => c.id === clientId);
+      const clientId = clientCard?.getAttribute('data-id');
+      if (!clientId) return;
+
+      const client = clientsData.find(c => c.id === clientId);
       if (!client) return;
 
       const actionBtn = target.closest('.client-action-btn');
@@ -1509,37 +1339,31 @@ export async function loadClients() {
 
         if (actionBtn.classList.contains('edit-btn')) {
           showClientForm('Редактировать клиента', client, async (data) => {
-            const updatedClient = await updateClient(clientId, data);
-            await normalizeClient(updatedClient);
+            const updated = await updateClient(clientId, data);
+            await normalizeClient(updated);
             await syncClientsWithServer();
             renderClients();
             showToast('Данные клиента обновлены', 'success');
-            client = updatedClient; // Update local reference
           });
         } else if (actionBtn.classList.contains('blacklist-btn')) {
           client.blacklisted = !client.blacklisted;
-          console.log('Blacklisted toggled to:', client.blacklisted);
-          await updateClient(clientId, client);
-          await normalizeClient(client);
+          await updateClient(clientId, { blacklisted: client.blacklisted });
           await syncClientsWithServer();
           renderClients();
-          showToast(client.blacklisted ? 'Клиент добавлен в чёрный список' : 'Клиент удалён из чёрного списка', 'info');
+          showToast(client.blacklisted ? 'В чёрный список' : 'Удалён из ЧС', 'info');
         } else if (actionBtn.classList.contains('subscription-btn')) {
           showSubscriptionManagement(client);
         } else if (actionBtn.classList.contains('group-btn')) {
           showGroupForm('Управление группами', client, getGroups(), async (groups, history) => {
-            client.groups = groups;
-            client.group_history = history;
-            await updateClient(clientId, client);
-            await normalizeClient(client);
+            await updateClient(clientId, { groups, group_history: history });
             await syncClientsWithServer();
             renderClients();
-            showToast('Группы клиента обновлены', 'success');
+            showToast('Группы обновлены', 'success');
           });
         } else if (actionBtn.classList.contains('delete-btn')) {
           showConfirmDialog(
             'Удалить клиента?',
-            `Вы уверены, что хотите удалить клиента "${client.surname} ${client.name}"? Это действие нельзя отменить.`,
+            `Удалить <strong>${client.surname} ${client.name}</strong>?`,
             async () => {
               await removeClient(clientId);
               await syncClientsWithServer();
@@ -1555,14 +1379,19 @@ export async function loadClients() {
         }
       }
     });
+
   } catch (error) {
     console.error('Error loading clients:', error);
-    showToast('Ошибка загрузки клиентов. Используются локальные данные.', 'error');
+    showToast('Ошибка загрузки с сервера. Используются локальные данные.', 'warning');
 
-    // Рендерим локальные данные, но только после создания DOM-элементов
+    // === FALLBACK: ПОЛНОСТЬЮ ТОТ ЖЕ UI НА ЛОКАЛЬНЫХ ДАННЫХ ===
+    clientsData = JSON.parse(localStorage.getItem('clientsData')) || [];
     const mainContent = document.getElementById('main-content');
+    if (!mainContent) return;
+
     mainContent.innerHTML = '';
 
+    // === HEADER (дубликат) ===
     const header = document.createElement('header');
     header.className = 'header';
     header.innerHTML = `
@@ -1574,7 +1403,7 @@ export async function loadClients() {
             <span class="stat-label">всего</span>
           </div>
           <div class="stat-item">
-            <span class="stat-number">${clientsData.filter(c => c.subscriptions.some(s => s.isPaid && new Date(s.endDate) >= new Date())).length}</span>
+            <span class="stat-number">${clientsData.filter(c => c.subscriptions?.some(s => s.isPaid && new Date(s.endDate) >= new Date())).length}</span>
             <span class="stat-label">активных</span>
           </div>
           <div class="stat-item">
@@ -1586,6 +1415,7 @@ export async function loadClients() {
     `;
     mainContent.appendChild(header);
 
+    // === CONTROL BAR (дубликат) ===
     const controlBar = document.createElement('div');
     controlBar.className = 'control-bar';
     controlBar.innerHTML = `
@@ -1617,6 +1447,7 @@ export async function loadClients() {
     `;
     mainContent.appendChild(controlBar);
 
+    // === CLIENT SECTION (дубликат) ===
     const clientSection = document.createElement('div');
     clientSection.className = 'client-section';
 
@@ -1636,28 +1467,179 @@ export async function loadClients() {
 
     mainContent.appendChild(clientSection);
 
-    // Рендерим локальные данные после создания DOM-элементов
+    // === renderClients и обработчики (дубликат) ===
+    function getSubscriptionStatus(client) {
+      if (!client.subscriptions || client.subscriptions.length === 0) return 'no-subscription';
+      if (client.blacklisted) return 'blacklisted';
+      const hasActive = client.subscriptions.some(s => s.isPaid && new Date(s.endDate) >= new Date());
+      return hasActive ? 'active' : 'inactive';
+    }
+
+    function sortClients(clients, sortBy) {
+      return [...clients].sort((a, b) => {
+        switch (sortBy) {
+          case 'name':
+            return `${a.surname || ''} ${a.name || ''}`.localeCompare(`${b.surname || ''} ${b.name || ''}`);
+          case 'date-desc':
+            return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+          case 'date-asc':
+            return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+          default:
+            return 0;
+        }
+      });
+    }
+
+    function renderClients() {
+      const searchInput = document.getElementById('client-search');
+      const statusFilterInput = document.getElementById('status-filter');
+      const sortByInput = document.getElementById('sort-by');
+
+      const search = searchInput?.value.toLowerCase() || '';
+      const statusFilter = statusFilterInput?.value || '';
+      const sortBy = sortByInput?.value || 'name';
+
+      let filteredClients = clientsData.filter(client => {
+        const fullName = `${client.surname || ''} ${client.name || ''} ${client.patronymic || ''}`.toLowerCase();
+        const phone = (client.phone || '').toLowerCase();
+        const groups = Array.isArray(client.groups) ? client.groups.map(gId => {
+          const group = getGroups().find(g => g.id === gId);
+          return group?.name || '';
+        }).join(' ').toLowerCase() : '';
+
+        const matchesSearch = search === '' ||
+          fullName.includes(search) ||
+          phone.includes(search) ||
+          groups.includes(search);
+
+        const matchesStatus = statusFilter === '' || getSubscriptionStatus(client) === statusFilter;
+
+        return matchesSearch && matchesStatus;
+      });
+
+      filteredClients = sortClients(filteredClients, sortBy);
+
+      if (filteredClients.length === 0) {
+        clientList.style.display = 'none';
+        emptyState.style.display = 'flex';
+        return;
+      }
+
+      clientList.style.display = 'grid';
+      emptyState.style.display = 'none';
+
+      clientList.innerHTML = filteredClients.map(client => {
+        const fullName = `${client.surname || ''} ${client.name || ''} ${client.patronymic || ''}`.trim();
+        const hasDiagnosis = client.diagnoses && client.diagnoses.length > 0 && !(client.diagnoses.length === 1 && (client.diagnoses[0].name || getDiagnosisName(client.diagnoses[0].diagnosis_id)) === 'Нет');
+        const status = getSubscriptionStatus(client);
+        const statusClass = {
+          active: 'status-active',
+          inactive: 'status-inactive',
+          'no-subscription': 'status-none',
+          blacklisted: 'status-blacklisted'
+        }[status];
+
+        const statusText = {
+          active: 'Активный',
+          inactive: 'Неактивный',
+          'no-subscription': 'Без абонемента',
+          blacklisted: 'В чёрном списке'
+        }[status];
+
+        const activeSub = client.subscriptions?.find(s => s.isPaid && new Date(s.endDate) >= new Date());
+        const remainingClasses = activeSub?.remainingClasses;
+
+        if (!client.photo && client.id) {
+          fetchClientPhoto(client.id).catch(() => {});
+        }
+
+        return `
+          <div class="client-card ${client.blacklisted ? 'blacklisted' : ''}" data-id="${client.id}">
+            <div class="client-main-info">
+              <div class="client-avatar">
+                ${client.photo
+                  ? `<img src="${client.photo}" class="client-photo" alt="${fullName}" style="object-fit: cover;">`
+                  : `<div class="client-photo-placeholder">${(client.name || '?').charAt(0).toUpperCase()}</div>`
+                }
+                <div class="status-indicator ${statusClass}" title="${statusText}"></div>
+              </div>
+              <div class="client-details">
+                <div class="client-name-section">
+                  <h3 class="client-name ${hasDiagnosis ? 'has-diagnosis' : ''}">${fullName}</h3>
+                  <div class="client-meta">
+                    <span class="client-phone">${client.phone || '—'}</span>
+                    ${hasDiagnosis ? `
+                      <div class="diagnosis-badge">
+                        ${client.diagnoses.map(d => `<span class="diagnosis-tag">${d.name || getDiagnosisName(d.diagnosis_id)}${d.notes ? ` (${d.notes})` : ''}</span>`).join('')}
+                      </div>
+                    ` : ''}
+                  </div>
+                </div>
+                <div class="client-additional-info">
+                  <span class="groups-info">
+                    <span class="info-label">Группы:</span>
+                    ${Array.isArray(client.groups) && client.groups.length
+                      ? client.groups.map(gId => {
+                          const group = getGroups().find(g => g.id === gId);
+                          return group ? `<span class="group-tag">${group.name}</span>` : '';
+                        }).join('')
+                      : '<span class="no-groups">Без групп</span>'
+                    }
+                  </span>
+                  ${remainingClasses !== undefined ? `
+                    <span class="classes-info">
+                      <span class="info-label">Осталось занятий:</span>
+                      <span class="classes-value ${remainingClasses <= 3 && remainingClasses !== Infinity ? 'low-classes' : ''}">
+                        ${remainingClasses === Infinity ? 'Безлимит' : remainingClasses}
+                      </span>
+                    </span>
+                  ` : ''}
+                </div>
+              </div>
+            </div>
+            <div class="action-buttons-group">
+              <button type="button" class="client-action-btn edit-btn" data-id="${client.id}" title="Редактировать">
+                <img src="images/icon-edit.svg" alt="Редактировать" class="btn-icon">
+              </button>
+              <button type="button" class="client-action-btn subscription-btn" data-id="${client.id}" title="Абонемент">
+                <img src="images/icon-subscriptions.svg" alt="Абонемент" class="btn-icon">
+              </button>
+              <button type="button" class="client-action-btn group-btn" data-id="${client.id}" title="Группы">
+                <img src="images/icon-group.svg" alt="Группы" class="btn-icon">
+              </button>
+              <button type="button" class="client-action-btn blacklist-btn ${client.blacklisted ? 'active' : ''}" data-id="${client.id}" title="${client.blacklisted ? 'Убрать из чёрного списка' : 'В чёрный список'}">
+                <img src="images/icon-delete.svg" alt="${client.blacklisted ? 'Убрать из чёрного списка' : 'В чёрный список'}" class="btn-icon">
+              </button>
+              <button type="button" class="client-action-btn delete-btn" data-id="${client.id}" title="Удалить">
+                <img src="images/trash.svg" alt="Удалить" class="btn-icon">
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    window.renderClients = renderClients;
     renderClients();
 
-    // Добавляем обработчики событий
     const searchInput = document.getElementById('client-search');
     const searchClear = document.getElementById('search-clear');
 
-    searchInput.addEventListener('input', (e) => {
+    searchInput?.addEventListener('input', (e) => {
       renderClients();
       searchClear.style.display = e.target.value ? 'block' : 'none';
     });
 
-    searchClear.addEventListener('click', () => {
+    searchClear?.addEventListener('click', () => {
       searchInput.value = '';
       searchClear.style.display = 'none';
       renderClients();
     });
 
-    document.getElementById('status-filter').addEventListener('change', renderClients);
-    document.getElementById('sort-by').addEventListener('change', renderClients);
+    document.getElementById('status-filter')?.addEventListener('change', renderClients);
+    document.getElementById('sort-by')?.addEventListener('change', renderClients);
 
-    document.getElementById('client-add-btn').addEventListener('click', () => {
+    document.getElementById('client-add-btn')?.addEventListener('click', () => {
       showClientForm('Добавить клиента', {}, async (data) => {
         const newClient = await addClient(data);
         await normalizeClient(newClient);
@@ -1671,8 +1653,10 @@ export async function loadClients() {
       e.preventDefault();
       const target = e.target;
       const clientCard = target.closest('.client-card');
-      const clientId = clientCard ? clientCard.getAttribute('data-id') : null;
-      let client = clientsData.find(c => c.id === clientId);
+      const clientId = clientCard?.getAttribute('data-id');
+      if (!clientId) return;
+
+      const client = clientsData.find(c => c.id === clientId);
       if (!client) return;
 
       const actionBtn = target.closest('.client-action-btn');
@@ -1681,37 +1665,31 @@ export async function loadClients() {
 
         if (actionBtn.classList.contains('edit-btn')) {
           showClientForm('Редактировать клиента', client, async (data) => {
-            const updatedClient = await updateClient(clientId, data);
-            await normalizeClient(updatedClient);
+            const updated = await updateClient(clientId, data);
+            await normalizeClient(updated);
             await syncClientsWithServer();
             renderClients();
             showToast('Данные клиента обновлены', 'success');
-            client = updatedClient; // Update local reference
           });
         } else if (actionBtn.classList.contains('blacklist-btn')) {
           client.blacklisted = !client.blacklisted;
-          console.log('Blacklisted toggled to:', client.blacklisted);
-          await updateClient(clientId, client);
-          await normalizeClient(client);
+          await updateClient(clientId, { blacklisted: client.blacklisted });
           await syncClientsWithServer();
           renderClients();
-          showToast(client.blacklisted ? 'Клиент добавлен в чёрный список' : 'Клиент удалён из чёрного списка', 'info');
+          showToast(client.blacklisted ? 'В чёрный список' : 'Удалён из ЧС', 'info');
         } else if (actionBtn.classList.contains('subscription-btn')) {
           showSubscriptionManagement(client);
         } else if (actionBtn.classList.contains('group-btn')) {
           showGroupForm('Управление группами', client, getGroups(), async (groups, history) => {
-            client.groups = groups;
-            client.group_history = history;
-            await updateClient(clientId, client);
-            await normalizeClient(client);
+            await updateClient(clientId, { groups, group_history: history });
             await syncClientsWithServer();
             renderClients();
-            showToast('Группы клиента обновлены', 'success');
+            showToast('Группы обновлены', 'success');
           });
         } else if (actionBtn.classList.contains('delete-btn')) {
           showConfirmDialog(
             'Удалить клиента?',
-            `Вы уверены, что хотите удалить клиента "${client.surname} ${client.name}"? Это действие нельзя отменить.`,
+            `Удалить <strong>${client.surname} ${client.name}</strong>?`,
             async () => {
               await removeClient(clientId);
               await syncClientsWithServer();
@@ -1729,7 +1707,6 @@ export async function loadClients() {
     });
   }
 }
-
 export function showToast(message, type = 'info') {
   const toast = document.createElement('div');
   toast.className = `toast toast-${type}`;
